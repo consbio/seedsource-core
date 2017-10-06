@@ -1,0 +1,30 @@
+from setuptools import find_packages, setup
+from seedsource_core import __version__ as version
+
+setup(
+    name='seedsource-core',
+    version=version,
+    description='Core functionality underlying a collection of climate suitability tools.',
+    author='Conservation Biology Institute',
+    url='https://github.com/consbio/seedsource-core',
+    license='BSD',
+    packages=find_packages(),
+    python_requires='>=3.5',
+    install_requires=[
+        'aiohttp',
+        'clover',
+        'django>=1.8',
+        'djangorestframework',
+        'gdal',
+        'geopy',
+        'mercantile',
+        'ncdjango==0.5.0',
+        'netcdf4',
+        'pyproj',
+        'python-pptx',
+        'weasyprint'
+    ],
+    dependency_links=[
+        'https://github.com/consbio/clover/archive/master.zip#egg=clover'
+    ]
+)

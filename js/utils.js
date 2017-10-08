@@ -1,3 +1,5 @@
+import config from 'seedsource/config'
+
 /* A shortcut for Object.assign({}, obj, props) */
 export const morph = (obj, props = {}) => Object.assign({}, obj, props)
 
@@ -27,4 +29,8 @@ export const getCookies = () => {
     })
 
     return cookies
+}
+
+export const staticResource = (name) => {
+    return config.staticRoot + name
 }

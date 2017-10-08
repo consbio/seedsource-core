@@ -13,7 +13,11 @@ gulp.task('sass', () => {
 })
 
 gulp.task('js', () => {
-    browserify({entries: './js/index.js'})
+    browserify({
+        entries: './js/index.js',
+        paths: ['./js'],
+        extensions: ['.jsx']
+    })
         .transform('babelify', {presets: ['es2015', 'react']})
         .bundle()
         .on('error', gulpUtil.log)

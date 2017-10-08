@@ -6,12 +6,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Seedlot Selection Tool</title>
+    <title>{{ title }}</title>
 
     <link rel="stylesheet" href="{% static "css/seedsource.css" %}">
 
     <link rel="icon" href="{% static "images/favicon-32x32.png" %}" sizes="32x32" />
     <link rel="icon" href="{% static "images/favicon-16x16.png" %}" sizes="16x16" />
+
+    <script type="text/javascript">
+        window.SS_CONFIG = {
+            title: '{{ title|escapejs }}',
+            staticRoot: '{% static "/" %}'
+        }
+    </script>
 </head>
 <body>
     <div id="SeedsourceApp"></div>

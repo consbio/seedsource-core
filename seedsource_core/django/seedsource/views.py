@@ -1,8 +1,10 @@
 import json
 
+from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db.models import Q
 from django.http import HttpResponse
+from django.views.generic.base import TemplateView
 from numpy.ma.core import is_masked
 from rest_framework import viewsets
 from rest_framework.decorators import detail_route
@@ -17,6 +19,17 @@ from .report import Report
 from .serializers import RunConfigurationSerializer, SeedZoneSerializer, GenerateReportSerializer
 from .serializers import TransferLimitSerializer, RegionSerializer
 from .utils import get_elevation_at_point, get_regions_for_point
+
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'seedsource-core')
+
+
+class ToolView(TemplateView):
+    template_name = 'seedsource.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = SEEDSOURCE_TITLE
+        return context
 
 
 class RunConfigurationViewset(viewsets.ModelViewSet):

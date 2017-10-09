@@ -562,17 +562,18 @@ class Map extends React.Component {
             } = this.props
             let {serviceId} = job
 
-            this.updatePointMarker(point)
-            this.updateVariableLayer(activeVariable, objective, climate, region)
-            this.updateResultsLayer(serviceId, showResults)
-            this.updateBoundaryLayer(region)
-            this.updateOpacity(opacity, serviceId, activeVariable)
-            this.updateVisibilityButton(serviceId, showResults)
-            this.updateTimeOverlay(activeVariable, objective, climate)
-            this.updateLegends(legends, activeVariable, serviceId, unit)
-            this.updateZoneLayer(method, zone, geometry)
-            this.updatePopup(popup, unit)
-            this.updateMapCenter(center)
+            // Todo
+            // this.updatePointMarker(point)
+            // this.updateVariableLayer(activeVariable, objective, climate, region)
+            // this.updateResultsLayer(serviceId, showResults)
+            // this.updateBoundaryLayer(region)
+            // this.updateOpacity(opacity, serviceId, activeVariable)
+            // this.updateVisibilityButton(serviceId, showResults)
+            // this.updateTimeOverlay(activeVariable, objective, climate)
+            // this.updateLegends(legends, activeVariable, serviceId, unit)
+            // this.updateZoneLayer(method, zone, geometry)
+            // this.updatePopup(popup, unit)
+            // this.updateMapCenter(center)
         }
 
         return <div ref={input => {this.mapNode = input}} className="map-container"></div>

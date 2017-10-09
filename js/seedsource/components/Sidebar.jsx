@@ -1,5 +1,6 @@
 import React from 'react'
 import About from 'seedsource/components/About'
+import RunConfiguration from 'seedsource/containers/RunConfiguration'
 
 class Sidebar extends React.Component {
     constructor(props) {
@@ -32,7 +33,9 @@ class Sidebar extends React.Component {
                 <div className={'tab-content ' + (activeTab !== 'about' ? 'is-hidden' : '')}>
                     <About />
                 </div>
-                <div className={'tab-content ' + (activeTab !== 'tool' ? 'is-hidden' : '')}></div>
+                <div className={'tab-content ' + (activeTab !== 'tool' ? 'is-hidden' : '')}>
+                    <RunConfiguration />
+                </div>
                 <div className={'tab-content ' + (activeTab !== 'saves' ? 'is-hidden' : '')}></div>
             </div>
         )

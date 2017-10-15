@@ -21,9 +21,9 @@ const VariableStep = ({ number, active, variables }) => {
 
     return (
         <ConfigurationStep title="Select climate variables" number={number} name="variables" active={true}>
-            <div>
+            <div className="margin-bottom-10">
                 <strong>Units: </strong>
-                <div className="tabs is-toggle is-inline-block">
+                <div className="tabs is-toggle is-inline-block is-small align-middle">
                     <ul>
                         <UnitButton name="metric">Metric</UnitButton>
                         <UnitButton name="imperial">Imperial</UnitButton>

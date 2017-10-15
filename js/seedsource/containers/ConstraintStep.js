@@ -1,6 +1,6 @@
 import { connect } from 'react-redux'
 import ConstraintStep from '../components/ConstraintStep'
-import { addConstraint } from '../actions/constraints'
+import { addConstraint } from '../../actions/constraints'
 
 const mapStateToProps = ({ runConfiguration }) => {
     let { constraints } = runConfiguration

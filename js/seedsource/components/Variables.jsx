@@ -7,8 +7,8 @@ const Variables = ({ variables, unusedVariables, edit, onChange }) => {
 
     if (variables.length > 0) {
         table = (
-            <table className="table">
-                <thead>
+            <table className="table is-fullwidth">
+                <thead className="align-bottom is-size-7 has-text-weight-bold">
                     <tr>
                         <th></th>
                         <th>

@@ -6,8 +6,8 @@ import RegionStep from 'seedsource/containers/RegionStep'
 import ClimateStep from 'seedsource/containers/ClimateStep'
 import TransferStep from 'seedsource/containers/TransferStep'
 import VariableStep from 'seedsource/containers/VariableStep'
-// import ConstraintStep from 'seedsource/containers/ConstraintStep'
-// import RunStep from 'seedsource/containers/RunStep'
+import ConstraintStep from 'seedsource/containers/ConstraintStep'
+import RunStep from 'seedsource/containers/RunStep'
 import { collapsibleSteps } from '../../config'
 
 let RunConfiguration = ({ state, objective, method, job, activeStep }) => {
@@ -45,8 +45,8 @@ let RunConfiguration = ({ state, objective, method, job, activeStep }) => {
         {type: ClimateStep, key: 'climate'},
         {type: TransferStep, key: 'transfer'},
         {type: VariableStep, key: 'variables'},
-        // {type: ConstraintStep, key: 'constraints'},
-        // {type: RunStep, key: 'run'}
+        {type: ConstraintStep, key: 'constraints'},
+        {type: RunStep, key: 'run'}
     ]
 
     return (

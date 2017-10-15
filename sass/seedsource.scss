@@ -7,13 +7,17 @@ $primary: $blue;
 @import '~leaflet-basemaps/L.Control.Basemaps';
 @import '~leaflet-geonames/L.Control.Geonames';
 
+.table th {
+  vertical-align: bottom;
+}
+
 $directions: left top right bottom;
 $spacings: 5 10 15;
 
 @each $direction in $directions {
   @each $spacing in $spacings {
     .margin-#{$direction}-#{$spacing} {
-      margin-#{$direction}: #{$spacing}px;
+      margin-#{$direction}: #{$spacing}px !important;
     }
   }
 }
@@ -135,9 +139,20 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   opacity: 1;
 }
 
+.variable-tooltip {
+  box-shadow: 5px 5px 10px rgba(153, 153, 153, .6);
+  font-size: 1.1em !important;
+  max-width: 350px;
+  white-space: normal;
+}
+
+.variable-tooltip strong, .variable-tooltip .title {
+  color: #fff;
+}
+
 .variable-tooltip .tooltip-label {
-    color: #999;
-    margin-right: 8px;
+  color: #999;
+  margin-right: 8px;
 }
 
 .editable-label {
@@ -155,4 +170,5 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 .map-container {
   width: 100%;
   height: 100%;
+  z-index: 1;
 }

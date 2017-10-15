@@ -30,16 +30,14 @@ const Variable = props => {
     return (
         <tr className={active ? "visible" : ""} data-tip data-for={name + "_Tooltip"}>
             <td>
-                <button
+                <a
                     type="button"
-                    className="close"
+                    className="delete"
                     onClick={e => {
                         e.stopPropagation()
                         onRemove()
                     }}
-                >
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                ></a>
             </td>
             <td>
                 <div className={"modify-status " + (transferIsModified ? "modified" : "")}>&nbsp;</div>
@@ -66,7 +64,7 @@ const Variable = props => {
 
 
                 <ReactTooltip id={name + "_Tooltip"} className="variable-tooltip" place="right" effect="solid">
-                    <h4>{name}: {label}</h4>
+                    <h5 className="title is-5 margin-bottom-5">{name}: {label}</h5>
                     <div><span className="tooltip-label">Value at point:</span> <strong>{value}</strong></div>
                     <div>
                         <span className="tooltip-label">Transfer limit (+/-):</span>

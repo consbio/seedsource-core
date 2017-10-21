@@ -23,7 +23,7 @@ $spacings: 5 10 15;
 }
 
 $icon-sizes: 12 16 18;
-$icons: eye eye-closed crop contrast save load file trash clock;
+$icons: eye eye-closed crop contrast save load file trash clock chevron-top chevron-bottom;
 
 @each $icon in $icons {
   @each $size in $icon-sizes {

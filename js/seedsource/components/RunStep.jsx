@@ -2,7 +2,8 @@ import React  from 'react'
 import PropTypes from 'prop-types'
 import ConfigurationStep from 'seedsource/containers/ConfigurationStep'
 import SaveModal from 'seedsource/containers/SaveModal'
-import { reports } from '../config'
+import Dropdown from 'seedsource/components/Dropdown'
+import { reports } from '../../config'
 
 const RunStep = props => {
     let {
@@ -34,43 +35,23 @@ const RunStep = props => {
                     >
                         <span className="icon12 icon-save" aria-hidden="true"></span> Save Last Run
                     </a>
-                    <a
-                        className={(reportIsFetching ? "is-loading" : "") + "button is-pulled-right"}
+                    <Dropdown
+                        className="is-pulled-right is-right"
+                        up={true}
+                        title="Export As..."
                         disabled={!canSave || reportIsFetching}
                     >
-                        Export As...
-                    </a>
-                    {/*<div className="dropup pull-right">*/}
-                        {/*<button*/}
-                            {/*className="btn btn-secondary dropdown-toggle"*/}
-                            {/*type="button"*/}
-                            {/*id="reportMenuButton"*/}
-                            {/*data-toggle="dropdown"*/}
-                            {/*aria-haspopup="true"*/}
-                            {/*aria-expanded="false"*/}
-                            {/*disabled={!canSave || reportIsFetching}*/}
-                        {/*>*/}
-                            {/*<span className="icon12 icon-file" aria-hidden="true"></span>*/}
-                            {/*{reportIsFetching ? 'Please wait...' : 'Export As...'} &nbsp;*/}
-                            {/*<b className="caret"></b>*/}
-                        {/*</button>*/}
-                        {/*<ul className="dropdown-menu dropdown-menu-right" aria-labelledby="reportMenuButton">*/}
-                            {/*{reports.map(r => (*/}
-                                {/*<li key={r.name}>*/}
-                                {/*<a className="dropdown-item" href="#"*/}
-                                   {/*onClick={e => {*/}
-                                       {/*e.preventDefault()*/}
-                                       {/*onExport(r.name)*/}
-                                   {/*}}>{r.label}</a></li>))*/}
-                            {/*}*/}
-                            {/*<li>*/}
-                                {/*<a className="dropdown-item" href="#" onClick={e => {*/}
-                                    {/*e.preventDefault()*/}
-                                    {/*onExportTIF()*/}
-                                {/*}}>GeoTIFF</a>*/}
-                            {/*</li>*/}
-                        {/*</ul>*/}
-                    {/*</div>*/}
+                        {reports.map(r => (
+                            <a key={r.name} className="dropdown-item" onClick={e => {
+                                e.preventDefault()
+                                onExport(r.name)
+                            }}>{r.label}</a>
+                        ))}
+                        <a className="dropdown-item" onClick={e => {
+                            e.preventDefault()
+                            onExportTIF()
+                        }}>GeoTIFF</a>
+                    </Dropdown>
                 </div>
                 <div className="is-clearfix"></div>
             </div>

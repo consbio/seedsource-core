@@ -10,10 +10,13 @@ import { topojson } from 'leaflet-omnivore'
 import 'leaflet-basemaps'
 import 'leaflet-geonames/L.Control.Geonames'
 
+import * as io from '../../io'
 import { variables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
 import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
+import { getServiceName } from '../../utils'
+import '../../leaflet-controls'
 
 class Map extends React.Component {
     constructor(props) {
@@ -341,36 +344,6 @@ class Map extends React.Component {
         }
     }
 
-    updateTimeOverlay(variable, objective, climate) {
-        let overlayNode = document.getElementById('TimeOverlay')
-
-        if (variable === null) {
-            if (!overlayNode.classList.contains('hidden')) {
-                overlayNode.classList.add('hidden')
-            }
-        }
-        else {
-            if (overlayNode.classList.contains('hidden')) {
-                overlayNode.classList.remove('hidden')
-            }
-
-            let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
-            let { time, model } = selectedClimate
-            let labelKey = time
-
-            if (time !== '1961_1990' && time !== '1981_2010') {
-                labelKey += model
-            }
-
-            let label = timeLabels[labelKey]
-            let labelNode = document.getElementById('TimeLabel')
-
-            if (labelNode.innerHTML !== label) {
-                labelNode.innerHTML = label
-            }
-        }
-    }
-
     updateLegends(legends, activeVariable, serviceId, unit) {
         let mapLegends = []
 
@@ -464,7 +437,7 @@ class Map extends React.Component {
 
                 L.DomUtil.create('div', '', container).innerHTML = '&nbsp;'
 
-                let button = L.DomUtil.create('button', 'btn btn-sm btn-primary', container)
+                let button = L.DomUtil.create('button', 'button is-primary is-fullwidth', container)
                 button.innerHTML = 'Set Point'
 
                 let popup = L.popup({
@@ -555,6 +528,8 @@ class Map extends React.Component {
     }
 
     render() {
+        let timeOverlay = null
+
         if (this.map !== null) {
             let {
                 activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
@@ -562,21 +537,40 @@ class Map extends React.Component {
             } = this.props
             let {serviceId} = job
 
-            // Todo
-            // this.updatePointMarker(point)
-            // this.updateVariableLayer(activeVariable, objective, climate, region)
-            // this.updateResultsLayer(serviceId, showResults)
-            // this.updateBoundaryLayer(region)
-            // this.updateOpacity(opacity, serviceId, activeVariable)
-            // this.updateVisibilityButton(serviceId, showResults)
-            // this.updateTimeOverlay(activeVariable, objective, climate)
-            // this.updateLegends(legends, activeVariable, serviceId, unit)
-            // this.updateZoneLayer(method, zone, geometry)
-            // this.updatePopup(popup, unit)
-            // this.updateMapCenter(center)
+            this.updatePointMarker(point)
+            this.updateVariableLayer(activeVariable, objective, climate, region)
+            this.updateResultsLayer(serviceId, showResults)
+            this.updateBoundaryLayer(region)
+            this.updateOpacity(opacity, serviceId, activeVariable)
+            this.updateVisibilityButton(serviceId, showResults)
+            this.updateLegends(legends, activeVariable, serviceId, unit)
+            this.updateZoneLayer(method, zone, geometry)
+            this.updatePopup(popup, unit)
+            this.updateMapCenter(center)
+
+            // Time overlay
+            if (activeVariable !== null) {
+                let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
+                let { time, model } = selectedClimate
+                let labelKey = time
+
+                if (time !== '1961_1990' && time !== '1981_2010') {
+                    labelKey += model
+                }
+
+                let label = timeLabels[labelKey]
+
+                timeOverlay = <div className="time-overlay">
+                    <span className="icon-clock-16"></span><span>&nbsp;</span>
+                    Showing: {label}
+                </div>
+            }
         }
 
-        return <div ref={input => {this.mapNode = input}} className="map-container"></div>
+        return <div className="map-container">
+            <div ref={input => {this.mapNode = input}} className="map-container"></div>
+            {timeOverlay}
+        </div>
     }
 }
 

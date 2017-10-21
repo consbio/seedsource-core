@@ -156,19 +156,110 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 }
 
 .editable-label {
-    border-bottom: 1.5px dashed blue;
-    cursor: pointer;
-    color: blue;
+  border-bottom: 1.5px dashed blue;
+  cursor: pointer;
+  color: blue;
 }
 
 .editable-label.edit {
-    border: 0;
-    cursor: default;
-    color: black;
+  border: 0;
+  cursor: default;
+  color: black;
 }
 
 .map-container {
+  position: relative;
   width: 100%;
   height: 100%;
   z-index: 1;
+}
+
+.time-overlay {
+  z-index: 2;
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  padding: 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, .8);
+  color: #fff;
+  font-size: 1.3em;
+  font-weight: bold;
+}
+
+.map-info-popup {
+  min-width: 150px;
+}
+
+.leaflet-opacity-control {
+  width: 26px;
+  background-color: #fff;
+  font-size: 1.3em;
+  text-align: center;
+  padding-bottom: 5px;
+  padding-top: 5px;
+}
+
+.leaflet-opacity-control input[type=range] {
+  display: block;
+  width: 100%;
+  height: 150px;
+
+  /*
+   * -webkit-appearance is non-standard and may break in the future:
+   * https://developer.mozilla.org/en-US/docs/Web/CSS/-moz-appearance
+   * However, for now it's the only way to get a vertical range input on Chrome.
+   */
+  -webkit-appearance: slider-vertical;
+}
+
+/* Hack to target IE 10 & 11 */
+@media screen and (-ms-high-contrast: active), (-ms-high-contrast: none) {
+  .leaflet-opacity-control {
+    padding-bottom: 15px;
+  }
+
+  .leaflet-opacity-control input[type=range] {
+    writing-mode: bt-lr;
+    width: 45px;
+    margin-left: -11px;
+  }
+}
+
+.leaflet-button {
+  width: 26px;
+  background-color: #fff;
+  font-size: 1.3em;
+  text-align: center;
+  padding-top: 5px;
+}
+
+.leaflet-button:hover {
+  background-color: #eee;
+  cursor: pointer;
+}
+
+.leaflet-legend {
+  background-color: #fff;
+  padding: 5px;
+}
+
+.leaflet-legend td:last-child {
+  padding-left: 5px;
+}
+
+.leaflet-legend tbody tr:first-child td {
+  vertical-align: top;
+}
+
+.leaflet-legend tbody tr:last-child td {
+  vertical-align: bottom;
+}
+
+.leaflet-popup .map-info-popup button {
+  width: 100%;
+}
+
+.leaflet-default-icon-path {
+  background-image: url(../images/marker-icon.png);
 }

@@ -291,7 +291,7 @@ class PPTCreator(object):
 
     def get_presentation(self, context):
         self.presentation = Presentation(
-            os.path.join(settings.BASE_DIR, 'seedsource', 'templates', 'pptx', 'report.pptx')
+            os.path.join(os.path.dirname(__file__), 'templates', 'pptx', 'report.pptx')
         )
         self.width = Inches(self.presentation.slide_width / Inches(1))
         self.height = Inches(self.presentation.slide_height / Inches(1))

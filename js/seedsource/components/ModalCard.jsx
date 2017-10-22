@@ -12,9 +12,9 @@ class ModalCard extends React.Component {
     }
 
     render() {
-        let { title, children, footer = null } = this.props
+        let { title, children, footer = null, active = false, onHide = null } = this.props
 
-        return <Modal closeButton={false} ref={input => {this.modal = input}}>
+        return <Modal closeButton={false} ref={input => {this.modal = input}} active={active} onHide={onHide}>
             <div className="modal-card">
                 <header className="modal-card-head">
                     <p className="modal-card-title">{title}</p>

@@ -12,11 +12,16 @@ class Modal extends React.Component {
 
     hide() {
         this.setState({isActive: false})
+
+        let { onHide = null } = this.props
+        if (onHide !== null) {
+            onHide()
+        }
     }
 
     render() {
-        let { children, closeButton } = this.props
-        let activeClass = this.state.isActive ? 'is-active' : ''
+        let { children, closeButton, active = false } = this.props
+        let activeClass = (this.state.isActive || active) ? 'is-active' : ''
 
         let closeButtonNode = null
         if (closeButton !== false) {

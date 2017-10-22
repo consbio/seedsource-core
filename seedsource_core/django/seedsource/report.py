@@ -157,10 +157,10 @@ class Report(object):
         if img_as_bytes:
             image_data.seek(0)  # seek to file start so we can read into ppt
 
-        with open(os.path.join(BASE_DIR, 'seedsource', 'static', 'sst', 'images', 'north.png'), 'rb') as f:
+        with open(os.path.join(get_images_dir(), 'north.png'), 'rb') as f:
             north_image_data = b64encode(f.read())
 
-        with open(os.path.join(BASE_DIR, 'seedsource', 'static', 'sst', 'images', 'scale.png'), 'rb') as f:
+        with open(os.path.join(get_images_dir(), 'scale.png'), 'rb') as f:
             scale_image_data = b64encode(f.read())
 
         scale_bar_x = 38
@@ -336,9 +336,8 @@ class MapImage(object):
             self.draw_geometry(im, geometry[0], (0, 0, 102), 1)
 
     def get_marker_image(self):
-        leaflet_images_dir = os.path.join(BASE_DIR, 'seedsource', 'static', 'leaflet', 'images')
-        marker = Image.open(os.path.join(leaflet_images_dir, 'marker-icon.png'))
-        shadow = Image.open(os.path.join(leaflet_images_dir, 'marker-shadow.png'))
+        marker = Image.open(os.path.join(get_images_dir(), 'marker-icon.png'))
+        shadow = Image.open(os.path.join(get_images_dir(), 'marker-shadow.png'))
 
         # Raise the shadow opacity
         shadow.putalpha(ImageMath.eval('a * 2', a=shadow.convert('RGBA').split()[3]).convert('L'))
@@ -373,3 +372,7 @@ class MapImage(object):
         im.paste(marker_im, (0, 0), marker_im)
 
         return self.crop_image(im)
+
+
+def get_images_dir():
+    return os.path.join(os.path.dirname(__file__), 'static', 'images')

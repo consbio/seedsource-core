@@ -11,6 +11,10 @@ $primary: $blue;
   vertical-align: bottom;
 }
 
+.table td {
+  padding: .5em .5em;
+}
+
 $directions: left top right bottom;
 $spacings: 5 10 15;
 
@@ -41,6 +45,7 @@ $header-height: 52px;
 $family-strong: "Arial Black", "Arial Bold", Gadget, sans-serif;
 $tab-header-height: 66px;
 $tab-content-height: calc(100vh - #{$header-height} - #{$tab-header-height});
+$sidebar-width: 440px;
 
 .align-middle {
   vertical-align: middle;
@@ -59,11 +64,11 @@ $tab-content-height: calc(100vh - #{$header-height} - #{$tab-header-height});
 
 .sidebar {
   box-shadow: 2px 0px 10px;
-  z-index: 401; // Raise box shadow above leaflet map
+  z-index: 2; // Raise box shadow above leaflet map
 }
 
 .sidebar-inner {
-  width: 440px;
+  width: $sidebar-width;
 }
 
 .sidebar .tab-content {
@@ -75,18 +80,30 @@ $tab-content-height: calc(100vh - #{$header-height} - #{$tab-header-height});
 }
 
 .sidebar .overlay {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: #{$header-height + $tab-header-height};
   left: 0;
   right: 0;
   bottom: 0;
+  width: $sidebar-width;
+  height: $tab-content-height;
   background-color: rgba(255, 255, 255, .92);
-  z-index: 402;
+  z-index: 5;
   padding: 0px 20px;
 }
 
 .sidebar .overlay progress {
   width: 100%;
+}
+
+.sidebar .overlay .progress-container {
+  margin-right: 30px;
+  margin-top: 50%;
+}
+
+.error-debug-info {
+  max-height: 200px;
+  overflow: auto;
 }
 
 .configuration-step {
@@ -113,10 +130,11 @@ $tab-content-height: calc(100vh - #{$header-height} - #{$tab-header-height});
   width: 3px;
   background-color: rgba(0, 0, 0, 0);
   margin-right: 5px;
+  margin-left: -.5em;
   transition: background-color .5s;
 }
 
-.modify-status .modified {
+.modify-status.modified {
   background-color: #f0ad4e;
   transition: background-color .5s;
 }
@@ -142,7 +160,7 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 .variable-tooltip {
   box-shadow: 5px 5px 10px rgba(153, 153, 153, .6);
   font-size: 1.1em !important;
-  max-width: 350px;
+  max-width: 400px;
   white-space: normal;
 }
 

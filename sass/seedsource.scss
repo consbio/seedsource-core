@@ -6,6 +6,7 @@ $primary: $blue;
 @import '~leaflet/dist/leaflet';
 @import '~leaflet-basemaps/L.Control.Basemaps';
 @import '~leaflet-geonames/L.Control.Geonames';
+@import '~leaflet-zoombox/L.Control.ZoomBox';
 
 .table th {
   vertical-align: bottom;
@@ -262,8 +263,21 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   padding: 5px;
 }
 
+.leaflet-legend .title {
+  margin-bottom: .5em;
+}
+
+.leaflet-legend .legend-item:not(:first-child) {
+  margin-top: .5em;
+}
+
+.leaflet-legend td {
+  line-height: 0;
+}
+
 .leaflet-legend td:last-child {
   padding-left: 5px;
+  line-height: 1;
 }
 
 .leaflet-legend tbody tr:first-child td {

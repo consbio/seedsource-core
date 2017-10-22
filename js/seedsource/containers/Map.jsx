@@ -9,6 +9,7 @@ import L from 'leaflet'
 import { topojson } from 'leaflet-omnivore'
 import 'leaflet-basemaps'
 import 'leaflet-geonames/L.Control.Geonames'
+import 'leaflet-zoombox/L.Control.ZoomBox'
 
 import * as io from '../../io'
 import { variables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
@@ -63,6 +64,10 @@ class Map extends React.Component {
         })
 
         this.map.zoomControl.setPosition('topright')
+
+        this.map.addControl(L.control.zoomBox({
+            position: 'topright'
+        }))
 
         let geonamesControl = L.control.geonames({
             position: 'topright',

@@ -116,7 +116,7 @@ L.Control.Legend = L.Control.extend({
             }
 
             var container = L.DomUtil.create('div', className, this._container);
-            var label = L.DomUtil.create('h4', null, container);
+            var label = L.DomUtil.create('h4', 'title is-5', container);
             label.innerHTML = legend.label;
 
             var table = L.DomUtil.create('table', null, container);

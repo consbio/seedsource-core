@@ -21,6 +21,7 @@
     "leaflet-basemaps": "^0.2.2",
     "leaflet-geonames": "^0.4.2",
     "leaflet-omnivore": "^0.3.4",
+    "leaflet-zoombox": "^0.3.5",
     "prop-types": "^15.6.0",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",

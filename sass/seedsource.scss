@@ -16,6 +16,10 @@ $primary: $blue;
   padding: .5em .5em;
 }
 
+.navbar-end > .navbar-item:last-child {
+  margin-right: 10px;
+}
+
 $directions: left top right bottom;
 $spacings: 5 10 15;
 

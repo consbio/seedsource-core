@@ -12,7 +12,7 @@ import error from './error'
 import popup from './popup'
 
 export default combineReducers({
-    isLoggedIn: auth,
+    auth,
     activeTab: tabs,
     activeVariable,
     activeStep,

@@ -25,7 +25,7 @@ class Dropdown extends React.Component {
 
     render() {
         let { active } = this.state
-        let isActive = this.state.active ? 'is-active' : ''
+        let isActive = active ? 'is-active' : ''
         let { title, up=false, disabled=false, className='', children } = this.props
 
         return (

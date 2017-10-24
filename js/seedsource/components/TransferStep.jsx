@@ -32,7 +32,6 @@ const TransferStep = ({ number, active, objective, method, center, onCenterChang
     if (method === 'seedzone' && objective === 'sites') {
         centerNode = (
             <div>
-                <div>&nbsp;</div>
                 <div className="is-size-7"><em>Which should be used as the climatic center?</em></div>
                 <div className="control">
                     <div>
@@ -56,6 +55,7 @@ const TransferStep = ({ number, active, objective, method, center, onCenterChang
                         </label>
                     </div>
                 </div>
+                <div>&nbsp;</div>
             </div>
         )
     }

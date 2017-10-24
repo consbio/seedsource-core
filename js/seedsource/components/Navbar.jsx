@@ -2,6 +2,7 @@ import React from 'react'
 import { staticResource } from '../../utils'
 import config from 'seedsource/config'
 import Menu from 'seedsource/components/Menu'
+import AccountMenu from 'seedsource/containers/AccountMenu'
 
 class Navbar extends React.Component {
     constructor(props) {
@@ -33,7 +34,7 @@ class Navbar extends React.Component {
                 <div className={isActive + ' navbar-menu is-size-7-desktop is-size-6-widescreen is-size-6-touch'}>
                     <div className='navbar-end'>
                         <Menu />
-                        <a className='navbar-item'>Sign In</a>
+                        <AccountMenu />
                     </div>
                 </div>
             </nav>

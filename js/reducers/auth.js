@@ -1,12 +1,18 @@
 import { LOGIN, LOGOUT } from '../actions/auth'
+import { morph } from '../utils'
 
-export default (state = false, action) => {
+const defaultState = {
+    isLoggedIn: false,
+    email: null
+}
+
+export default (state = defaultState, action) => {
     switch (action.type) {
         case LOGIN:
-            return true
+            return morph(state, {isLoggedIn: true, email: action.email})
         
         case LOGOUT:
-            return false
+            return defaultState
 
         default:
             return state

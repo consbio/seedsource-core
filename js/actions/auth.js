@@ -1,14 +1,15 @@
 export const LOGIN = 'LOGIN'
 export const LOGOUT = 'LOGOUT'
 
-export const login = () => {
+export const login = email => {
     return {
-        type: LOGIN
+        type: LOGIN,
+        email
     }
 }
 
 export const logout = () => {
     return {
-        type: LOGIN
+        type: LOGOUT
     }
 }

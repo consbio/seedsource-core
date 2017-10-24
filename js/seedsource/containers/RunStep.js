@@ -13,7 +13,9 @@ const configurationCanRun = ({point, variables, constraints}) =>  {
     return variables.length > 0 && variables.every(item => item.value !== null && item.isFetching === false)
 }
 
-const mapStateToProps = ({ runConfiguration, lastRun, job, isLoggedIn, reportIsFetching }) => {
+const mapStateToProps = ({ runConfiguration, lastRun, job, auth, reportIsFetching }) => {
+    let { isLoggedIn } = auth
+
     return {
         canRun: configurationCanRun(runConfiguration) && !job.isRunning,
         canSave: lastRun !== null,

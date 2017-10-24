@@ -7,15 +7,16 @@ Object.defineProperty(exports, "__esModule", {
 var LOGIN = exports.LOGIN = 'LOGIN';
 var LOGOUT = exports.LOGOUT = 'LOGOUT';
 
-var login = exports.login = function login() {
+var login = exports.login = function login(email) {
     return {
-        type: LOGIN
+        type: LOGIN,
+        email: email
     };
 };
 
 var logout = exports.logout = function logout() {
     return {
-        type: LOGIN
+        type: LOGOUT
     };
 };
 
@@ -196,7 +197,7 @@ var runJob = exports.runJob = function runJob(configuration) {
 
             var data = { action: 'runJob' };
             if (err.json !== undefined) {
-                data.response = json;
+                data.response = err.json;
             }
 
             dispatch(failJob());
@@ -205,7 +206,7 @@ var runJob = exports.runJob = function runJob(configuration) {
     };
 };
 
-},{"../config":19,"../io":21,"./error":4}],6:[function(require,module,exports){
+},{"../config":24,"../io":26,"./error":4}],6:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -612,7 +613,7 @@ var runTIFJob = exports.runTIFJob = function runTIFJob() {
 
             var data = { action: 'runTIFJob' };
             if (err.json !== undefined) {
-                data.response = json;
+                data.response = err.json;
             }
 
             dispatch(failReport());
@@ -621,7 +622,7 @@ var runTIFJob = exports.runTIFJob = function runTIFJob() {
     };
 };
 
-},{"../config":19,"../io":21,"./error":4,"./saves":13}],13:[function(require,module,exports){
+},{"../config":24,"../io":26,"./error":4,"./saves":13}],13:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -802,8 +803,8 @@ var failSaves = exports.failSaves = function failSaves() {
 
 var fetchSaves = exports.fetchSaves = function fetchSaves() {
     return function (dispatch, getState) {
-        var _getState = getState(),
-            isLoggedIn = _getState.isLoggedIn;
+        var isLoggedIn = getState().auth.isLoggedIn;
+
 
         if (isLoggedIn) {
             dispatch(requestSaves());
@@ -853,7 +854,7 @@ var deleteSave = exports.deleteSave = function deleteSave(uuid) {
     };
 };
 
-},{"../io":21,"./error":4}],14:[function(require,module,exports){
+},{"../io":26,"./error":4}],14:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1080,6 +1081,631 @@ var failGeometry = exports.failGeometry = function failGeometry() {
 };
 
 },{}],19:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _resync = require('../resync');
+
+var _resync2 = _interopRequireDefault(_resync);
+
+var _legends = require('../actions/legends');
+
+var _utils = require('../utils');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var variableLegendSelect = function variableLegendSelect(_ref) {
+    var activeVariable = _ref.activeVariable,
+        runConfiguration = _ref.runConfiguration;
+    var objective = runConfiguration.objective,
+        climate = runConfiguration.climate,
+        region = runConfiguration.region;
+
+
+    return {
+        activeVariable: activeVariable,
+        objective: objective,
+        climate: objective === 'seedlots' ? climate.site : climate.seedlot,
+        region: region
+    };
+};
+
+var resultsLegendSelect = function resultsLegendSelect(_ref2) {
+    var job = _ref2.job,
+        legends = _ref2.legends;
+
+    return {
+        serviceId: job.serviceId,
+        hasLegend: legends.results.legend !== null
+    };
+};
+
+exports.default = function (store) {
+    // Variable legend
+    (0, _resync2.default)(store, variableLegendSelect, function (_ref3, io, dispatch) {
+        var activeVariable = _ref3.activeVariable,
+            objective = _ref3.objective,
+            region = _ref3.region;
+
+        if (activeVariable !== null) {
+            dispatch((0, _legends.requestVariableLegend)());
+            var climate = store.getState().runConfiguration.climate;
+
+            var serviceName = (0, _utils.getServiceName)(activeVariable, objective, climate, region);
+
+            var url = '/arcgis/rest/services/' + serviceName + '/MapServer/legend';
+
+            return io.get(url).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                return dispatch((0, _legends.receiveVariableLegend)(json));
+            });
+        }
+    });
+
+    // Results legend
+    (0, _resync2.default)(store, resultsLegendSelect, function (_ref4, io, dispatch) {
+        var serviceId = _ref4.serviceId,
+            hasLegend = _ref4.hasLegend;
+
+        if (serviceId !== null && !hasLegend) {
+            dispatch((0, _legends.requestResultsLegend)());
+
+            var url = '/arcgis/rest/services/' + serviceId + '/MapServer/legend';
+
+            return io.get(url).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                return dispatch((0, _legends.receiveResultsLegend)(json));
+            });
+        }
+    });
+};
+
+},{"../actions/legends":6,"../resync":44,"../utils":118}],20:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _resync = require('../resync');
+
+var _resync2 = _interopRequireDefault(_resync);
+
+var _point = require('../actions/point');
+
+var _region = require('../actions/region');
+
+var _io = require('../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var pointSelect = function pointSelect(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var point = runConfiguration.point;
+
+
+    if (point) {
+        point = { x: point.x, y: point.y };
+    }
+
+    return { point: point };
+};
+
+exports.default = function (store) {
+    (0, _resync2.default)(store, pointSelect, function (state, io, dispatch, previousState) {
+        var point = state.point;
+
+        var pointIsValid = point !== null && point.x && point.y;
+
+        if (pointIsValid) {
+
+            dispatch((0, _point.setElevation)(null));
+            dispatch((0, _region.requestRegions)());
+            var regionUrl = '/sst/regions/?' + (0, _io.urlEncode)({
+                point: point.x + ',' + point.y
+            });
+
+            io.get(regionUrl).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                var results = json.results;
+                var validRegions = results.map(function (region) {
+                    return region.name;
+                });
+
+                dispatch((0, _region.receiveRegions)(validRegions)); // Always update valid regions
+
+                var region = null;
+                if (validRegions.length) {
+                    region = validRegions[0];
+                }
+
+                if (store.getState().runConfiguration.regionMethod === 'auto') {
+                    dispatch((0, _region.setRegion)(region));
+                }
+                return region;
+            }).then(function (region) {
+                if (region !== null) {
+
+                    var url = '/arcgis/rest/services/' + region + '_dem/MapServer/identify/?' + (0, _io.urlEncode)({
+                        f: 'json',
+                        tolerance: '2',
+                        imageDisplay: '1600,1031,96',
+                        geometryType: 'esriGeometryPoint',
+                        mapExtent: '0,0,0,0',
+                        geometry: JSON.stringify({ x: point.x, y: point.y })
+                    });
+
+                    io.get(url).then(function (response) {
+                        return response.json();
+                    }).then(function (json) {
+                        var results = json.results;
+                        var value = null;
+
+                        if (results.length) {
+                            value = results[0].attributes['Pixel value'];
+                        }
+
+                        if (isNaN(value)) {
+                            value = null;
+                        }
+
+                        dispatch((0, _point.setElevation)(value));
+                    });
+                }
+            });
+        }
+    });
+};
+
+},{"../actions/point":9,"../actions/region":11,"../io":26,"../resync":44}],21:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _resync = require('../resync');
+
+var _resync2 = _interopRequireDefault(_resync);
+
+var _io = require('../io');
+
+var _popup = require('../actions/popup');
+
+var _variables = require('../async/variables');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var popupSelect = function popupSelect(_ref) {
+    var popup = _ref.popup;
+    var point = popup.point;
+
+
+    return { point: point };
+};
+
+exports.default = function (store) {
+    return (0, _resync2.default)(store, popupSelect, function (state, io, dispatch, previousState) {
+        var point = state.point;
+
+        var pointIsValid = point !== null && point.x && point.y;
+        if (pointIsValid) {
+
+            // Update popup regions
+            var regionUrl = '/sst/regions/?' + (0, _io.urlEncode)({
+                point: point.x + ',' + point.y
+            });
+
+            dispatch((0, _popup.requestPopupRegion)());
+
+            io.get(regionUrl).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                var results = json.results;
+                var validRegions = results.map(function (region) {
+                    return region.name;
+                });
+
+                var region = null;
+                if (validRegions.length) {
+                    region = validRegions[0];
+                }
+                dispatch((0, _popup.receivePopupRegion)(region));
+                return region;
+            }).then(function (region) {
+                if (region !== null) {
+
+                    // Set elevation at point
+                    var url = '/arcgis/rest/services/' + region + '_dem/MapServer/identify/?' + (0, _io.urlEncode)({
+                        f: 'json',
+                        tolerance: '2',
+                        imageDisplay: '1600,1031,96',
+                        geometryType: 'esriGeometryPoint',
+                        mapExtent: '0,0,0,0',
+                        geometry: JSON.stringify({ x: point.x, y: point.y })
+                    });
+
+                    io.get(url).then(function (response) {
+                        return response.json();
+                    }).then(function (json) {
+                        var results = json.results;
+                        var value = null;
+
+                        if (results.length) {
+                            value = results[0].attributes['Pixel value'];
+                        }
+
+                        if (isNaN(value)) {
+                            value = null;
+                        }
+
+                        dispatch((0, _popup.receivePopupElevation)(value));
+                    });
+
+                    // Set values at point
+                    var requests = (0, _variables.fetchValues)(store, state, io, dispatch, previousState, region);
+                    if (requests) {
+                        requests.forEach(function (request) {
+                            dispatch((0, _popup.requestPopupValue)(request.item.name));
+                            request.promise.then(function (json) {
+                                return dispatch((0, _popup.receivePopupValue)(request.item.name, json));
+                            });
+                        });
+                    }
+                }
+            });
+        }
+    });
+};
+
+},{"../actions/popup":10,"../async/variables":22,"../io":26,"../resync":44}],22:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.fetchValues = undefined;
+
+var _resync = require('../resync');
+
+var _resync2 = _interopRequireDefault(_resync);
+
+var _variables = require('../actions/variables');
+
+var _popup = require('../actions/popup');
+
+var _io = require('../io');
+
+var _utils = require('../utils');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var transferSelect = function transferSelect(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var method = runConfiguration.method,
+        point = runConfiguration.point,
+        zones = runConfiguration.zones,
+        climate = runConfiguration.climate,
+        variables = runConfiguration.variables;
+
+
+    if (point) {
+        point = { x: point.x, y: point.y };
+    }
+
+    return {
+        method: method,
+        point: point,
+        zone: zones.selected,
+        year: climate.seedlot.time,
+        variables: variables.map(function (item) {
+            return item.name;
+        })
+    };
+};
+
+var valueSelect = function valueSelect(_ref2) {
+    var runConfiguration = _ref2.runConfiguration;
+    var objective = runConfiguration.objective,
+        point = runConfiguration.point,
+        climate = runConfiguration.climate,
+        variables = runConfiguration.variables,
+        validRegions = runConfiguration.validRegions;
+
+
+    if (point) {
+        point = { x: point.x, y: point.y };
+    }
+
+    return {
+        objective: objective,
+        point: point,
+        climate: climate,
+        variables: variables.map(function (item) {
+            return item.name;
+        }),
+        validRegions: validRegions
+    };
+};
+
+var popupSelect = function popupSelect(_ref3) {
+    var runConfiguration = _ref3.runConfiguration,
+        popup = _ref3.popup;
+    var objective = runConfiguration.objective,
+        climate = runConfiguration.climate,
+        variables = runConfiguration.variables;
+    var point = popup.point,
+        region = popup.region;
+
+
+    if (point) {
+        point = { x: point.x, y: point.y };
+    }
+
+    return {
+        objective: objective,
+        point: point,
+        climate: climate,
+        variables: variables.map(function (item) {
+            return item.name;
+        }),
+        region: region
+    };
+};
+
+var fetchValues = exports.fetchValues = function fetchValues(store, state, io, dispatch, previousState, region) {
+    var objective = state.objective,
+        point = state.point;
+
+    var pointIsValid = point !== null && point.x && point.y;
+    var _store$getState$runCo = store.getState().runConfiguration,
+        variables = _store$getState$runCo.variables,
+        climate = _store$getState$runCo.climate,
+        validRegions = _store$getState$runCo.validRegions;
+
+
+    if (!(pointIsValid && validRegions.length)) {
+        return;
+    }
+
+    // If region is not supplied, use nearest region captured
+    if (region === undefined) {
+        region = validRegions[0];
+    }
+
+    // If only variables have changed, then not all variables need to be refreshed
+    var variablesOnly = JSON.stringify((0, _utils.morph)(state, { variables: null })) === JSON.stringify((0, _utils.morph)(previousState, { variables: null }));
+    if (variablesOnly) {
+        variables = variables.filter(function (item) {
+            return item.defaultTransfer === null;
+        });
+    }
+
+    var requests = variables.map(function (item) {
+        var serviceName = (0, _utils.getServiceName)(item.name, objective, climate, region);
+        var url = '/arcgis/rest/services/' + serviceName + '/MapServer/identify/?' + (0, _io.urlEncode)({
+            f: 'json',
+            tolerance: 2,
+            imageDisplay: '1600,1031,96',
+            geometryType: 'esriGeometryPoint',
+            mapExtent: '0,0,0,0',
+            geometry: JSON.stringify(point)
+        });
+
+        return { item: item, promise: io.get(url).then(function (response) {
+                return response.json();
+            }) };
+    });
+
+    return requests;
+};
+
+exports.default = function (store) {
+    // Transfer limit information
+    (0, _resync2.default)(store, transferSelect, function (state, io, dispatch, previousState) {
+        var method = state.method,
+            point = state.point,
+            zone = state.zone,
+            year = state.year;
+
+        var pointIsValid = point !== null && point.x && point.y;
+
+        var _store$getState = store.getState(),
+            runConfiguration = _store$getState.runConfiguration;
+
+        var variables = runConfiguration.variables;
+
+
+        if (!(pointIsValid && method === 'seedzone')) {
+            return;
+        }
+
+        // If only variables have changed, then not all variables need to be refreshed
+        var variablesOnly = JSON.stringify((0, _utils.morph)(state, { variables: null })) === JSON.stringify((0, _utils.morph)(previousState, { variables: null }));
+
+        if (variablesOnly) {
+            variables = variables.filter(function (item) {
+                return item.defaultTransfer === null;
+            });
+        }
+
+        // Only need to fetch transfer for variables which don't have one
+        variables.forEach(function (item) {
+            dispatch((0, _variables.requestTransfer)(item.name));
+
+            var url = '/sst/transfer-limits/?' + (0, _io.urlEncode)({
+                point: point.x + ',' + point.y,
+                variable: item.name,
+                zone__zone_uid: zone,
+                time_period: year
+            });
+
+            return io.get(url).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                if (json.results.length) {
+                    var _json$results$ = json.results[0],
+                        transfer = _json$results$.transfer,
+                        avg_transfer = _json$results$.avg_transfer,
+                        center = _json$results$.center;
+
+
+                    dispatch((0, _variables.receiveTransfer)(item.name, transfer, avg_transfer, center));
+                } else {
+                    dispatch((0, _variables.receiveTransfer)(item.name, null, null, null));
+                }
+            }).catch(function () {
+                return dispatch((0, _variables.receiveTransfer)(item.name, null, null, null));
+            });
+        });
+    });
+
+    // Values at point (for variables list)
+    (0, _resync2.default)(store, valueSelect, function (state, io, dispatch, previousState) {
+        var validRegions = state.validRegions;
+
+
+        if (validRegions.length) {
+            var requests = fetchValues(store, state, io, dispatch, previousState, validRegions[0]);
+            if (requests) {
+                requests.forEach(function (request) {
+                    dispatch((0, _variables.requestValue)(request.item.name));
+                    request.promise.then(function (json) {
+                        return dispatch((0, _variables.receiveValue)(request.item.name, json));
+                    });
+                });
+            }
+        }
+    });
+
+    // Values at point (for popup)
+    (0, _resync2.default)(store, popupSelect, function (state, io, dispatch, previousState) {
+
+        if (previousState !== undefined) {
+            var current = state.variables,
+                region = state.region;
+            var old = previousState.variables;
+
+            // Only need to refresh if the variables have changed
+
+            if (JSON.stringify(current) !== JSON.stringify(old)) {
+                var requests = fetchValues(store, state, io, dispatch, previousState, region);
+                if (requests) {
+                    requests.forEach(function (request) {
+                        dispatch((0, _popup.requestPopupValue)(request.item.name));
+                        request.promise.then(function (json) {
+                            return dispatch((0, _popup.receivePopupValue)(request.item.name, json));
+                        });
+                    });
+                }
+            }
+        }
+    });
+};
+
+},{"../actions/popup":10,"../actions/variables":17,"../io":26,"../resync":44,"../utils":118}],23:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _resync = require('../resync');
+
+var _resync2 = _interopRequireDefault(_resync);
+
+var _zones = require('../actions/zones');
+
+var _io = require('../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var zoneSelect = function zoneSelect(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var point = runConfiguration.point,
+        method = runConfiguration.method,
+        species = runConfiguration.species;
+
+
+    if (point) {
+        point = { x: point.x, y: point.y };
+    }
+
+    return { point: point, method: method, species: species };
+};
+
+var zoneGeometrySelect = function zoneGeometrySelect(_ref2) {
+    var runConfiguration = _ref2.runConfiguration;
+    var zones = runConfiguration.zones;
+    var selected = zones.selected,
+        geometry = zones.geometry;
+
+
+    return {
+        zone: selected,
+        hasGeometry: geometry !== null
+    };
+};
+
+exports.default = function (store) {
+    // Zones
+    (0, _resync2.default)(store, zoneSelect, function (_ref3, io, dispatch) {
+        var point = _ref3.point,
+            method = _ref3.method,
+            species = _ref3.species;
+
+        var pointIsValid = point !== null && point.x && point.y;
+
+        if (method === 'seedzone' && pointIsValid) {
+            dispatch((0, _zones.requestZones)());
+
+            var url = '/sst/seedzones/?' + (0, _io.urlEncode)({
+                point: point.x + ',' + point.y,
+                species: species
+            });
+
+            return io.get(url).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                return dispatch((0, _zones.receiveZones)(json.results));
+            }).catch(function (err) {
+                console.log(err);
+
+                dispatch((0, _zones.failZones)());
+            });
+        }
+    });
+
+    // Zone geometry
+    (0, _resync2.default)(store, zoneGeometrySelect, function (_ref4, io, dispatch) {
+        var zone = _ref4.zone,
+            hasGeometry = _ref4.hasGeometry;
+
+        if (zone !== null && !hasGeometry) {
+            dispatch((0, _zones.requestGeometry)());
+
+            var url = '/sst/seedzones/' + store.getState().runConfiguration.zones.selected + '/geometry/';
+
+            return io.get(url).then(function (response) {
+                return response.json();
+            }).then(function (json) {
+                return dispatch((0, _zones.receiveGeometry)(json));
+            }).catch(function (err) {
+                console.log(err);
+
+                dispatch((0, _zones.failGeometry)());
+            });
+        }
+    });
+};
+
+},{"../actions/zones":18,"../io":26,"../resync":44}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1481,7 +2107,7 @@ var reports = exports.reports = [{
     url: '/sst/create-ppt/'
 }];
 
-},{"./utils":45}],20:[function(require,module,exports){
+},{"./utils":118}],25:[function(require,module,exports){
 'use strict';
 
 var _react = require('react');
@@ -1506,6 +2132,26 @@ var _App = require('seedsource/components/App');
 
 var _App2 = _interopRequireDefault(_App);
 
+var _variables = require('./async/variables');
+
+var _variables2 = _interopRequireDefault(_variables);
+
+var _zones = require('./async/zones');
+
+var _zones2 = _interopRequireDefault(_zones);
+
+var _legends = require('./async/legends');
+
+var _legends2 = _interopRequireDefault(_legends);
+
+var _point = require('./async/point');
+
+var _point2 = _interopRequireDefault(_point);
+
+var _popup = require('./async/popup');
+
+var _popup2 = _interopRequireDefault(_popup);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var store = (0, _redux.createStore)(_reducers2.default, (0, _redux.applyMiddleware)(_reduxThunk2.default));
@@ -1516,39 +2162,14 @@ var store = (0, _redux.createStore)(_reducers2.default, (0, _redux.applyMiddlewa
     _react2.default.createElement(_App2.default, null)
 ), document.getElementById('SeedsourceApp'));
 
-// import 'babel-polyfill'
-// import React from 'react'
-// import { render } from 'react-dom'
-// import { Provider } from 'react-redux'
-// import { createStore, applyMiddleware } from 'redux'
-// import thunkMiddleware from 'redux-thunk'
-// import reducers from './reducers'
-// import App from './componenets/App'
-// import variables from './async/variables'
-// import zones from './async/zones'
-// import legends from './async/legends'
-// import point from './async/point'
-// import popup from './async/popup'
-//
-// export const store = createStore(reducers, applyMiddleware(thunkMiddleware));
-//
-// SST.reduxStore = store
-//
-// render(
-//     <Provider store={store}>
-//         <App />
-//     </Provider>,
-//     document.getElementById('Sidebar')
-// )
-//
-// // Register resync handlers
-// variables(store)
-// zones(store)
-// legends(store)
-// point(store)
-// popup(store)
+// Register resync handlers
+(0, _variables2.default)(store);
+(0, _zones2.default)(store);
+(0, _legends2.default)(store);
+(0, _point2.default)(store);
+(0, _popup2.default)(store);
 
-},{"./reducers":26,"react":113,"react-dom":95,"react-redux":105,"redux":120,"redux-thunk":114,"seedsource/components/App":39}],21:[function(require,module,exports){
+},{"./async/legends":19,"./async/point":20,"./async/popup":21,"./async/variables":22,"./async/zones":23,"./reducers":32,"react":201,"react-dom":170,"react-redux":180,"redux":208,"redux-thunk":202,"seedsource/components/App":48}],26:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1637,7 +2258,7 @@ var executeGPTask = exports.executeGPTask = function executeGPTask(job, inputs) 
         var uuid = json.uuid;
 
 
-        return new Promise(function (resolve) {
+        return new Promise(function (resolve, reject) {
             var pollStatus = function pollStatus() {
                 get('/geoprocessing/rest/jobs/' + uuid + '/').then(handleJSONResponse).then(function (json) {
                     if (statusCallback !== null) {
@@ -1647,12 +2268,14 @@ var executeGPTask = exports.executeGPTask = function executeGPTask(job, inputs) 
                     if (json.status === 'success') {
                         resolve(json);
                     } else if (json.status === 'failure') {
-                        err = new Error('Job failed');
+                        var err = new Error('Job failed');
                         err.json = json;
-                        throw err;
+                        reject(err);
                     } else {
                         setTimeout(pollStatus, 1000);
                     }
+                }).catch(function (err) {
+                    return reject(err);
                 });
             };
 
@@ -1661,7 +2284,160 @@ var executeGPTask = exports.executeGPTask = function executeGPTask(job, inputs) 
     });
 };
 
-},{"./utils":45,"isomorphic-fetch":70}],22:[function(require,module,exports){
+},{"./utils":118,"isomorphic-fetch":144}],27:[function(require,module,exports){
+'use strict';
+
+var _leaflet = require('leaflet');
+
+var _leaflet2 = _interopRequireDefault(_leaflet);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+_leaflet2.default.Control.Opacity = _leaflet2.default.Control.extend({
+    options: {
+        position: 'topright',
+        value: 100
+    },
+
+    onAdd: function onAdd(map) {
+        var container = _leaflet2.default.DomUtil.create('div', 'leaflet-opacity-control leaflet-bar');
+        _leaflet2.default.DomUtil.create('span', 'icon-contrast-16', container);
+
+        var slider = _leaflet2.default.DomUtil.create('input', '', container);
+        slider.type = 'range';
+        slider.setAttribute('orient', 'vertical');
+        slider.min = 20;
+        slider.max = 100;
+        slider.step = 1;
+        slider.value = this.options.value;
+
+        _leaflet2.default.DomEvent.on(slider, 'mousedown mouseup click', _leaflet2.default.DomEvent.stopPropagation);
+
+        /* IE11 seems to process events in the wrong order, so the only way to prevent map movement while dragging the
+         * slider is to disable map dragging when the cursor enters the slider (by the time the mousedown event fires
+         * it's too late becuase the event seems to go to the map first, which results in any subsequent motion
+         * resulting in map movement even after map.dragging.disable() is called.
+         */
+        _leaflet2.default.DomEvent.on(slider, 'mouseenter', function (e) {
+            map.dragging.disable();
+        });
+        _leaflet2.default.DomEvent.on(slider, 'mouseleave', function (e) {
+            map.dragging.enable();
+        });
+
+        _leaflet2.default.DomEvent.on(slider, 'input change', function (e) {
+            this.fire('change', { value: e.target.value });
+        }.bind(this));
+
+        this._slider = slider;
+        this._container = container;
+
+        return this._container;
+    },
+
+    setValue: function setValue(value) {
+        this.options.value = value;
+        this._slider.value = value;
+    },
+
+    includes: _leaflet2.default.Evented.prototype
+});
+
+_leaflet2.default.control.opacity = function (options) {
+    return new _leaflet2.default.Control.Opacity(options);
+};
+
+_leaflet2.default.Control.Button = _leaflet2.default.Control.extend({
+    options: {
+        position: 'topright',
+        icon: ''
+    },
+
+    onAdd: function onAdd(map) {
+        var container = _leaflet2.default.DomUtil.create('div', 'leaflet-button leaflet-bar');
+        var button = _leaflet2.default.DomUtil.create('span', 'icon-' + this.options.icon + '-16', container);
+
+        _leaflet2.default.DomEvent.on(button, 'click', function (e) {
+            this.fire('click', { target: this });
+        }.bind(this)).on(button, 'mousedown mouseup click', _leaflet2.default.DomEvent.stopPropagation);
+
+        this._button = button;
+        this._container = container;
+        return this._container;
+    },
+
+    setIcon: function setIcon(icon) {
+        this.options.icon = icon;
+        this._button.setAttribute('class', 'icon-' + icon + '-16');
+    },
+
+    includes: _leaflet2.default.Evented.prototype
+});
+
+_leaflet2.default.control.button = function (options) {
+    return new _leaflet2.default.Control.Button(options);
+};
+
+_leaflet2.default.Control.Legend = _leaflet2.default.Control.extend({
+    options: {
+        position: 'bottomright',
+        legends: []
+    },
+
+    onAdd: function onAdd(map) {
+        this._container = _leaflet2.default.DomUtil.create('div', 'leaflet-bar leaflet-legend');
+
+        _leaflet2.default.DomEvent.on(this._container, 'click', function (e) {
+            e.stopPropagation();
+        });
+
+        this._rebuildLegends();
+
+        return this._container;
+    },
+
+    _rebuildLegends: function _rebuildLegends() {
+        _leaflet2.default.DomUtil.empty(this._container);
+
+        this.options.legends.forEach(function (legend) {
+            var className = 'legend-item';
+
+            if (legend.className) {
+                className += ' ' + legend.className;
+            }
+
+            var container = _leaflet2.default.DomUtil.create('div', className, this._container);
+            var label = _leaflet2.default.DomUtil.create('h4', 'title is-5', container);
+            label.innerHTML = legend.label;
+
+            var table = _leaflet2.default.DomUtil.create('table', null, container);
+            var tbody = _leaflet2.default.DomUtil.create('tbody', null, table);
+
+            legend.elements.forEach(function (item) {
+                var tr = _leaflet2.default.DomUtil.create('tr', null, tbody);
+                var imageCell = _leaflet2.default.DomUtil.create('td', null, tr);
+
+                var image = _leaflet2.default.DomUtil.create('img', null, imageCell);
+                image.src = 'data:image/png;base64,' + item.imageData;
+
+                var labelCell = _leaflet2.default.DomUtil.create('td', null, tr);
+                labelCell.innerHTML = item.label;
+            }.bind(this));
+        }.bind(this));
+    },
+
+    setLegends: function setLegends(legends) {
+        this.options.legends = legends;
+
+        this._rebuildLegends();
+    }
+});
+
+_leaflet2.default.control.legend = function (options) {
+    return new _leaflet2.default.Control.Legend(options);
+};
+
+},{"leaflet":149}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1670,23 +2446,30 @@ Object.defineProperty(exports, "__esModule", {
 
 var _auth = require('../actions/auth');
 
+var _utils = require('../utils');
+
+var defaultState = {
+    isLoggedIn: false,
+    email: null
+};
+
 exports.default = function () {
-    var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : defaultState;
     var action = arguments[1];
 
     switch (action.type) {
         case _auth.LOGIN:
-            return true;
+            return (0, _utils.morph)(state, { isLoggedIn: true, email: action.email });
 
         case _auth.LOGOUT:
-            return false;
+            return defaultState;
 
         default:
             return state;
     }
 };
 
-},{"../actions/auth":1}],23:[function(require,module,exports){
+},{"../actions/auth":1,"../utils":118}],29:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1730,7 +2513,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/climate":2,"../utils":45}],24:[function(require,module,exports){
+},{"../actions/climate":2,"../utils":118}],30:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1768,7 +2551,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/constraints":3,"../config":19,"../utils":45}],25:[function(require,module,exports){
+},{"../actions/constraints":3,"../config":24,"../utils":118}],31:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1798,7 +2581,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/error":4}],26:[function(require,module,exports){
+},{"../actions/error":4}],32:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1852,7 +2635,7 @@ var _popup2 = _interopRequireDefault(_popup);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = (0, _redux.combineReducers)({
-    isLoggedIn: _auth2.default,
+    auth: _auth2.default,
     activeTab: _tabs2.default,
     activeVariable: _variables.activeVariable,
     activeStep: _runConfiguration.activeStep,
@@ -1868,7 +2651,7 @@ exports.default = (0, _redux.combineReducers)({
     popup: _popup2.default
 });
 
-},{"./auth":22,"./error":25,"./job":27,"./legends":28,"./map":29,"./popup":31,"./report":32,"./runConfiguration":33,"./saves":34,"./tabs":35,"./variables":36,"redux":120}],27:[function(require,module,exports){
+},{"./auth":28,"./error":31,"./job":33,"./legends":34,"./map":35,"./popup":37,"./report":38,"./runConfiguration":39,"./saves":40,"./tabs":41,"./variables":42,"redux":208}],33:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1924,7 +2707,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/job":5,"../actions/saves":13,"../utils":45}],28:[function(require,module,exports){
+},{"../actions/job":5,"../actions/saves":13,"../utils":118}],34:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1968,7 +2751,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/legends":6,"../utils":45}],29:[function(require,module,exports){
+},{"../actions/legends":6,"../utils":118}],35:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2023,7 +2806,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/job":5,"../actions/map":7,"../actions/saves":13,"../utils":45}],30:[function(require,module,exports){
+},{"../actions/job":5,"../actions/map":7,"../actions/saves":13,"../utils":118}],36:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2063,7 +2846,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/point":9,"../utils":45}],31:[function(require,module,exports){
+},{"../actions/point":9,"../utils":118}],37:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2155,7 +2938,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/popup":10,"../actions/saves":13,"../actions/variables":17,"../utils":45}],32:[function(require,module,exports){
+},{"../actions/popup":10,"../actions/saves":13,"../actions/variables":17,"../utils":118}],38:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2186,7 +2969,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/report":12,"../utils":45}],33:[function(require,module,exports){
+},{"../actions/report":12,"../utils":118}],39:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2365,7 +3148,7 @@ var reportIsFetching = exports.reportIsFetching = function reportIsFetching() {
     }
 };
 
-},{"../actions/job":5,"../actions/objectives":8,"../actions/point":9,"../actions/region":11,"../actions/report":12,"../actions/saves":13,"../actions/species":14,"../actions/step":15,"../actions/variables":17,"../config":19,"../utils":45,"./climate":23,"./constraints":24,"./point":30,"./variables":36,"./zones":37}],34:[function(require,module,exports){
+},{"../actions/job":5,"../actions/objectives":8,"../actions/point":9,"../actions/region":11,"../actions/report":12,"../actions/saves":13,"../actions/species":14,"../actions/step":15,"../actions/variables":17,"../config":24,"../utils":118,"./climate":29,"./constraints":30,"./point":36,"./variables":42,"./zones":43}],40:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2443,7 +3226,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/saves":13,"../utils":45}],35:[function(require,module,exports){
+},{"../actions/saves":13,"../utils":118}],41:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2470,7 +3253,7 @@ exports.default = function () {
     }
 };
 
-},{"../actions/saves":13,"../actions/tabs":16}],36:[function(require,module,exports){
+},{"../actions/saves":13,"../actions/tabs":16}],42:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2636,7 +3419,7 @@ var activeVariable = exports.activeVariable = function activeVariable() {
     }
 };
 
-},{"../actions/climate":2,"../actions/job":5,"../actions/objectives":8,"../actions/point":9,"../actions/variables":17,"../actions/zones":18,"../config":19,"../utils":45}],37:[function(require,module,exports){
+},{"../actions/climate":2,"../actions/job":5,"../actions/objectives":8,"../actions/point":9,"../actions/variables":17,"../actions/zones":18,"../config":24,"../utils":118}],43:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2706,7 +3489,91 @@ exports.default = function () {
     }
 };
 
-},{"../actions/zones":18,"../utils":45}],38:[function(require,module,exports){
+},{"../actions/zones":18,"../utils":118}],44:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _uuid = require('uuid');
+
+var _uuid2 = _interopRequireDefault(_uuid);
+
+var _io = require('./io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Request = function () {
+    function Request() {
+        _classCallCheck(this, Request);
+
+        this.promiseUUID = null;
+    }
+
+    _createClass(Request, [{
+        key: '_handlePromise',
+        value: function _handlePromise(promise) {
+            var _this = this;
+
+            var promiseUUID = this.promiseUUID;
+
+            return promise.then(function (response) {
+                if (promiseUUID === _this.promiseUUID) {
+                    return response;
+                } else {
+                    return Promise.reject();
+                }
+            });
+        }
+    }, {
+        key: 'get',
+        value: function get(url) {
+            return this._handlePromise((0, _io.get)(url));
+        }
+    }, {
+        key: 'post',
+        value: function post(url, data, options) {
+            return this._handlePromise((0, _io.post)(url, data, options));
+        }
+    }, {
+        key: 'put',
+        value: function put(url, data, options) {
+            return this._handlePromise((0, _io.put)(url, data, options));
+        }
+    }, {
+        key: 'ioDelete',
+        value: function ioDelete(url, options) {
+            return this._handlePromise((0, _io.ioDelete)(url, options));
+        }
+    }]);
+
+    return Request;
+}();
+
+exports.default = function (store, select, fetchData) {
+    var currentState = void 0;
+    var io = new Request();
+
+    return store.subscribe(function () {
+        var nextState = select(store.getState());
+
+        if (JSON.stringify(nextState) !== JSON.stringify(currentState)) {
+            var previousState = currentState;
+
+            currentState = nextState;
+            io.promiseUUID = _uuid2.default.v4();
+
+            fetchData(currentState, io, store.dispatch, previousState);
+        }
+    });
+};
+
+},{"./io":26,"uuid":216}],45:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2725,7 +3592,504 @@ var About = function About() {
 
 exports.default = About;
 
-},{"react":113}],39:[function(require,module,exports){
+},{"react":201}],46:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _NavItemDropdown = require('seedsource/components/NavItemDropdown');
+
+var _NavItemDropdown2 = _interopRequireDefault(_NavItemDropdown);
+
+var _SignupModal = require('seedsource/components/SignupModal');
+
+var _SignupModal2 = _interopRequireDefault(_SignupModal);
+
+var _LoginModal = require('seedsource/components/LoginModal');
+
+var _LoginModal2 = _interopRequireDefault(_LoginModal);
+
+var _ResetPasswordModal = require('seedsource/components/ResetPasswordModal');
+
+var _ResetPasswordModal2 = _interopRequireDefault(_ResetPasswordModal);
+
+var _AccountSettingsModal = require('seedsource/components/AccountSettingsModal');
+
+var _AccountSettingsModal2 = _interopRequireDefault(_AccountSettingsModal);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var AccountMenu = function (_React$Component) {
+    _inherits(AccountMenu, _React$Component);
+
+    function AccountMenu() {
+        _classCallCheck(this, AccountMenu);
+
+        return _possibleConstructorReturn(this, (AccountMenu.__proto__ || Object.getPrototypeOf(AccountMenu)).apply(this, arguments));
+    }
+
+    _createClass(AccountMenu, [{
+        key: 'componentDidMount',
+        value: function componentDidMount() {
+            this.props.checkLogin();
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var _props = this.props,
+                isLoggedIn = _props.isLoggedIn,
+                email = _props.email,
+                _onLogin = _props.onLogin,
+                onLogout = _props.onLogout;
+
+
+            var dropdown = [_react2.default.createElement(
+                'a',
+                { className: 'navbar-item', onClick: function onClick() {
+                        return _this2.accountModal.show();
+                    }, key: 'signup' },
+                'Create Account'
+            ), _react2.default.createElement(
+                'a',
+                { className: 'navbar-item', onClick: function onClick() {
+                        return _this2.loginModal.show();
+                    }, key: 'signin' },
+                'Sign In'
+            )];
+
+            if (isLoggedIn) {
+                dropdown = [_react2.default.createElement(
+                    'div',
+                    { className: 'navbar-item is-size-7 has-text-grey', key: 'email' },
+                    email
+                ), _react2.default.createElement(
+                    'a',
+                    { className: 'navbar-item', onClick: function onClick() {
+                            return _this2.settingsModal.show();
+                        }, key: 'settings' },
+                    'Account Settings'
+                ), _react2.default.createElement(
+                    'a',
+                    { className: 'navbar-item', onClick: function onClick() {
+                            return onLogout();
+                        }, key: 'signout' },
+                    'Sign Out'
+                )];
+            }
+
+            return [_react2.default.createElement(
+                'div',
+                { className: 'navbar is-light is-size-6', key: 'modals' },
+                _react2.default.createElement(_SignupModal2.default, {
+                    ref: function ref(input) {
+                        _this2.accountModal = input;
+                    },
+                    onSignup: function onSignup(email) {
+                        return _onLogin(email);
+                    }
+                }),
+                _react2.default.createElement(_LoginModal2.default, {
+                    ref: function ref(input) {
+                        _this2.loginModal = input;
+                    },
+                    onLogin: function onLogin(email) {
+                        return _onLogin(email);
+                    },
+                    onResetPassword: function onResetPassword() {
+                        _this2.loginModal.hide();
+                        _this2.passwordModal.show();
+                    }
+                }),
+                _react2.default.createElement(_ResetPasswordModal2.default, {
+                    ref: function ref(input) {
+                        _this2.passwordModal = input;
+                    }
+                }),
+                _react2.default.createElement(_AccountSettingsModal2.default, {
+                    ref: function ref(input) {
+                        _this2.settingsModal = input;
+                    },
+                    onChangeEmail: function onChangeEmail(email) {
+                        return _onLogin(email);
+                    }
+                })
+            ), _react2.default.createElement(
+                _NavItemDropdown2.default,
+                { title: 'Account', right: true, key: 'menu' },
+                dropdown
+            )];
+        }
+    }]);
+
+    return AccountMenu;
+}(_react2.default.Component);
+
+AccountMenu.propTypes = {
+    isLoggedIn: _propTypes2.default.bool.isRequired,
+    email: _propTypes2.default.string,
+    onLogin: _propTypes2.default.func.isRequired,
+    onLogout: _propTypes2.default.func.isRequired,
+    checkLogin: _propTypes2.default.func.isRequired
+};
+
+exports.default = AccountMenu;
+
+},{"prop-types":166,"react":201,"seedsource/components/AccountSettingsModal":47,"seedsource/components/LoginModal":61,"seedsource/components/NavItemDropdown":66,"seedsource/components/ResetPasswordModal":72,"seedsource/components/SignupModal":80}],47:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ModalCard = require('seedsource/components/ModalCard');
+
+var _ModalCard2 = _interopRequireDefault(_ModalCard);
+
+var _io = require('../../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var AccountSettingsModal = function (_React$Component) {
+    _inherits(AccountSettingsModal, _React$Component);
+
+    function AccountSettingsModal(props) {
+        _classCallCheck(this, AccountSettingsModal);
+
+        var _this = _possibleConstructorReturn(this, (AccountSettingsModal.__proto__ || Object.getPrototypeOf(AccountSettingsModal)).call(this, props));
+
+        _this.state = {
+            emailText: null, passwordText: null, confirmText: null, emailError: null, passwordError: null,
+            loading: false
+        };
+        return _this;
+    }
+
+    _createClass(AccountSettingsModal, [{
+        key: 'show',
+        value: function show() {
+            this.reset();
+            this.modal.show();
+        }
+    }, {
+        key: 'hide',
+        value: function hide() {
+            this.modal.hide();
+            this.reset();
+        }
+    }, {
+        key: 'reset',
+        value: function reset() {
+            this.setState({
+                emailText: null, passwordText: null, confirmText: null, emailError: null, passwordError: null,
+                loading: false
+            });
+        }
+    }, {
+        key: 'submitEmail',
+        value: function submitEmail() {
+            var _this2 = this;
+
+            var emailText = this.state.emailText;
+            var onChangeEmail = this.props.onChangeEmail;
+
+
+            if ((emailText || '').trim()) {
+                (0, _io.put)('/accounts/change-email/', { email: emailText }).then(function (response) {
+                    var status = response.status;
+
+
+                    if (status === 400) {
+                        return response.json();
+                    }
+
+                    if (status < 200 || status >= 300) {
+                        throw new Error('Sorry, there was an unexpected error changing your email address.');
+                    }
+
+                    onChangeEmail(emailText);
+                    _this2.hide();
+                }).then(function (json) {
+                    if (json) {
+                        if (json.email) {
+                            throw new Error(json.email);
+                        }
+
+                        throw new Error('Sorry, there was an unexpected error changing your email address.');
+                    }
+                }).catch(function (err) {
+                    console.log(err);
+                    _this2.setState({ loading: false, emailError: err.message });
+                });
+            }
+        }
+    }, {
+        key: 'submitPassword',
+        value: function submitPassword() {
+            var _this3 = this;
+
+            var _state = this.state,
+                passwordText = _state.passwordText,
+                confirmText = _state.confirmText;
+
+
+            if (passwordText !== confirmText) {
+                this.setState({ passwordError: "Passwords don't match" });
+                return;
+            }
+
+            if (passwordText) {
+                (0, _io.put)('/accounts/change-password/', { password: passwordText }).then(function (response) {
+                    var status = response.status;
+
+
+                    if (status === 400) {
+                        return response.json();
+                    }
+
+                    if (status < 200 || status >= 300) {
+                        throw new Error('Sorry, there was an unexpected error changing your email address.');
+                    }
+
+                    _this3.hide();
+                }).then(function (json) {
+                    if (json) {
+                        if (json.password) {
+                            throw new Error(json.password);
+                        }
+
+                        throw new Error('Sorry, there was an unexpected error changing your email address.');
+                    }
+                }).catch(function (err) {
+                    console.log(err);
+                    _this3.setState({ loading: false, passwordError: err.message });
+                });
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this4 = this;
+
+            var _state2 = this.state,
+                emailText = _state2.emailText,
+                passwordText = _state2.passwordText,
+                confirmText = _state2.confirmText,
+                emailError = _state2.emailError,
+                passwordError = _state2.passwordError,
+                loading = _state2.loading;
+
+
+            var emailErrorNode = null;
+            if (emailError !== null) {
+                emailErrorNode = _react2.default.createElement(
+                    'article',
+                    { className: 'message is-danger' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'message-body' },
+                        emailError
+                    )
+                );
+            }
+
+            var passwordErrorNode = null;
+            if (passwordError !== null) {
+                passwordErrorNode = _react2.default.createElement(
+                    'article',
+                    { className: 'message is-danger' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'message-body' },
+                        passwordError
+                    )
+                );
+            }
+
+            return _react2.default.createElement(
+                _ModalCard2.default,
+                { ref: function ref(input) {
+                        _this4.modal = input;
+                    }, title: 'Account Settings' },
+                _react2.default.createElement(
+                    'form',
+                    {
+                        onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+                            _this4.submitEmail();
+                        }
+                    },
+                    emailErrorNode,
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'label',
+                            { className: 'label' },
+                            'Email address'
+                        ),
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                className: (emailError !== null ? 'is-danger' : '') + ' input',
+                                type: 'text',
+                                placeholder: 'Email address',
+                                name: 'username',
+                                value: emailText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ emailText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement(
+                                'button',
+                                {
+                                    className: (loading ? 'is-loading ' : '') + 'button is-primary',
+                                    onClick: function onClick() {
+                                        return _this4.submitEmail();
+                                    },
+                                    disabled: loading || !emailText
+                                },
+                                'Change email'
+                            )
+                        )
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    '\xA0'
+                ),
+                _react2.default.createElement(
+                    'form',
+                    {
+                        onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+                            _this4.submitPassword();
+                        }
+                    },
+                    passwordErrorNode,
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'label',
+                            { className: 'label' },
+                            'Password'
+                        ),
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                className: (passwordError !== null ? 'is-danger' : '') + ' input',
+                                type: 'password',
+                                placeholder: 'Password',
+                                name: 'password',
+                                value: passwordText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ passwordText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                className: 'input',
+                                type: 'password',
+                                placeholder: 'Confirm password',
+                                name: 'password',
+                                value: confirmText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ confirmText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement(
+                                'button',
+                                {
+                                    className: (loading ? 'is-loading ' : '') + 'button is-primary',
+                                    onClick: function onClick() {
+                                        return _this4.submitPassword();
+                                    },
+                                    disabled: loading || !passwordText || !confirmText
+                                },
+                                'Change password'
+                            )
+                        )
+                    )
+                )
+            );
+        }
+    }]);
+
+    return AccountSettingsModal;
+}(_react2.default.Component);
+
+AccountSettingsModal.propTypes = {
+    onChangeEmail: _propTypes2.default.func.isRequired
+};
+
+exports.default = AccountSettingsModal;
+
+},{"../../io":26,"prop-types":166,"react":201,"seedsource/components/ModalCard":65}],48:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2748,12 +4112,17 @@ var _Map = require('seedsource/containers/Map');
 
 var _Map2 = _interopRequireDefault(_Map);
 
+var _ErrorModal = require('seedsource/containers/ErrorModal');
+
+var _ErrorModal2 = _interopRequireDefault(_ErrorModal);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var App = function App() {
     return _react2.default.createElement(
         'div',
         null,
+        _react2.default.createElement(_ErrorModal2.default, null),
         _react2.default.createElement(_Navbar2.default, null),
         _react2.default.createElement(
             'div',
@@ -2765,7 +4134,7 @@ var App = function App() {
             ),
             _react2.default.createElement(
                 'div',
-                { className: 'column' },
+                { className: 'column map' },
                 _react2.default.createElement(_Map2.default, null)
             )
         )
@@ -2774,7 +4143,1535 @@ var App = function App() {
 
 exports.default = App;
 
-},{"react":113,"seedsource/components/Navbar":41,"seedsource/components/Sidebar":42,"seedsource/containers/Map":44}],40:[function(require,module,exports){
+},{"react":201,"seedsource/components/Navbar":67,"seedsource/components/Sidebar":79,"seedsource/containers/ErrorModal":94,"seedsource/containers/Map":98}],49:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var ClimateStep = function ClimateStep(_ref) {
+    var climate = _ref.climate,
+        number = _ref.number,
+        active = _ref.active,
+        _onChange = _ref.onChange;
+    var seedlot = climate.seedlot,
+        site = climate.site;
+
+    var modelSelect = null;
+
+    if (!active) {
+        var siteKey = site.time;
+        if (site.time !== '1961_1990' && site.time !== '1981_2010') {
+            siteKey += site.model;
+        }
+
+        return _react2.default.createElement(
+            _ConfigurationStep2.default,
+            { title: 'Select climate scenarios', number: number, name: 'climate', active: false },
+            _react2.default.createElement(
+                'div',
+                null,
+                _react2.default.createElement(
+                    'strong',
+                    null,
+                    'Seedlot climate: '
+                ),
+                ' ',
+                _config.timeLabels[seedlot.time]
+            ),
+            _react2.default.createElement(
+                'div',
+                null,
+                _react2.default.createElement(
+                    'strong',
+                    null,
+                    'Planting site climate: '
+                ),
+                ' ',
+                _config.timeLabels[siteKey]
+            )
+        );
+    }
+
+    if (site.time !== '1961_1990' && site.time !== '1981_2010') {
+        modelSelect = _react2.default.createElement(
+            'div',
+            { className: 'select is-inline-block' },
+            _react2.default.createElement(
+                'select',
+                {
+                    value: site.model,
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        _onChange('model', e.target.value, 'site');
+                    }
+                },
+                _react2.default.createElement(
+                    'option',
+                    { value: 'rcp45' },
+                    'RCP4.5'
+                ),
+                _react2.default.createElement(
+                    'option',
+                    { value: 'rcp85' },
+                    'RCP8.5'
+                )
+            )
+        );
+    }
+
+    return _react2.default.createElement(
+        _ConfigurationStep2.default,
+        { title: 'Select climate scenarios', number: number, name: 'climate', active: true },
+        _react2.default.createElement(
+            'div',
+            { className: 'is-size-7' },
+            _react2.default.createElement(
+                'em',
+                null,
+                'Which climate are the seedlots adapted to?'
+            )
+        ),
+        _react2.default.createElement(
+            'div',
+            { className: 'select is-inline-block' },
+            _react2.default.createElement(
+                'select',
+                {
+                    value: seedlot.time,
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        _onChange('year', e.target.value, 'seedlot');
+                    }
+                },
+                _react2.default.createElement(
+                    'option',
+                    { value: '1961_1990' },
+                    '1961 - 1990'
+                ),
+                _react2.default.createElement(
+                    'option',
+                    { value: '1981_2010' },
+                    '1981 - 2010'
+                )
+            )
+        ),
+        _react2.default.createElement('div', { style: { height: '10px' } }),
+        _react2.default.createElement(
+            'div',
+            { className: 'is-size-7' },
+            _react2.default.createElement(
+                'em',
+                null,
+                'When should trees be best adapted to the planting site?'
+            )
+        ),
+        _react2.default.createElement(
+            'div',
+            { className: 'select is-inline-block' },
+            _react2.default.createElement(
+                'select',
+                {
+                    value: site.time,
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        _onChange('year', e.target.value, 'site');
+                    }
+                },
+                _react2.default.createElement(
+                    'option',
+                    { value: '1961_1990' },
+                    '1961 - 1990'
+                ),
+                _react2.default.createElement(
+                    'option',
+                    { value: '1981_2010' },
+                    '1981 - 2010'
+                ),
+                _react2.default.createElement(
+                    'option',
+                    { value: '2025' },
+                    '2011 - 2040'
+                ),
+                _react2.default.createElement(
+                    'option',
+                    { value: '2055' },
+                    '2041 - 2070'
+                ),
+                _react2.default.createElement(
+                    'option',
+                    { value: '2085' },
+                    '2071 - 2100'
+                )
+            )
+        ),
+        _react2.default.createElement(
+            'span',
+            null,
+            ' '
+        ),
+        modelSelect
+    );
+};
+
+ClimateStep.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    climate: _propTypes2.default.object.isRequired,
+    onChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = ClimateStep;
+
+},{"../../config":24,"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89}],50:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var ConfigurationStep = function ConfigurationStep(_ref) {
+    var number = _ref.number,
+        title = _ref.title,
+        children = _ref.children,
+        active = _ref.active,
+        _onClick = _ref.onClick;
+
+    if (_config.collapsibleSteps) {
+        return _react2.default.createElement(
+            'div',
+            {
+                className: "configuration-step" + (active ? " active" : ""),
+                onClick: function onClick(e) {
+                    e.stopPropagation();
+                    _onClick();
+                } },
+            _react2.default.createElement('div', { className: 'gradient-top' }),
+            _react2.default.createElement(
+                'h4',
+                null,
+                _react2.default.createElement(
+                    'span',
+                    { className: 'badge' },
+                    number
+                ),
+                ' ',
+                title
+            ),
+            children,
+            _react2.default.createElement('div', { className: 'gradient-bottom' })
+        );
+    } else {
+        return _react2.default.createElement(
+            'div',
+            { className: 'configuration-step no-collapse' },
+            _react2.default.createElement(
+                'h4',
+                null,
+                _react2.default.createElement(
+                    'span',
+                    { className: 'badge' },
+                    number
+                ),
+                ' ',
+                title
+            ),
+            _react2.default.createElement(
+                'div',
+                { className: 'step-content' },
+                children
+            )
+        );
+    }
+};
+
+ConfigurationStep.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    number: _propTypes2.default.number.isRequired,
+    title: _propTypes2.default.string.isRequired,
+    onClick: _propTypes2.default.func.isRequired
+};
+
+exports.default = ConfigurationStep;
+
+},{"../../config":24,"prop-types":166,"react":201}],51:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var Constraint = function Constraint(_ref) {
+    var children = _ref.children,
+        className = _ref.className,
+        index = _ref.index,
+        title = _ref.title,
+        value = _ref.value,
+        unit = _ref.unit,
+        onRemove = _ref.onRemove;
+
+    return _react2.default.createElement(
+        'tr',
+        { className: 'constraint ' + className },
+        _react2.default.createElement(
+            'td',
+            null,
+            _react2.default.createElement('a', {
+                className: 'delete',
+                onClick: function onClick(e) {
+                    e.stopPropagation();
+                    onRemove(index);
+                }
+            })
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            _react2.default.createElement(
+                'strong',
+                null,
+                title
+            )
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            value,
+            ' ',
+            isNaN(value) ? '' : unit
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            children
+        )
+    );
+};
+
+Constraint.propTypes = {
+    index: _propTypes2.default.number.isRequired,
+    title: _propTypes2.default.string.isRequired,
+    value: _propTypes2.default.oneOfType([_propTypes2.default.number, _propTypes2.default.string]),
+    unit: _propTypes2.default.string,
+    onRemove: _propTypes2.default.func.isRequired
+};
+
+exports.default = Constraint;
+
+},{"prop-types":166,"react":201}],52:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _ElevationConstraint = require('seedsource/containers/ElevationConstraint');
+
+var _ElevationConstraint2 = _interopRequireDefault(_ElevationConstraint);
+
+var _PhotoperiodConstraint = require('seedsource/containers/PhotoperiodConstraint');
+
+var _PhotoperiodConstraint2 = _interopRequireDefault(_PhotoperiodConstraint);
+
+var _LatitudeConstraint = require('seedsource/containers/LatitudeConstraint');
+
+var _LatitudeConstraint2 = _interopRequireDefault(_LatitudeConstraint);
+
+var _LongitudeConstraint = require('seedsource/containers/LongitudeConstraint');
+
+var _LongitudeConstraint2 = _interopRequireDefault(_LongitudeConstraint);
+
+var _DistanceConstraint = require('seedsource/containers/DistanceConstraint');
+
+var _DistanceConstraint2 = _interopRequireDefault(_DistanceConstraint);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var constraintOptions = [{
+    type: 'elevation',
+    label: 'Elevation'
+}, {
+    type: 'photoperiod',
+    label: 'Photoperiod'
+}, {
+    type: 'latitude',
+    label: 'Latitude'
+}, {
+    type: 'longitude',
+    label: 'Longitude'
+}, {
+    type: 'distance',
+    label: 'Distance'
+}];
+
+var constraintMap = {
+    elevation: _ElevationConstraint2.default,
+    photoperiod: _PhotoperiodConstraint2.default,
+    latitude: _LatitudeConstraint2.default,
+    longitude: _LongitudeConstraint2.default,
+    distance: _DistanceConstraint2.default
+};
+
+var ConstraintStep = function ConstraintStep(_ref) {
+    var number = _ref.number,
+        constraints = _ref.constraints,
+        _onChange = _ref.onChange;
+
+    var table = null;
+
+    if (constraints.length) {
+        table = _react2.default.createElement(
+            'table',
+            { className: 'table is-fullwidth' },
+            _react2.default.createElement(
+                'thead',
+                { className: 'is-size-7' },
+                _react2.default.createElement(
+                    'tr',
+                    null,
+                    _react2.default.createElement('th', null),
+                    _react2.default.createElement(
+                        'th',
+                        null,
+                        'Name'
+                    ),
+                    _react2.default.createElement(
+                        'th',
+                        null,
+                        'Value'
+                    ),
+                    _react2.default.createElement(
+                        'th',
+                        null,
+                        'Range (+/-)'
+                    )
+                )
+            ),
+            _react2.default.createElement(
+                'tbody',
+                null,
+                constraints.map(function (_ref2, i) {
+                    var type = _ref2.type,
+                        values = _ref2.values;
+
+                    var tag = { type: constraintMap[type] };
+                    return _react2.default.createElement(tag.type, { index: i, values: values, key: type + '_' + i });
+                })
+            )
+        );
+    }
+
+    return _react2.default.createElement(
+        _ConfigurationStep2.default,
+        { title: 'Apply constraints', number: number, name: 'constraints', active: true },
+        table,
+        _react2.default.createElement(
+            'div',
+            { className: 'select is-fullwidth' },
+            _react2.default.createElement(
+                'select',
+                {
+                    value: '',
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        _onChange(e.target.value);
+                    }
+                },
+                _react2.default.createElement(
+                    'option',
+                    { value: 'none' },
+                    'Add a constraint...'
+                ),
+                constraintOptions.filter(function (constraint) {
+                    return !constraints.some(function (c) {
+                        return c.type === constraint.type;
+                    });
+                }).map(function (constraint) {
+                    return _react2.default.createElement(
+                        'option',
+                        { value: constraint.type, key: constraint.type },
+                        constraint.label
+                    );
+                })
+            )
+        )
+    );
+};
+
+ConstraintStep.shouldRender = function () {
+    return true;
+};
+
+ConstraintStep.propTypes = {
+    number: _propTypes2.default.number.isRequired,
+    active: _propTypes2.default.bool,
+    constraints: _propTypes2.default.array,
+    onChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = ConstraintStep;
+
+},{"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/DistanceConstraint":92,"seedsource/containers/ElevationConstraint":93,"seedsource/containers/LatitudeConstraint":95,"seedsource/containers/LongitudeConstraint":97,"seedsource/containers/PhotoperiodConstraint":102}],53:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Constraint = require('seedsource/containers/Constraint');
+
+var _Constraint2 = _interopRequireDefault(_Constraint);
+
+var _EditableLabel = require('seedsource/components/EditableLabel');
+
+var _EditableLabel2 = _interopRequireDefault(_EditableLabel);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var DistanceConstraint = function DistanceConstraint(_ref) {
+    var index = _ref.index,
+        value = _ref.value,
+        range = _ref.range,
+        unit = _ref.unit,
+        onRangeChange = _ref.onRangeChange;
+
+    var unitLabel = unit === 'metric' ? 'km' : 'mi';
+
+    return _react2.default.createElement(
+        _Constraint2.default,
+        { index: index, value: value, title: 'Distance' },
+        _react2.default.createElement(
+            _EditableLabel2.default,
+            { value: range, onChange: function onChange(range) {
+                    return onRangeChange(index, range, unit);
+                } },
+            '\xA0',
+            unitLabel
+        )
+    );
+};
+
+DistanceConstraint.propTypes = {
+    index: _propTypes2.default.number.isRequired,
+    x: _propTypes2.default.oneOfType([_propTypes2.default.string, _propTypes2.default.number]),
+    y: _propTypes2.default.oneOfType([_propTypes2.default.string, _propTypes2.default.number]),
+    range: _propTypes2.default.number,
+    unit: _propTypes2.default.string.isRequired,
+    onRangeChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = DistanceConstraint;
+
+},{"prop-types":166,"react":201,"seedsource/components/EditableLabel":55,"seedsource/containers/Constraint":90}],54:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var Dropdown = function (_React$Component) {
+    _inherits(Dropdown, _React$Component);
+
+    function Dropdown(props) {
+        _classCallCheck(this, Dropdown);
+
+        var _this = _possibleConstructorReturn(this, (Dropdown.__proto__ || Object.getPrototypeOf(Dropdown)).call(this, props));
+
+        _this.state = { active: false };
+
+        _this.handleBodyClick = _this.handleBodyClick.bind(_this);
+        return _this;
+    }
+
+    _createClass(Dropdown, [{
+        key: 'handleBodyClick',
+        value: function handleBodyClick(e) {
+            if (e.target !== this.button && !this.button.contains(e.target)) {
+                this.setState({ active: false });
+            }
+        }
+    }, {
+        key: 'componentDidMount',
+        value: function componentDidMount() {
+            window.document.body.addEventListener('click', this.handleBodyClick);
+        }
+    }, {
+        key: 'componentWillUnmount',
+        value: function componentWillUnmount() {
+            window.document.body.removeEventListener('click', this.handleBodyClick);
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var active = this.state.active;
+
+            var isActive = active ? 'is-active' : '';
+            var _props = this.props,
+                title = _props.title,
+                _props$up = _props.up,
+                up = _props$up === undefined ? false : _props$up,
+                _props$disabled = _props.disabled,
+                disabled = _props$disabled === undefined ? false : _props$disabled,
+                _props$className = _props.className,
+                className = _props$className === undefined ? '' : _props$className,
+                children = _props.children;
+
+
+            return _react2.default.createElement(
+                'div',
+                { className: (up ? 'is-up ' : '') + isActive + ' dropdown ' + className },
+                _react2.default.createElement(
+                    'div',
+                    { className: 'dropdown-trigger' },
+                    _react2.default.createElement(
+                        'button',
+                        { className: 'button', disabled: disabled, ref: function ref(input) {
+                                _this2.button = input;
+                            },
+                            onClick: function onClick(e) {
+                                _this2.setState({ active: !active });
+                            }
+                        },
+                        _react2.default.createElement(
+                            'span',
+                            null,
+                            title
+                        ),
+                        _react2.default.createElement(
+                            'span',
+                            { className: 'icon is-small' },
+                            _react2.default.createElement('i', { className: up ? 'icon-chevron-top-12' : 'icon-chevron-bottom-12' })
+                        )
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    { className: 'dropdown-menu' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'dropdown-content' },
+                        children
+                    )
+                )
+            );
+        }
+    }]);
+
+    return Dropdown;
+}(_react2.default.Component);
+
+Dropdown.propTypes = {
+    title: _propTypes2.default.string.isRequired,
+    up: _propTypes2.default.bool,
+    disabled: _propTypes2.default.bool,
+    className: _propTypes2.default.string
+};
+
+exports.default = Dropdown;
+
+},{"prop-types":166,"react":201}],55:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _reactDom = require('react-dom');
+
+var _reactDom2 = _interopRequireDefault(_reactDom);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var EditableLabel = function (_React$Component) {
+    _inherits(EditableLabel, _React$Component);
+
+    function EditableLabel(props) {
+        _classCallCheck(this, EditableLabel);
+
+        var _this = _possibleConstructorReturn(this, (EditableLabel.__proto__ || Object.getPrototypeOf(EditableLabel)).call(this, props));
+
+        _this.state = { editValue: null, edit: false };
+        return _this;
+    }
+
+    _createClass(EditableLabel, [{
+        key: 'componentDidUpdate',
+        value: function componentDidUpdate() {
+            var inputNode = _reactDom2.default.findDOMNode(this.valueInput);
+
+            if (this.state.edit && inputNode !== document.activeElement) {
+                inputNode.select();
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var _state = this.state,
+                editValue = _state.editValue,
+                edit = _state.edit;
+            var _props = this.props,
+                children = _props.children,
+                value = _props.value,
+                onChange = _props.onChange;
+
+
+            if (!edit) {
+                return _react2.default.createElement(
+                    'span',
+                    { className: 'editable-label', onClick: function onClick() {
+                            return _this2.setState({ edit: true });
+                        } },
+                    value,
+                    children
+                );
+            } else {
+                return _react2.default.createElement(
+                    'div',
+                    { className: 'editable-label edit' },
+                    _react2.default.createElement('input', {
+                        ref: function ref(input) {
+                            _this2.valueInput = input;
+                        },
+                        type: 'text',
+                        'data-lpignore': 'true',
+                        className: 'input is-small is-inline',
+                        style: { width: '75px' },
+                        value: editValue === null ? value : editValue,
+                        onChange: function onChange(e) {
+                            _this2.setState({ editValue: e.target.value });
+                        },
+                        onBlur: function onBlur(e) {
+                            if (parseFloat(e.target.value) !== parseFloat(value)) {
+                                onChange(e.target.value);
+                            }
+                            _this2.setState({ editValue: null, edit: false });
+                        },
+                        onKeyUp: function onKeyUp(e) {
+                            if (e.key === 'Enter') {
+                                e.target.blur();
+                            }
+                            if (e.key === 'Escape') {
+                                _this2.setState({ editValue: null, edit: false });
+                            }
+                        }
+                    }),
+                    children
+                );
+            }
+        }
+    }]);
+
+    return EditableLabel;
+}(_react2.default.Component);
+
+EditableLabel.PropTypes = {
+    value: _propTypes2.default.number,
+    onChange: _propTypes2.default.func.isRequied
+};
+
+exports.default = EditableLabel;
+
+},{"prop-types":166,"react":201,"react-dom":170}],56:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Constraint = require('seedsource/containers/Constraint');
+
+var _Constraint2 = _interopRequireDefault(_Constraint);
+
+var _EditableLabel = require('seedsource/components/EditableLabel');
+
+var _EditableLabel2 = _interopRequireDefault(_EditableLabel);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var ElevationConstraint = function ElevationConstraint(_ref) {
+    var index = _ref.index,
+        value = _ref.value,
+        range = _ref.range,
+        unit = _ref.unit,
+        onRangeChange = _ref.onRangeChange;
+
+    var unitLabel = unit === 'metric' ? 'm' : 'ft';
+
+    return _react2.default.createElement(
+        _Constraint2.default,
+        { index: index, value: value, unit: unitLabel, title: 'Elevation' },
+        _react2.default.createElement(
+            _EditableLabel2.default,
+            { value: range, onChange: function onChange(range) {
+                    return onRangeChange(index, range, unit);
+                } },
+            '\xA0',
+            unitLabel
+        )
+    );
+};
+
+ElevationConstraint.propTypes = {
+    index: _propTypes2.default.number.isRequired,
+    range: _propTypes2.default.number,
+    value: _propTypes2.default.oneOfType([_propTypes2.default.number, _propTypes2.default.string]),
+    unit: _propTypes2.default.string.isRequired,
+    onRangeChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = ElevationConstraint;
+
+},{"prop-types":166,"react":201,"seedsource/components/EditableLabel":55,"seedsource/containers/Constraint":90}],57:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ModalCard = require('seedsource/components/ModalCard');
+
+var _ModalCard2 = _interopRequireDefault(_ModalCard);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var ErrorModal = function ErrorModal(_ref) {
+    var show = _ref.show,
+        title = _ref.title,
+        message = _ref.message,
+        debugInfo = _ref.debugInfo,
+        _onHide = _ref.onHide;
+
+    if (!show) {
+        return null;
+    }
+
+    var debug = null;
+
+    if (debugInfo !== null) {
+        debug = _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+                'p',
+                null,
+                'If the problem persists, please ',
+                _react2.default.createElement(
+                    'a',
+                    { href: 'https://github.com/consbio/seedsource/issues', target: '_blank' },
+                    'report an issue'
+                ),
+                ' and include the following information:'
+            ),
+            _react2.default.createElement(
+                'pre',
+                { className: 'error-debug-info' },
+                debugInfo
+            )
+        );
+    }
+
+    return _react2.default.createElement(
+        _ModalCard2.default,
+        { title: title, onHide: function onHide() {
+                return _onHide();
+            }, active: true },
+        _react2.default.createElement(
+            'p',
+            null,
+            message
+        ),
+        debug
+    );
+};
+
+ErrorModal.propTypes = {
+    show: _propTypes2.default.bool.isRequired,
+    title: _propTypes2.default.string.isRequired,
+    message: _propTypes2.default.string.isRequired,
+    debugInfo: _propTypes2.default.string,
+    onHide: _propTypes2.default.func.isRequired
+};
+
+exports.default = ErrorModal;
+
+},{"prop-types":166,"react":201,"seedsource/components/ModalCard":65}],58:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var GroupedButton = function GroupedButton(_ref) {
+    var active = _ref.active,
+        children = _ref.children,
+        _onClick = _ref.onClick;
+
+    var className = active ? 'is-active' : '';
+
+    return _react2.default.createElement(
+        'li',
+        { className: active ? 'is-active' : '' },
+        _react2.default.createElement(
+            'a',
+            { href: '#', onClick: function onClick(e) {
+                    e.preventDefault();
+                    _onClick();
+                } },
+            children
+        )
+    );
+};
+
+GroupedButton.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    children: _propTypes2.default.node.isRequired,
+    onClick: _propTypes2.default.func.isRequired
+};
+
+exports.default = GroupedButton;
+
+},{"prop-types":166,"react":201}],59:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Constraint = require('seedsource/containers/Constraint');
+
+var _Constraint2 = _interopRequireDefault(_Constraint);
+
+var _EditableLabel = require('seedsource/components/EditableLabel');
+
+var _EditableLabel2 = _interopRequireDefault(_EditableLabel);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var LatitudeConstraint = function LatitudeConstraint(_ref) {
+    var index = _ref.index,
+        value = _ref.value,
+        range = _ref.range,
+        onRangeChange = _ref.onRangeChange;
+    return _react2.default.createElement(
+        _Constraint2.default,
+        { index: index, value: value, unit: '\xB0N', title: 'Latitude' },
+        _react2.default.createElement(
+            _EditableLabel2.default,
+            { value: range, onChange: function onChange(range) {
+                    return onRangeChange(index, range);
+                } },
+            _react2.default.createElement(
+                'span',
+                null,
+                '\xA0\xB0N'
+            )
+        )
+    );
+};
+
+LatitudeConstraint.propTypes = {
+    index: _propTypes2.default.number.isRequired,
+    range: _propTypes2.default.string,
+    value: _propTypes2.default.string,
+    onRangeChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = LatitudeConstraint;
+
+},{"prop-types":166,"react":201,"seedsource/components/EditableLabel":55,"seedsource/containers/Constraint":90}],60:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _PointChooser = require('seedsource/containers/PointChooser');
+
+var _PointChooser2 = _interopRequireDefault(_PointChooser);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var getObjectiveLabel = function getObjectiveLabel(objective) {
+    return objective === 'seedlots' ? 'Select planting site location' : 'Select seedlot location';
+};
+
+var LocationStep = function (_React$Component) {
+    _inherits(LocationStep, _React$Component);
+
+    function LocationStep() {
+        _classCallCheck(this, LocationStep);
+
+        return _possibleConstructorReturn(this, (LocationStep.__proto__ || Object.getPrototypeOf(LocationStep)).apply(this, arguments));
+    }
+
+    _createClass(LocationStep, [{
+        key: 'render',
+        value: function render() {
+            var _props = this.props,
+                objective = _props.objective,
+                number = _props.number,
+                point = _props.point,
+                elevation = _props.elevation,
+                active = _props.active;
+
+
+            if (elevation !== null) {
+                elevation = _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        _react2.default.createElement(
+                            'strong',
+                            null,
+                            'Elevation:'
+                        ),
+                        ' ',
+                        Math.round(elevation.ft),
+                        ' ft (',
+                        Math.round(elevation.m),
+                        ' m)'
+                    )
+                );
+            }
+
+            if (!active) {
+                if (point !== null) {
+                    return _react2.default.createElement(
+                        _ConfigurationStep2.default,
+                        {
+                            title: getObjectiveLabel(objective),
+                            number: number,
+                            name: 'location',
+                            active: false
+                        },
+                        _react2.default.createElement(
+                            'div',
+                            null,
+                            _react2.default.createElement(
+                                'strong',
+                                null,
+                                'Point:'
+                            ),
+                            ' ',
+                            point.y.toFixed(4),
+                            ', ',
+                            point.x.toFixed(4)
+                        ),
+                        elevation
+                    );
+                } else {
+                    return _react2.default.createElement(
+                        _ConfigurationStep2.default,
+                        {
+                            title: getObjectiveLabel(objective),
+                            number: number,
+                            name: 'location',
+                            active: false
+                        },
+                        _react2.default.createElement(
+                            'div',
+                            null,
+                            _react2.default.createElement(
+                                'em',
+                                null,
+                                'Click to select a point.'
+                            )
+                        )
+                    );
+                }
+            }
+
+            var instruction = 'Locate your planting site';
+            if (objective === 'sites') {
+                instruction = 'Locate your seedlot (its climatic center)';
+            }
+
+            return _react2.default.createElement(
+                _ConfigurationStep2.default,
+                { title: getObjectiveLabel(objective), number: number, name: 'location', active: true },
+                _react2.default.createElement(
+                    'div',
+                    { className: 'is-size-7' },
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        _react2.default.createElement(
+                            'em',
+                            null,
+                            instruction
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        _react2.default.createElement(
+                            'em',
+                            null,
+                            'Use the map or enter coordinates'
+                        )
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    '\xA0'
+                ),
+                _react2.default.createElement(_PointChooser2.default, null),
+                elevation !== null ? _react2.default.createElement(
+                    'div',
+                    null,
+                    '\xA0'
+                ) : null,
+                elevation
+            );
+        }
+    }]);
+
+    return LocationStep;
+}(_react2.default.Component);
+
+LocationStep.shouldRender = function () {
+    return true;
+};
+
+LocationStep.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    point: _propTypes2.default.object,
+    objective: _propTypes2.default.string.isRequired,
+    elevation: _propTypes2.default.object,
+    number: _propTypes2.default.number.isRequired
+};
+
+exports.default = LocationStep;
+
+},{"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/PointChooser":103}],61:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ModalCard = require('seedsource/components/ModalCard');
+
+var _ModalCard2 = _interopRequireDefault(_ModalCard);
+
+var _io = require('../../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var LoginModal = function (_React$Component) {
+    _inherits(LoginModal, _React$Component);
+
+    function LoginModal(props) {
+        _classCallCheck(this, LoginModal);
+
+        var _this = _possibleConstructorReturn(this, (LoginModal.__proto__ || Object.getPrototypeOf(LoginModal)).call(this, props));
+
+        _this.state = { emailText: null, passwordText: null, loading: false, error: null };
+        return _this;
+    }
+
+    _createClass(LoginModal, [{
+        key: 'show',
+        value: function show() {
+            var _this2 = this;
+
+            this.reset();
+            this.modal.show();
+
+            setTimeout(function () {
+                _this2.emailInput.focus();
+            }, 1);
+        }
+    }, {
+        key: 'hide',
+        value: function hide() {
+            this.modal.hide();
+            this.reset();
+        }
+    }, {
+        key: 'reset',
+        value: function reset() {
+            this.setState({ emailText: null, passwordText: null, loading: false, error: null });
+        }
+    }, {
+        key: 'submit',
+        value: function submit() {
+            var _this3 = this;
+
+            var _state = this.state,
+                emailText = _state.emailText,
+                passwordText = _state.passwordText;
+            var onLogin = this.props.onLogin;
+
+
+            if (emailText && passwordText) {
+                this.setState({ loading: true, error: null });
+
+                (0, _io.post)('/accounts/login/', { email: emailText, password: passwordText }).then(function (response) {
+                    var status = response.status;
+
+
+                    if (status >= 200 && status < 300) {
+                        onLogin(emailText);
+                        _this3.hide();
+                    } else {
+                        throw new Error('Login failed.');
+                    }
+                }).catch(function (err) {
+                    console.log(err);
+                    _this3.setState({ loading: false, error: 'Login failed.' });
+                });
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this4 = this;
+
+            var _state2 = this.state,
+                emailText = _state2.emailText,
+                passwordText = _state2.passwordText,
+                loading = _state2.loading,
+                error = _state2.error;
+            var onResetPassword = this.props.onResetPassword;
+
+
+            var errorNode = null;
+            if (error !== null) {
+                errorNode = _react2.default.createElement(
+                    'article',
+                    { className: 'message is-danger' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'message-body' },
+                        error
+                    )
+                );
+            }
+
+            return _react2.default.createElement(
+                _ModalCard2.default,
+                { ref: function ref(input) {
+                        _this4.modal = input;
+                    }, title: 'Sign In' },
+                errorNode,
+                _react2.default.createElement(
+                    'form',
+                    {
+                        onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+                            _this4.submit();
+                        }
+                    },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                ref: function ref(input) {
+                                    _this4.emailInput = input;
+                                },
+                                className: 'input',
+                                type: 'text',
+                                placeholder: 'Email address',
+                                name: 'username',
+                                value: emailText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ emailText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                className: 'input',
+                                type: 'password',
+                                placeholder: 'Password',
+                                name: 'password',
+                                value: passwordText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ passwordText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        ),
+                        _react2.default.createElement(
+                            'a',
+                            { className: 'is-pulled-right is-size-7 is-clearfix', onClick: function onClick() {
+                                    return onResetPassword();
+                                } },
+                            'Forgot your password?'
+                        ),
+                        _react2.default.createElement('div', { className: 'is-clearfix' })
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement(
+                                'button',
+                                {
+                                    className: (loading ? 'is-loading ' : '') + 'button is-fullwidth is-primary',
+                                    onClick: function onClick() {
+                                        return _this4.submit();
+                                    },
+                                    disabled: loading
+                                },
+                                'Sign In'
+                            )
+                        )
+                    )
+                )
+            );
+        }
+    }]);
+
+    return LoginModal;
+}(_react2.default.Component);
+
+LoginModal.propTypes = {
+    onLogin: _propTypes2.default.func.isRequired,
+    onResetPassword: _propTypes2.default.func.isRequired
+};
+
+exports.default = LoginModal;
+
+},{"../../io":26,"prop-types":166,"react":201,"seedsource/components/ModalCard":65}],62:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Constraint = require('seedsource/containers/Constraint');
+
+var _Constraint2 = _interopRequireDefault(_Constraint);
+
+var _EditableLabel = require('seedsource/components/EditableLabel');
+
+var _EditableLabel2 = _interopRequireDefault(_EditableLabel);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var LongitudeConstraint = function LongitudeConstraint(_ref) {
+    var index = _ref.index,
+        value = _ref.value,
+        range = _ref.range,
+        onRangeChange = _ref.onRangeChange;
+    return _react2.default.createElement(
+        _Constraint2.default,
+        { index: index, value: value, unit: '\xB0E', title: 'Longitude' },
+        _react2.default.createElement(
+            _EditableLabel2.default,
+            { value: range, onChange: function onChange(range) {
+                    return onRangeChange(index, range);
+                } },
+            _react2.default.createElement(
+                'span',
+                null,
+                '\xA0\xB0E'
+            )
+        )
+    );
+};
+
+LongitudeConstraint.propTypes = {
+    index: _propTypes2.default.number.isRequired,
+    value: _propTypes2.default.string,
+    range: _propTypes2.default.string,
+    onRangeChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = LongitudeConstraint;
+
+},{"prop-types":166,"react":201,"seedsource/components/EditableLabel":55,"seedsource/containers/Constraint":90}],63:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2793,7 +5690,309 @@ var Menu = function Menu() {
 
 exports.default = Menu;
 
-},{"react":113}],41:[function(require,module,exports){
+},{"react":201}],64:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var Modal = function (_React$Component) {
+    _inherits(Modal, _React$Component);
+
+    function Modal(props) {
+        _classCallCheck(this, Modal);
+
+        var _this = _possibleConstructorReturn(this, (Modal.__proto__ || Object.getPrototypeOf(Modal)).call(this, props));
+
+        _this.state = { isActive: false };
+        return _this;
+    }
+
+    _createClass(Modal, [{
+        key: 'show',
+        value: function show() {
+            this.setState({ isActive: true });
+        }
+    }, {
+        key: 'hide',
+        value: function hide() {
+            this.setState({ isActive: false });
+
+            var _props$onHide = this.props.onHide,
+                onHide = _props$onHide === undefined ? null : _props$onHide;
+
+            if (onHide !== null) {
+                onHide();
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _props = this.props,
+                children = _props.children,
+                closeButton = _props.closeButton,
+                _props$active = _props.active,
+                active = _props$active === undefined ? false : _props$active;
+
+            var activeClass = this.state.isActive || active ? 'is-active' : '';
+
+            var closeButtonNode = null;
+            if (closeButton !== false) {
+                closeButtonNode = _react2.default.createElement('button', { className: 'modal-close is-large', 'aria-label': 'close', onClick: this.hide.bind(this) });
+            }
+
+            return _react2.default.createElement(
+                'div',
+                { className: activeClass + ' modal' },
+                _react2.default.createElement('div', { className: 'modal-background', onClick: this.hide.bind(this) }),
+                children,
+                closeButtonNode
+            );
+        }
+    }]);
+
+    return Modal;
+}(_react2.default.Component);
+
+exports.default = Modal;
+
+},{"react":201}],65:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Modal = require('seedsource/components/Modal');
+
+var _Modal2 = _interopRequireDefault(_Modal);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var ModalCard = function (_React$Component) {
+    _inherits(ModalCard, _React$Component);
+
+    function ModalCard() {
+        _classCallCheck(this, ModalCard);
+
+        return _possibleConstructorReturn(this, (ModalCard.__proto__ || Object.getPrototypeOf(ModalCard)).apply(this, arguments));
+    }
+
+    _createClass(ModalCard, [{
+        key: 'show',
+        value: function show() {
+            this.modal.show();
+        }
+    }, {
+        key: 'hide',
+        value: function hide() {
+            this.modal.hide();
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var _props = this.props,
+                title = _props.title,
+                children = _props.children,
+                _props$footer = _props.footer,
+                footer = _props$footer === undefined ? null : _props$footer,
+                _props$active = _props.active,
+                active = _props$active === undefined ? false : _props$active,
+                _props$onHide = _props.onHide,
+                onHide = _props$onHide === undefined ? null : _props$onHide;
+
+
+            return _react2.default.createElement(
+                _Modal2.default,
+                { closeButton: false, ref: function ref(input) {
+                        _this2.modal = input;
+                    }, active: active, onHide: onHide },
+                _react2.default.createElement(
+                    'div',
+                    { className: 'modal-card' },
+                    _react2.default.createElement(
+                        'header',
+                        { className: 'modal-card-head' },
+                        _react2.default.createElement(
+                            'p',
+                            { className: 'modal-card-title' },
+                            title
+                        ),
+                        _react2.default.createElement('button', { className: 'delete', 'aria-label': 'close', onClick: function onClick() {
+                                return _this2.modal.hide();
+                            } })
+                    ),
+                    _react2.default.createElement(
+                        'section',
+                        { className: 'modal-card-body' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'content' },
+                            children
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'footer',
+                        { className: 'modal-card-foot' },
+                        footer
+                    )
+                )
+            );
+        }
+    }]);
+
+    return ModalCard;
+}(_react2.default.Component);
+
+ModalCard.propTypes = {
+    title: _propTypes2.default.string.isRequired
+};
+
+exports.default = ModalCard;
+
+},{"prop-types":166,"react":201,"seedsource/components/Modal":64}],66:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var NavItemDropdown = function (_React$Component) {
+    _inherits(NavItemDropdown, _React$Component);
+
+    function NavItemDropdown(props) {
+        _classCallCheck(this, NavItemDropdown);
+
+        var _this = _possibleConstructorReturn(this, (NavItemDropdown.__proto__ || Object.getPrototypeOf(NavItemDropdown)).call(this, props));
+
+        _this.state = { active: false };
+
+        _this.handleBodyClick = _this.handleBodyClick.bind(_this);
+        return _this;
+    }
+
+    _createClass(NavItemDropdown, [{
+        key: 'handleBodyClick',
+        value: function handleBodyClick(e) {
+            if (e.target !== this.item) {
+                this.setState({ active: false });
+            }
+        }
+    }, {
+        key: 'componentDidMount',
+        value: function componentDidMount() {
+            window.document.body.addEventListener('click', this.handleBodyClick);
+        }
+    }, {
+        key: 'componentWillUnmount',
+        value: function componentWillUnmount() {
+            window.document.body.removeEventListener('click', this.handleBodyClick);
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var active = this.state.active;
+
+            var isActive = active ? 'is-active ' : '';
+            var _props = this.props,
+                title = _props.title,
+                _props$right = _props.right,
+                right = _props$right === undefined ? false : _props$right,
+                _props$className = _props.className,
+                className = _props$className === undefined ? '' : _props$className,
+                children = _props.children;
+
+
+            return _react2.default.createElement(
+                'div',
+                { className: isActive + ' navbar-item has-dropdown ' + className },
+                _react2.default.createElement(
+                    'a',
+                    {
+                        className: 'navbar-link',
+                        onClick: function onClick(e) {
+                            return _this2.setState({ active: !active });
+                        },
+                        ref: function ref(input) {
+                            _this2.item = input;
+                        }
+                    },
+                    title
+                ),
+                _react2.default.createElement(
+                    'div',
+                    { className: (right ? 'is-right ' : '') + 'navbar-dropdown' },
+                    children
+                )
+            );
+        }
+    }]);
+
+    return NavItemDropdown;
+}(_react2.default.Component);
+
+NavItemDropdown.propTypes = {
+    title: _propTypes2.default.string.isRequired,
+    right: _propTypes2.default.bool,
+    className: _propTypes2.default.string
+};
+
+exports.default = NavItemDropdown;
+
+},{"prop-types":166,"react":201}],67:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2815,6 +6014,10 @@ var _config2 = _interopRequireDefault(_config);
 var _Menu = require('seedsource/components/Menu');
 
 var _Menu2 = _interopRequireDefault(_Menu);
+
+var _AccountMenu = require('seedsource/containers/AccountMenu');
+
+var _AccountMenu2 = _interopRequireDefault(_AccountMenu);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2879,11 +6082,7 @@ var Navbar = function (_React$Component) {
                         'div',
                         { className: 'navbar-end' },
                         _react2.default.createElement(_Menu2.default, null),
-                        _react2.default.createElement(
-                            'a',
-                            { className: 'navbar-item' },
-                            'Sign In'
-                        )
+                        _react2.default.createElement(_AccountMenu2.default, null)
                     )
                 )
             );
@@ -2895,7 +6094,1448 @@ var Navbar = function (_React$Component) {
 
 exports.default = Navbar;
 
-},{"../../utils":45,"react":113,"seedsource/components/Menu":40,"seedsource/config":43}],42:[function(require,module,exports){
+},{"../../utils":118,"react":201,"seedsource/components/Menu":63,"seedsource/config":86,"seedsource/containers/AccountMenu":87}],68:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _ObjectiveButton = require('seedsource/containers/ObjectiveButton');
+
+var _ObjectiveButton2 = _interopRequireDefault(_ObjectiveButton);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var ObjectiveStep = function (_React$Component) {
+    _inherits(ObjectiveStep, _React$Component);
+
+    function ObjectiveStep() {
+        _classCallCheck(this, ObjectiveStep);
+
+        return _possibleConstructorReturn(this, (ObjectiveStep.__proto__ || Object.getPrototypeOf(ObjectiveStep)).apply(this, arguments));
+    }
+
+    _createClass(ObjectiveStep, [{
+        key: 'render',
+        value: function render() {
+            var _props = this.props,
+                number = _props.number,
+                active = _props.active,
+                objective = _props.objective;
+
+
+            if (!active) {
+                return _react2.default.createElement(
+                    _ConfigurationStep2.default,
+                    { title: 'Select objective', number: number, name: 'objective', active: false },
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        objective === 'seedlots' ? 'Find seedlots' : 'Find planting sites'
+                    )
+                );
+            }
+
+            return _react2.default.createElement(
+                _ConfigurationStep2.default,
+                { title: 'Select objective', number: number, name: 'objective', active: true },
+                _react2.default.createElement(
+                    'div',
+                    { className: 'tabs is-toggle is-small' },
+                    _react2.default.createElement(
+                        'ul',
+                        null,
+                        _react2.default.createElement(
+                            _ObjectiveButton2.default,
+                            { name: 'seedlots' },
+                            'Find seedlots'
+                        ),
+                        _react2.default.createElement(
+                            _ObjectiveButton2.default,
+                            { name: 'sites' },
+                            'Find planting sites'
+                        )
+                    )
+                )
+            );
+        }
+    }]);
+
+    return ObjectiveStep;
+}(_react2.default.Component);
+
+ObjectiveStep.shouldRender = function () {
+    return true;
+};
+
+ObjectiveStep.propTypes = {
+    number: _propTypes2.default.number.isRequired,
+    active: _propTypes2.default.bool.isRequired,
+    objective: _propTypes2.default.string.isRequired
+};
+
+exports.default = ObjectiveStep;
+
+},{"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/ObjectiveButton":100}],69:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Constraint = require('seedsource/containers/Constraint');
+
+var _Constraint2 = _interopRequireDefault(_Constraint);
+
+var _EditableLabel = require('seedsource/components/EditableLabel');
+
+var _EditableLabel2 = _interopRequireDefault(_EditableLabel);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+var PhotoperiodConstraint = function PhotoperiodConstraint(_ref) {
+    var index = _ref.index,
+        value = _ref.value,
+        hours = _ref.hours,
+        month = _ref.month,
+        day = _ref.day,
+        onHoursChange = _ref.onHoursChange,
+        onMonthChange = _ref.onMonthChange,
+        onDayChange = _ref.onDayChange;
+
+    var daysInMonth = 32 - new Date(1961, month - 1, 32).getDate();
+    var dayOptions = Array.from(Array(daysInMonth).keys());
+
+    return _react2.default.createElement(
+        _Constraint2.default,
+        { index: index, value: value, title: 'Photoperiod', className: 'photoperiod-constraint' },
+        _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+                'div',
+                null,
+                _react2.default.createElement(
+                    _EditableLabel2.default,
+                    { value: hours, onChange: function onChange(value) {
+                            return onHoursChange(index, value);
+                        } },
+                    '\xA0hours'
+                )
+            ),
+            _react2.default.createElement(
+                'div',
+                { className: 'photoperiod-date' },
+                _react2.default.createElement(
+                    'div',
+                    { className: 'select is-inline-block is-small' },
+                    _react2.default.createElement(
+                        'select',
+                        {
+                            className: 'photoperiod-month',
+                            value: month - 1,
+                            onChange: function onChange(e) {
+                                e.preventDefault();
+                                onMonthChange(index, e.target.value);
+                            }
+                        },
+                        monthNames.map(function (name, index) {
+                            return _react2.default.createElement(
+                                'option',
+                                { key: index, value: index },
+                                name
+                            );
+                        })
+                    )
+                ),
+                _react2.default.createElement(
+                    'span',
+                    null,
+                    '\xA0'
+                ),
+                _react2.default.createElement(
+                    'div',
+                    { className: 'select is-inline-block is-small' },
+                    _react2.default.createElement(
+                        'select',
+                        {
+                            className: 'form form-control form-inline photoperiod-day',
+                            value: day,
+                            onChange: function onChange(e) {
+                                e.preventDefault();
+                                onDayChange(index, e.target.value);
+                            }
+                        },
+                        dayOptions.map(function (dayNumber) {
+                            return _react2.default.createElement(
+                                'option',
+                                { key: dayNumber, value: dayNumber + 1 },
+                                dayNumber + 1
+                            );
+                        })
+                    )
+                )
+            )
+        )
+    );
+};
+
+PhotoperiodConstraint.propTypes = {
+    index: _propTypes2.default.number.isRequired,
+    value: _propTypes2.default.string,
+    hours: _propTypes2.default.string,
+    month: _propTypes2.default.number.isRequired,
+    day: _propTypes2.default.number.isRequired,
+    onHoursChange: _propTypes2.default.func.isRequired,
+    onMonthChange: _propTypes2.default.func.isRequired,
+    onDayChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = PhotoperiodConstraint;
+
+},{"prop-types":166,"react":201,"seedsource/components/EditableLabel":55,"seedsource/containers/Constraint":90}],70:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var PointChooser = function (_React$Component) {
+    _inherits(PointChooser, _React$Component);
+
+    function PointChooser(props) {
+        _classCallCheck(this, PointChooser);
+
+        var _this = _possibleConstructorReturn(this, (PointChooser.__proto__ || Object.getPrototypeOf(PointChooser)).call(this, props));
+
+        _this.state = { latValue: null, lonValue: null };
+        return _this;
+    }
+
+    _createClass(PointChooser, [{
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var _props = this.props,
+                lat = _props.lat,
+                lon = _props.lon,
+                _onBlur = _props.onBlur;
+
+
+            return _react2.default.createElement(
+                'div',
+                { className: 'point-chooser' },
+                _react2.default.createElement(
+                    'strong',
+                    null,
+                    'Lat: '
+                ),
+                _react2.default.createElement('input', {
+                    type: 'text',
+                    'data-lpignore': 'true',
+                    className: 'input is-inline is-small',
+                    value: this.state.latValue === null ? lat : this.state.latValue,
+                    onChange: function onChange(e) {
+                        _this2.setState({ latValue: e.target.value });
+                    },
+                    onBlur: function onBlur(e) {
+                        _this2.setState({ latValue: null });
+
+                        if (e.target.value !== lat) {
+                            _onBlur('lat', e.target.value);
+                        }
+                    },
+                    onKeyPress: function onKeyPress(e) {
+                        if (e.key === 'Enter') {
+                            e.target.blur();
+                        }
+                    }
+                }),
+                _react2.default.createElement(
+                    'strong',
+                    null,
+                    'Lon: '
+                ),
+                _react2.default.createElement('input', {
+                    type: 'text',
+                    'data-lpignore': 'true',
+                    className: 'input is-inline is-small',
+                    value: this.state.lonValue === null ? lon : this.state.lonValue,
+                    onChange: function onChange(e) {
+                        _this2.setState({ lonValue: e.target.value });
+                    },
+                    onBlur: function onBlur(e) {
+                        _this2.setState({ lonValue: null });
+
+                        if (e.target.value !== lon) {
+                            _onBlur('lon', e.target.value);
+                        }
+                    },
+                    onKeyPress: function onKeyPress(e) {
+                        if (e.key === 'Enter') {
+                            e.target.blur();
+                        }
+                    }
+                })
+            );
+        }
+    }]);
+
+    return PointChooser;
+}(_react2.default.Component);
+
+PointChooser.propTypes = {
+    lat: _propTypes.PropTypes.oneOfType([_propTypes.PropTypes.string, _propTypes.PropTypes.number]).isRequired,
+    lon: _propTypes.PropTypes.oneOfType([_propTypes.PropTypes.string, _propTypes.PropTypes.number]).isRequired,
+    onBlur: _propTypes.PropTypes.func.isRequired
+};
+
+exports.default = PointChooser;
+
+},{"prop-types":166,"react":201}],71:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _RegionButton = require('seedsource/containers/RegionButton');
+
+var _RegionButton2 = _interopRequireDefault(_RegionButton);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var RegionStep = function RegionStep(_ref) {
+    var number = _ref.number,
+        region = _ref.region,
+        regionMethod = _ref.regionMethod,
+        _onChange = _ref.onChange;
+
+    var buttons = _react2.default.createElement(
+        'div',
+        { className: 'tabs is-toggle is-small' },
+        _react2.default.createElement(
+            'ul',
+            null,
+            _react2.default.createElement(
+                _RegionButton2.default,
+                { name: 'auto' },
+                'Automatic'
+            ),
+            _react2.default.createElement(
+                _RegionButton2.default,
+                { name: 'custom' },
+                'Custom'
+            )
+        )
+    );
+
+    if (regionMethod === 'auto') {
+        var regionLabel = region !== null ? _config.regions.find(function (r) {
+            return r.name == region;
+        }).label : 'N/A';
+        return _react2.default.createElement(
+            _ConfigurationStep2.default,
+            { title: 'Select region', number: number, name: 'region', active: true },
+            buttons,
+            _react2.default.createElement(
+                'strong',
+                null,
+                'Region:'
+            ),
+            ' ',
+            regionLabel
+        );
+    } else {
+        return _react2.default.createElement(
+            _ConfigurationStep2.default,
+            { title: 'Select region', number: number, name: 'region', active: true },
+            buttons,
+            _react2.default.createElement(
+                'div',
+                { style: { marginTop: '3px' } },
+                _react2.default.createElement(
+                    'div',
+                    { className: 'align-middle is-inline-block' },
+                    _react2.default.createElement(
+                        'strong',
+                        null,
+                        'Region: '
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    { className: 'select align-middle is-inline-block' },
+                    _react2.default.createElement(
+                        'select',
+                        {
+                            value: region ? region : _config.regions[0].name,
+                            onChange: function onChange(e) {
+                                e.preventDefault();
+                                _onChange(e.target.value);
+                            } },
+                        _config.regions.map(function (r) {
+                            return _react2.default.createElement(
+                                'option',
+                                { value: r.name, key: r.name },
+                                r.label
+                            );
+                        })
+                    )
+                )
+            )
+        );
+    }
+};
+
+RegionStep.propTypes = {
+    number: _propTypes2.default.number.isRequired,
+    active: _propTypes2.default.bool.isRequired,
+    region: _propTypes2.default.string,
+    regionMethod: _propTypes2.default.string.isRequired
+};
+
+exports.default = RegionStep;
+
+},{"../../config":24,"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/RegionButton":104}],72:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _ModalCard = require('seedsource/components/ModalCard');
+
+var _ModalCard2 = _interopRequireDefault(_ModalCard);
+
+var _io = require('../../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var ResetPasswordModal = function (_React$Component) {
+    _inherits(ResetPasswordModal, _React$Component);
+
+    function ResetPasswordModal(props) {
+        _classCallCheck(this, ResetPasswordModal);
+
+        var _this = _possibleConstructorReturn(this, (ResetPasswordModal.__proto__ || Object.getPrototypeOf(ResetPasswordModal)).call(this, props));
+
+        _this.state = { emailText: null, submitted: false, loading: false, error: null };
+        return _this;
+    }
+
+    _createClass(ResetPasswordModal, [{
+        key: 'show',
+        value: function show() {
+            var _this2 = this;
+
+            this.reset();
+            this.modal.show();
+
+            setTimeout(function () {
+                return _this2.emailInput.focus();
+            }, 1);
+        }
+    }, {
+        key: 'hide',
+        value: function hide() {
+            this.modal.hide();
+            this.reset();
+        }
+    }, {
+        key: 'reset',
+        value: function reset() {
+            this.setState({ emailText: null, submitted: false, loading: false, error: null });
+        }
+    }, {
+        key: 'submit',
+        value: function submit() {
+            var _this3 = this;
+
+            var emailText = this.state.emailText;
+
+
+            if ((emailText || '').trim()) {
+                (0, _io.post)('/accounts/lost-password/', { email: emailText }).then(function (response) {
+                    var status = response.status;
+
+
+                    if (status === 400) {
+                        return response.json();
+                    }
+
+                    if (status < 200 || status >= 300) {
+                        throw new Error('Sorry, there was an error resetting your password.');
+                    }
+
+                    _this3.setState({ submitted: true, loading: false });
+                }).then(function (json) {
+                    if (json) {
+                        var email = json.email;
+
+
+                        if (email) {
+                            throw new Error(email);
+                        }
+                    }
+                }).catch(function (err) {
+                    console.log(err);
+                    _this3.setState({ loading: false, error: err.message });
+                });
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this4 = this;
+
+            var _state = this.state,
+                emailText = _state.emailText,
+                submitted = _state.submitted,
+                loading = _state.loading,
+                error = _state.error;
+
+            var content = void 0;
+
+            if (submitted) {
+                content = _react2.default.createElement(
+                    'article',
+                    { className: 'message is-success' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'message-body' },
+                        'An email has been sent with a link to reset your password. If you don\'t receive this email, please check your Spam folder.'
+                    )
+                );
+            } else {
+                var errorNode = null;
+                if (error !== null) {
+                    errorNode = _react2.default.createElement(
+                        'article',
+                        { className: 'message is-danger' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'message-body' },
+                            error
+                        )
+                    );
+                }
+
+                content = _react2.default.createElement(
+                    'form',
+                    {
+                        onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+                            _this4.submit();
+                        }
+                    },
+                    _react2.default.createElement(
+                        'article',
+                        { className: 'message is-dark' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'message-body' },
+                            'Enter your email address to receive an email with a link to reset your password.'
+                        )
+                    ),
+                    errorNode,
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                ref: function ref(input) {
+                                    _this4.emailInput = input;
+                                },
+                                className: 'input',
+                                type: 'text',
+                                placeholder: 'Email address',
+                                name: 'username',
+                                value: emailText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ emailText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement(
+                                'button',
+                                {
+                                    className: (loading ? 'is-loading ' : '') + 'button is-fullwidth is-primary',
+                                    onClick: function onClick() {
+                                        return _this4.submit();
+                                    },
+                                    disabled: loading || !(emailText || '').trim()
+                                },
+                                'Send link'
+                            )
+                        )
+                    )
+                );
+            }
+
+            return _react2.default.createElement(
+                _ModalCard2.default,
+                { ref: function ref(input) {
+                        _this4.modal = input;
+                    }, title: 'Reset Password' },
+                content
+            );
+        }
+    }]);
+
+    return ResetPasswordModal;
+}(_react2.default.Component);
+
+exports.default = ResetPasswordModal;
+
+},{"../../io":26,"react":201,"seedsource/components/ModalCard":65}],73:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ObjectiveStep = require('seedsource/containers/ObjectiveStep');
+
+var _ObjectiveStep2 = _interopRequireDefault(_ObjectiveStep);
+
+var _LocationStep = require('seedsource/containers/LocationStep');
+
+var _LocationStep2 = _interopRequireDefault(_LocationStep);
+
+var _RegionStep = require('seedsource/containers/RegionStep');
+
+var _RegionStep2 = _interopRequireDefault(_RegionStep);
+
+var _ClimateStep = require('seedsource/containers/ClimateStep');
+
+var _ClimateStep2 = _interopRequireDefault(_ClimateStep);
+
+var _TransferStep = require('seedsource/containers/TransferStep');
+
+var _TransferStep2 = _interopRequireDefault(_TransferStep);
+
+var _VariableStep = require('seedsource/containers/VariableStep');
+
+var _VariableStep2 = _interopRequireDefault(_VariableStep);
+
+var _ConstraintStep = require('seedsource/containers/ConstraintStep');
+
+var _ConstraintStep2 = _interopRequireDefault(_ConstraintStep);
+
+var _RunStep = require('seedsource/containers/RunStep');
+
+var _RunStep2 = _interopRequireDefault(_RunStep);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var RunConfiguration = function RunConfiguration(_ref) {
+    var state = _ref.state,
+        objective = _ref.objective,
+        method = _ref.method,
+        job = _ref.job,
+        activeStep = _ref.activeStep;
+
+    var overlay = null;
+
+    if (job.isRunning) {
+        var label = _react2.default.createElement(
+            'h4',
+            { className: 'title is-4' },
+            'Calculating scores...'
+        );
+
+        if (job.queued) {
+            label = _react2.default.createElement(
+                'div',
+                null,
+                _react2.default.createElement(
+                    'h4',
+                    { className: 'title is-4' },
+                    'Waiting for other jobs to finish...'
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    'Another job is currently running. Your job is queued and will run as soon as other jobs are finished.'
+                )
+            );
+        }
+
+        overlay = _react2.default.createElement(
+            'div',
+            { className: 'overlay' },
+            _react2.default.createElement(
+                'div',
+                { className: 'progress-container' },
+                label,
+                _react2.default.createElement('progress', null)
+            )
+        );
+    }
+
+    var steps = [{ type: _ObjectiveStep2.default, key: 'objective' }, { type: _LocationStep2.default, key: 'location' }, { type: _RegionStep2.default, key: 'region' }, { type: _ClimateStep2.default, key: 'climate' }, { type: _TransferStep2.default, key: 'transfer' }, { type: _VariableStep2.default, key: 'variables' }, { type: _ConstraintStep2.default, key: 'constraints' }, { type: _RunStep2.default, key: 'run' }];
+
+    return _react2.default.createElement(
+        'div',
+        null,
+        overlay,
+        steps.filter(function (item) {
+            return item.type.shouldRender(state);
+        }).map(function (item, i) {
+            return _react2.default.createElement(item.type, {
+                number: i + 1,
+                title: item.title,
+                key: item.key,
+                active: activeStep === item.key || !_config.collapsibleSteps
+            });
+        })
+    );
+};
+
+RunConfiguration.propTypes = {
+    activeStep: _propTypes2.default.string.isRequired,
+    state: _propTypes2.default.object.isRequired,
+    objective: _propTypes2.default.string.isRequired,
+    method: _propTypes2.default.string.isRequired,
+    job: _propTypes2.default.object.isRequired
+};
+
+exports.default = RunConfiguration;
+
+},{"../../config":24,"prop-types":166,"react":201,"seedsource/containers/ClimateStep":88,"seedsource/containers/ConstraintStep":91,"seedsource/containers/LocationStep":96,"seedsource/containers/ObjectiveStep":101,"seedsource/containers/RegionStep":105,"seedsource/containers/RunStep":107,"seedsource/containers/TransferStep":113,"seedsource/containers/VariableStep":116}],74:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _SaveModal = require('seedsource/containers/SaveModal');
+
+var _SaveModal2 = _interopRequireDefault(_SaveModal);
+
+var _Dropdown = require('seedsource/components/Dropdown');
+
+var _Dropdown2 = _interopRequireDefault(_Dropdown);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var RunStep = function RunStep(props) {
+    var number = props.number,
+        configuration = props.configuration,
+        canRun = props.canRun,
+        canSave = props.canSave,
+        isLoggedIn = props.isLoggedIn,
+        reportIsFetching = props.reportIsFetching,
+        onRun = props.onRun,
+        onSave = props.onSave,
+        onExport = props.onExport,
+        onExportTIF = props.onExportTIF;
+
+
+    return _react2.default.createElement(
+        _ConfigurationStep2.default,
+        { title: 'Map your Results', number: number, name: 'run', active: false },
+        _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement('h4', null),
+            _react2.default.createElement(
+                'a',
+                {
+                    className: 'button is-primary is-large is-fullwidth',
+                    disabled: !canRun,
+                    onClick: function onClick(e) {
+                        onRun(configuration);
+                    }
+                },
+                'Run Tool'
+            )
+        ),
+        _react2.default.createElement(
+            'div',
+            { className: 'margin-top-10' },
+            _react2.default.createElement(
+                'div',
+                null,
+                _react2.default.createElement(
+                    'a',
+                    {
+                        className: 'button is-pulled-left',
+                        disabled: !canSave,
+                        onClick: function onClick() {
+                            onSave(isLoggedIn);
+                        }
+                    },
+                    _react2.default.createElement('span', { className: 'icon12 icon-save', 'aria-hidden': 'true' }),
+                    ' Save Last Run'
+                ),
+                _react2.default.createElement(
+                    _Dropdown2.default,
+                    {
+                        className: 'is-pulled-right is-right',
+                        up: true,
+                        title: 'Export As...',
+                        disabled: !canSave || reportIsFetching
+                    },
+                    _config.reports.map(function (r) {
+                        return _react2.default.createElement(
+                            'a',
+                            { key: r.name, className: 'dropdown-item', onClick: function onClick(e) {
+                                    e.preventDefault();
+                                    onExport(r.name);
+                                } },
+                            r.label
+                        );
+                    }),
+                    _react2.default.createElement(
+                        'a',
+                        { className: 'dropdown-item', onClick: function onClick(e) {
+                                e.preventDefault();
+                                onExportTIF();
+                            } },
+                        'GeoTIFF'
+                    )
+                )
+            ),
+            _react2.default.createElement('div', { className: 'is-clearfix' })
+        ),
+        _react2.default.createElement(_SaveModal2.default, null)
+    );
+};
+
+RunStep.propTypes = {
+    number: _propTypes2.default.number.isRequired,
+    configuration: _propTypes2.default.object.isRequired,
+    canRun: _propTypes2.default.bool.isRequired,
+    canSave: _propTypes2.default.bool.isRequired,
+    isLoggedIn: _propTypes2.default.bool.isRequired,
+    reportIsFetching: _propTypes2.default.bool.isRequired,
+    onRun: _propTypes2.default.func.isRequired,
+    onSave: _propTypes2.default.func.isRequired,
+    onExport: _propTypes2.default.func.isRequired,
+    onExportTIF: _propTypes2.default.func.isRequired
+};
+
+exports.default = RunStep;
+
+},{"../../config":24,"prop-types":166,"react":201,"seedsource/components/Dropdown":54,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/SaveModal":108}],75:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ModalCard = require('seedsource/components/ModalCard');
+
+var _ModalCard2 = _interopRequireDefault(_ModalCard);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+var SaveModal = function (_React$Component) {
+    _inherits(SaveModal, _React$Component);
+
+    function SaveModal(props) {
+        _classCallCheck(this, SaveModal);
+
+        var _this = _possibleConstructorReturn(this, (SaveModal.__proto__ || Object.getPrototypeOf(SaveModal)).call(this, props));
+
+        _this.state = { overwrite: false, title: '' };
+        return _this;
+    }
+
+    _createClass(SaveModal, [{
+        key: 'componentWillReceiveProps',
+        value: function componentWillReceiveProps(nextProps) {
+            var _this2 = this;
+
+            if (nextProps.showModal && !this.props.showModal) {
+                var today = new Date();
+                var title = 'Saved run - ' + months[today.getMonth()] + ' ' + today.getDate() + ', ' + today.getFullYear();
+
+                this.setState({ overwrite: false, title: title });
+
+                setTimeout(function () {
+                    _this2.titleInput.focus();
+                    _this2.titleInput.select();
+                }, 1);
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this3 = this;
+
+            var _props = this.props,
+                showModal = _props.showModal,
+                lastSave = _props.lastSave,
+                runConfiguration = _props.runConfiguration,
+                _onHide = _props.onHide,
+                onSave = _props.onSave,
+                onUpdate = _props.onUpdate;
+
+            var body = void 0;
+
+            if (lastSave === null || this.state.overwrite) {
+                body = _react2.default.createElement(
+                    'form',
+                    {
+                        onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+
+                            if (_this3.state.title) {
+                                onSave(runConfiguration, _this3.state.title);
+                            }
+                        }
+                    },
+                    _react2.default.createElement(
+                        'label',
+                        { className: 'control-label' },
+                        'Title'
+                    ),
+                    _react2.default.createElement('input', {
+                        type: 'text',
+                        'data-lpignore': 'true',
+                        className: 'input',
+                        value: this.state.title,
+                        required: true,
+                        onChange: function onChange(e) {
+                            _this3.setState({ title: e.target.value });
+                        },
+                        ref: function ref(input) {
+                            _this3.titleInput = input;
+                        }
+                    }),
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        '\xA0'
+                    ),
+                    _react2.default.createElement(
+                        'button',
+                        { className: 'button is-primary', type: 'submit' },
+                        'Save'
+                    )
+                );
+            } else {
+                body = _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        'Do you want to update the current configuration,',
+                        _react2.default.createElement(
+                            'strong',
+                            null,
+                            lastSave.title
+                        ),
+                        ', or save as a new configuration?'
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        '\xA0'
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        null,
+                        _react2.default.createElement(
+                            'button',
+                            {
+                                className: 'button is-pulled-left',
+                                onClick: function onClick() {
+                                    _this3.setState({ overwrite: true });
+                                }
+                            },
+                            'Save as new'
+                        ),
+                        _react2.default.createElement(
+                            'button',
+                            {
+                                className: 'button is-primary is-pulled-right',
+                                onClick: function onClick() {
+                                    onUpdate(runConfiguration, lastSave);
+                                }
+                            },
+                            'Update current'
+                        )
+                    ),
+                    _react2.default.createElement('div', { style: { clear: 'both' } })
+                );
+            }
+
+            return _react2.default.createElement(
+                _ModalCard2.default,
+                { title: 'Save Run Configuration', active: showModal, onHide: function onHide() {
+                        return _onHide();
+                    } },
+                body
+            );
+        }
+    }]);
+
+    return SaveModal;
+}(_react2.default.Component);
+
+SaveModal.propTypes = {
+    showModal: _propTypes2.default.bool.isRequired,
+    lastSave: _propTypes2.default.object,
+    runConfiguration: _propTypes2.default.object.isRequired,
+    onHide: _propTypes2.default.func.isRequired,
+    onSave: _propTypes2.default.func.isRequired,
+    onUpdate: _propTypes2.default.func.isRequired
+};
+
+exports.default = SaveModal;
+
+},{"prop-types":166,"react":201,"seedsource/components/ModalCard":65}],76:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var SavedRun = function SavedRun(_ref) {
+    var active = _ref.active,
+        save = _ref.save,
+        _onClick = _ref.onClick,
+        onLoad = _ref.onLoad,
+        onDelete = _ref.onDelete;
+
+    var className = 'configuration-item';
+    var modified = save.modified,
+        title = save.title;
+
+
+    if (active) {
+        className += ' focused';
+    }
+
+    return _react2.default.createElement(
+        'div',
+        {
+            className: className,
+            onClick: function onClick() {
+                _onClick();
+            }
+        },
+        _react2.default.createElement(
+            'div',
+            { className: 'is-pulled-right buttons' },
+            _react2.default.createElement(
+                'button',
+                {
+                    onClick: function onClick() {
+                        if (confirm('Load this saved configuration? This will replace your current settings.')) {
+                            onLoad(save);
+                        }
+                    }
+                },
+                _react2.default.createElement('span', { className: 'icon-load-12', 'aria-hidden': 'true' }),
+                ' Load'
+            ),
+            _react2.default.createElement(
+                'button',
+                {
+                    onClick: function onClick() {
+                        if (confirm('Delete this saved configuration?')) {
+                            onDelete(save.uuid);
+                        }
+                    }
+                },
+                _react2.default.createElement('span', { className: 'icon-trash-12', 'aria-hidden': 'true' }),
+                ' Delete'
+            )
+        ),
+        _react2.default.createElement(
+            'div',
+            { className: 'save-title' },
+            title
+        ),
+        _react2.default.createElement(
+            'div',
+            { className: 'save-date' },
+            'Last modified: ',
+            modified.getMonth() + 1,
+            '/',
+            modified.getDate(),
+            '/',
+            modified.getYear()
+        ),
+        _react2.default.createElement('div', { className: 'clear-fix' })
+    );
+};
+
+SavedRun.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    save: _propTypes2.default.object.isRequired,
+    onClick: _propTypes2.default.func.isRequired,
+    onLoad: _propTypes2.default.func.isRequired,
+    onDelete: _propTypes2.default.func.isRequired
+};
+
+exports.default = SavedRun;
+
+},{"prop-types":166,"react":201}],77:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _SavedRun = require('seedsource/containers/SavedRun');
+
+var _SavedRun2 = _interopRequireDefault(_SavedRun);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var SavedRuns = function (_React$Component) {
+    _inherits(SavedRuns, _React$Component);
+
+    function SavedRuns(props) {
+        _classCallCheck(this, SavedRuns);
+
+        var _this = _possibleConstructorReturn(this, (SavedRuns.__proto__ || Object.getPrototypeOf(SavedRuns)).call(this, props));
+
+        _this.state = { activeSave: null };
+        return _this;
+    }
+
+    _createClass(SavedRuns, [{
+        key: 'componentDidMount',
+        value: function componentDidMount() {
+            this.props.onLoad();
+        }
+    }, {
+        key: 'componentWillUpdate',
+        value: function componentWillUpdate(_ref) {
+            var isLoggedIn = _ref.isLoggedIn;
+
+            if (this.props.isLoggedIn !== isLoggedIn) {
+                this.props.onLoad();
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this2 = this;
+
+            var _props = this.props,
+                saves = _props.saves,
+                isLoggedIn = _props.isLoggedIn;
+            var activeSave = this.state.activeSave;
+
+
+            if (!isLoggedIn) {
+                return _react2.default.createElement(
+                    'article',
+                    { className: 'message is-dark' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'message-body' },
+                        'You may create an account to save and retrieve your runs. Click on the "Account" tab in the upper right to login or create an account..'
+                    )
+                );
+            }
+
+            if (saves.length == 0) {
+                return _react2.default.createElement(
+                    'div',
+                    null,
+                    'You currently have no saved runs.'
+                );
+            }
+
+            return _react2.default.createElement(
+                'div',
+                { className: 'configuration-list' },
+                saves.map(function (item) {
+                    return _react2.default.createElement(_SavedRun2.default, {
+                        key: item.uuid,
+                        save: item,
+                        active: activeSave === item.uuid,
+                        onClick: function onClick() {
+                            _this2.setState({ activeSave: item.uuid });
+                        }
+                    });
+                })
+            );
+        }
+    }]);
+
+    return SavedRuns;
+}(_react2.default.Component);
+
+SavedRuns.propTypes = {
+    saves: _propTypes2.default.array.isRequired,
+    isLoggedIn: _propTypes2.default.bool.isRequired,
+    onLoad: _propTypes2.default.func.isRequired
+};
+
+exports.default = SavedRuns;
+
+},{"prop-types":166,"react":201,"seedsource/containers/SavedRun":109}],78:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var getZoneLabel = function getZoneLabel(zone) {
+    if (zone === undefined) {
+        return null;
+    }
+
+    var label = zone.name;
+
+    if (zone.elevation_band) {
+        label += ", " + zone.elevation_band[0] + "' - " + zone.elevation_band[1] + "'";
+    }
+
+    return label;
+};
+
+var SeedZoneChooser = function SeedZoneChooser(_ref) {
+    var method = _ref.method,
+        pointIsValid = _ref.pointIsValid,
+        selected = _ref.selected,
+        zones = _ref.zones,
+        isFetchingZones = _ref.isFetchingZones,
+        onZoneChange = _ref.onZoneChange;
+
+    if (method !== 'seedzone') {
+        return null;
+    }
+
+    var noZoneLabel = pointIsValid ? 'No zones at this location...' : 'Select a location...';
+
+    var content = _react2.default.createElement(
+        'div',
+        { className: 'select' },
+        _react2.default.createElement(
+            'select',
+            { disabled: true },
+            _react2.default.createElement(
+                'option',
+                null,
+                noZoneLabel
+            )
+        )
+    );
+
+    if (zones.length) {
+        content = _react2.default.createElement(
+            'div',
+            { className: 'select' },
+            _react2.default.createElement(
+                'select',
+                {
+                    value: selected,
+                    disabled: isFetchingZones,
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        onZoneChange(e.target.value);
+                    }
+                },
+                zones.map(function (item) {
+                    return _react2.default.createElement(
+                        'option',
+                        { value: item.zone_uid, key: item.id },
+                        getZoneLabel(item)
+                    );
+                })
+            )
+        );
+    }
+
+    return _react2.default.createElement(
+        'div',
+        null,
+        _react2.default.createElement(
+            'h5',
+            { className: 'title is-5 is-marginless' },
+            'Select zone'
+        ),
+        content
+    );
+};
+
+SeedZoneChooser.propTypes = {
+    selected: _propTypes2.default.string,
+    method: _propTypes2.default.string.isRequired,
+    zones: _propTypes2.default.array.isRequired,
+    pointIsValid: _propTypes2.default.bool.isRequired,
+    species: _propTypes2.default.string.isRequired,
+    isFetchingZones: _propTypes2.default.bool.isRequired,
+    onZoneChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = SeedZoneChooser;
+
+},{"prop-types":166,"react":201}],79:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2911,6 +7551,14 @@ var _react2 = _interopRequireDefault(_react);
 var _About = require('seedsource/components/About');
 
 var _About2 = _interopRequireDefault(_About);
+
+var _RunConfiguration = require('seedsource/containers/RunConfiguration');
+
+var _RunConfiguration2 = _interopRequireDefault(_RunConfiguration);
+
+var _SavedRuns = require('seedsource/containers/SavedRuns');
+
+var _SavedRuns2 = _interopRequireDefault(_SavedRuns);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2986,6 +7634,17 @@ var Sidebar = function (_React$Component) {
                                     } },
                                 'Saved Runs'
                             )
+                        ),
+                        _react2.default.createElement(
+                            'li',
+                            { className: (activeTab === 'map' ? 'is-active' : null) + ' is-hidden-tablet' },
+                            _react2.default.createElement(
+                                'a',
+                                { onClick: function onClick() {
+                                        return _this2.selectTab('map');
+                                    } },
+                                'Map'
+                            )
                         )
                     )
                 ),
@@ -2994,8 +7653,16 @@ var Sidebar = function (_React$Component) {
                     { className: 'tab-content ' + (activeTab !== 'about' ? 'is-hidden' : '') },
                     _react2.default.createElement(_About2.default, null)
                 ),
-                _react2.default.createElement('div', { className: 'tab-content ' + (activeTab !== 'tool' ? 'is-hidden' : '') }),
-                _react2.default.createElement('div', { className: 'tab-content ' + (activeTab !== 'saves' ? 'is-hidden' : '') })
+                _react2.default.createElement(
+                    'div',
+                    { className: 'tab-content ' + (activeTab !== 'tool' ? 'is-hidden' : '') },
+                    _react2.default.createElement(_RunConfiguration2.default, null)
+                ),
+                _react2.default.createElement(
+                    'div',
+                    { className: 'tab-content ' + (activeTab !== 'saves' ? 'is-hidden' : '') },
+                    _react2.default.createElement(_SavedRuns2.default, null)
+                )
             );
         }
     }]);
@@ -3005,7 +7672,947 @@ var Sidebar = function (_React$Component) {
 
 exports.default = Sidebar;
 
-},{"react":113,"seedsource/components/About":38}],43:[function(require,module,exports){
+},{"react":201,"seedsource/components/About":45,"seedsource/containers/RunConfiguration":106,"seedsource/containers/SavedRuns":110}],80:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ModalCard = require('seedsource/components/ModalCard');
+
+var _ModalCard2 = _interopRequireDefault(_ModalCard);
+
+var _io = require('../../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var SignupModal = function (_React$Component) {
+    _inherits(SignupModal, _React$Component);
+
+    function SignupModal(props) {
+        _classCallCheck(this, SignupModal);
+
+        var _this = _possibleConstructorReturn(this, (SignupModal.__proto__ || Object.getPrototypeOf(SignupModal)).call(this, props));
+
+        _this.state = {
+            emailText: null, passwordText: null, confirmText: null, loading: false, error: null, emailError: false
+        };
+        return _this;
+    }
+
+    _createClass(SignupModal, [{
+        key: 'show',
+        value: function show() {
+            var _this2 = this;
+
+            this.reset();
+            this.modal.show();
+
+            setTimeout(function () {
+                _this2.emailInput.focus();
+            }, 1);
+        }
+    }, {
+        key: 'hide',
+        value: function hide() {
+            this.modal.hide();
+            this.reset();
+        }
+    }, {
+        key: 'reset',
+        value: function reset() {
+            this.setState({
+                emailText: null, passwordText: null, confirmText: null, loading: false, error: null, emailError: false
+            });
+        }
+    }, {
+        key: 'submit',
+        value: function submit() {
+            var _this3 = this;
+
+            var _state = this.state,
+                emailText = _state.emailText,
+                passwordText = _state.passwordText,
+                confirmText = _state.confirmText;
+            var onSignup = this.props.onSignup;
+
+
+            if (passwordText !== confirmText) {
+                this.setState({ error: "Passwords don't match" });
+                return;
+            }
+
+            if (emailText && passwordText) {
+                this.setState({ loading: true, error: null, emailError: false });
+
+                (0, _io.post)('/accounts/create-account/', { email: emailText, password: passwordText }).then(function (response) {
+                    var status = response.status;
+
+
+                    if (status === 400) {
+                        return response.json();
+                    }
+
+                    if (status < 200 || status >= 300) {
+                        throw new Error('Sorry, there was an unexpected error while creating your account.');
+                    }
+
+                    onSignup(emailText);
+                    _this3.hide();
+                }).then(function (json) {
+                    if (json) {
+                        if (json.email) {
+                            _this3.setState({ emailError: true });
+                            throw new Error(json.email);
+                        }
+
+                        throw new Error('Sorry, there was an unexpected error while creating your account.');
+                    }
+                }).catch(function (err) {
+                    console.log(err);
+                    _this3.setState({ loading: false, error: err.message });
+                });
+            }
+        }
+    }, {
+        key: 'render',
+        value: function render() {
+            var _this4 = this;
+
+            var _state2 = this.state,
+                emailText = _state2.emailText,
+                passwordText = _state2.passwordText,
+                confirmText = _state2.confirmText,
+                loading = _state2.loading,
+                error = _state2.error,
+                emailError = _state2.emailError;
+
+
+            var errorNode = null;
+            if (error !== null) {
+                errorNode = _react2.default.createElement(
+                    'article',
+                    { className: 'message is-danger' },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'message-body' },
+                        error
+                    )
+                );
+            }
+
+            return _react2.default.createElement(
+                _ModalCard2.default,
+                { ref: function ref(input) {
+                        _this4.modal = input;
+                    }, title: 'Create Account' },
+                errorNode,
+                _react2.default.createElement(
+                    'form',
+                    {
+                        onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+                            _this4.submit();
+                        }
+                    },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                ref: function ref(input) {
+                                    _this4.emailInput = input;
+                                },
+                                className: (emailError ? 'is-danger' : '') + ' input',
+                                type: 'text',
+                                placeholder: 'Email address',
+                                name: 'username',
+                                value: emailText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ emailText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                className: 'input',
+                                type: 'password',
+                                placeholder: 'Password',
+                                name: 'password',
+                                value: passwordText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ passwordText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement('input', {
+                                className: 'input',
+                                type: 'password',
+                                placeholder: 'Confirm password',
+                                name: 'password',
+                                value: confirmText || '',
+                                onChange: function onChange(e) {
+                                    _this4.setState({ confirmText: e.target.value });
+                                },
+                                disabled: loading
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'field' },
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'control' },
+                            _react2.default.createElement(
+                                'button',
+                                {
+                                    className: (loading ? 'is-loading ' : '') + 'button is-fullwidth is-primary',
+                                    onClick: function onClick() {
+                                        return _this4.submit();
+                                    },
+                                    disabled: loading
+                                },
+                                'Create Account'
+                            )
+                        )
+                    )
+                )
+            );
+        }
+    }]);
+
+    return SignupModal;
+}(_react2.default.Component);
+
+SignupModal.propTypes = {
+    onSignup: _propTypes2.default.func.isRequired
+};
+
+exports.default = SignupModal;
+
+},{"../../io":26,"prop-types":166,"react":201,"seedsource/components/ModalCard":65}],81:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var SpeciesChooser = function SpeciesChooser(_ref) {
+    var method = _ref.method,
+        species = _ref.species,
+        onSpeciesChange = _ref.onSpeciesChange;
+
+    if (method !== 'seedzone') {
+        return null;
+    }
+
+    return _react2.default.createElement(
+        'div',
+        null,
+        _react2.default.createElement(
+            'h5',
+            { className: 'title is-5 is-marginless' },
+            'Select a species'
+        ),
+        _react2.default.createElement(
+            'div',
+            { className: 'select' },
+            _react2.default.createElement(
+                'select',
+                {
+                    value: species,
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        onSpeciesChange(e.target.value);
+                    }
+                },
+                _react2.default.createElement(
+                    'option',
+                    { value: 'generic' },
+                    'Generic'
+                ),
+                _config.species.map(function (item) {
+                    return _react2.default.createElement(
+                        'option',
+                        { value: item.name, key: item.name },
+                        item.label
+                    );
+                })
+            )
+        )
+    );
+};
+
+SpeciesChooser.propTypes = {
+    method: _propTypes2.default.string.isRequired,
+    species: _propTypes2.default.string.isRequired,
+    onSpeciesChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = SpeciesChooser;
+
+},{"../../config":24,"prop-types":166,"react":201}],82:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _MethodButton = require('seedsource/containers/MethodButton');
+
+var _MethodButton2 = _interopRequireDefault(_MethodButton);
+
+var _SpeciesChooser = require('seedsource/containers/SpeciesChooser');
+
+var _SpeciesChooser2 = _interopRequireDefault(_SpeciesChooser);
+
+var _SeedZoneChooser = require('seedsource/containers/SeedZoneChooser');
+
+var _SeedZoneChooser2 = _interopRequireDefault(_SeedZoneChooser);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var TransferStep = function TransferStep(_ref) {
+    var number = _ref.number,
+        active = _ref.active,
+        objective = _ref.objective,
+        method = _ref.method,
+        center = _ref.center,
+        onCenterChange = _ref.onCenterChange;
+
+    if (!active) {
+        var label = void 0;
+
+        if (method === 'seedzone') {
+            label = 'Transfer limits based on seed zone, climatic center based on the selected location';
+
+            if (center === 'zone') {
+                label = 'Transfer limits and climatic center based on seed zone';
+            }
+        } else {
+            label = 'Custom transfer limits, climatic center based on the selected location';
+        }
+
+        return _react2.default.createElement(
+            _ConfigurationStep2.default,
+            { title: 'Select transfer limit method', number: number, name: 'transfer', active: false },
+            _react2.default.createElement(
+                'div',
+                null,
+                label
+            )
+        );
+    }
+
+    var centerNode = null;
+
+    if (method === 'seedzone' && objective === 'sites') {
+        centerNode = _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+                'div',
+                { className: 'is-size-7' },
+                _react2.default.createElement(
+                    'em',
+                    null,
+                    'Which should be used as the climatic center?'
+                )
+            ),
+            _react2.default.createElement(
+                'div',
+                { className: 'control' },
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'label',
+                        { className: 'radio' },
+                        _react2.default.createElement('input', {
+                            type: 'radio',
+                            checked: center === 'point',
+                            onChange: function onChange() {
+                                return onCenterChange('point');
+                            }
+                        }),
+                        'The value at the selected location'
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'label',
+                        { className: 'radio' },
+                        _react2.default.createElement('input', {
+                            type: 'radio',
+                            checked: center === 'zone',
+                            onChange: function onChange() {
+                                return onCenterChange('zone');
+                            }
+                        }),
+                        'The climatic center of the zone'
+                    )
+                )
+            ),
+            _react2.default.createElement(
+                'div',
+                null,
+                '\xA0'
+            )
+        );
+    }
+
+    return _react2.default.createElement(
+        _ConfigurationStep2.default,
+        { title: 'Select transfer limit method', number: number, name: 'transfer', active: true },
+        _react2.default.createElement(
+            'div',
+            { className: 'tabs is-toggle is-small' },
+            _react2.default.createElement(
+                'ul',
+                null,
+                _react2.default.createElement(
+                    _MethodButton2.default,
+                    { name: 'custom' },
+                    'Custom'
+                ),
+                _react2.default.createElement(
+                    _MethodButton2.default,
+                    { name: 'seedzone' },
+                    'Zone'
+                )
+            )
+        ),
+        centerNode,
+        _react2.default.createElement(_SpeciesChooser2.default, null),
+        _react2.default.createElement('div', { style: { height: '10px' } }),
+        _react2.default.createElement(_SeedZoneChooser2.default, null)
+    );
+};
+
+TransferStep.shouldRender = function () {
+    return true;
+};
+
+TransferStep.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    objective: _propTypes2.default.string.isRequired,
+    method: _propTypes2.default.string.isRequired,
+    center: _propTypes2.default.string.isRequired,
+    onCenterChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = TransferStep;
+
+},{"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/MethodButton":99,"seedsource/containers/SeedZoneChooser":111,"seedsource/containers/SpeciesChooser":112}],83:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _reactTooltip = require('react-tooltip');
+
+var _reactTooltip2 = _interopRequireDefault(_reactTooltip);
+
+var _EditableLabel = require('seedsource/components/EditableLabel');
+
+var _EditableLabel2 = _interopRequireDefault(_EditableLabel);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var Variable = function Variable(props) {
+    var active = props.active,
+        name = props.name,
+        label = props.label,
+        value = props.value,
+        zoneCenter = props.zoneCenter,
+        transfer = props.transfer,
+        avgTransfer = props.avgTransfer,
+        transferIsModified = props.transferIsModified,
+        unit = props.unit,
+        units = props.units,
+        method = props.method,
+        centerValue = props.centerValue,
+        onTransferChange = props.onTransferChange,
+        onResetTransfer = props.onResetTransfer,
+        onToggle = props.onToggle,
+        onRemove = props.onRemove;
+
+
+    var center = void 0;
+    if (centerValue === null) {
+        center = _react2.default.createElement(
+            'span',
+            { className: 'has-text-grey-light' },
+            '--'
+        );
+    } else {
+        center = _react2.default.createElement(
+            'span',
+            null,
+            centerValue,
+            ' ',
+            units[unit].label
+        );
+    }
+
+    var climaticCenter = null;
+    if (zoneCenter !== null) {
+        climaticCenter = _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+                'span',
+                { className: 'tooltip-label' },
+                'Zone climatic center:'
+            ),
+            _react2.default.createElement(
+                'strong',
+                null,
+                zoneCenter,
+                ' ',
+                units[unit].label
+            )
+        );
+    }
+
+    return _react2.default.createElement(
+        'tr',
+        { className: active ? "visible" : "", 'data-tip': true, 'data-for': name + "_Tooltip" },
+        _react2.default.createElement(
+            'td',
+            null,
+            _react2.default.createElement('a', {
+                type: 'button',
+                className: 'delete',
+                onClick: function onClick(e) {
+                    e.stopPropagation();
+                    onRemove();
+                }
+            })
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            _react2.default.createElement(
+                'div',
+                { className: "modify-status " + (transferIsModified ? "modified" : "") },
+                '\xA0'
+            ),
+            _react2.default.createElement(
+                'strong',
+                null,
+                name
+            )
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            center
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            transferIsModified && method ? _react2.default.createElement(
+                'div',
+                { className: 'transfer-reset', onClick: function onClick() {
+                        return onResetTransfer();
+                    } },
+                'reset'
+            ) : null,
+            _react2.default.createElement(
+                _EditableLabel2.default,
+                { value: transfer, onChange: function onChange(value) {
+                        return onTransferChange(value, unit, units);
+                    } },
+                '\xA0',
+                units[unit].label
+            )
+        ),
+        _react2.default.createElement(
+            'td',
+            null,
+            _react2.default.createElement('span', {
+                className: 'visibility-toggle icon-eye-16',
+                onClick: function onClick(e) {
+                    e.stopPropagation();
+                    onToggle();
+                }
+            }),
+            _react2.default.createElement(
+                _reactTooltip2.default,
+                { id: name + "_Tooltip", className: 'variable-tooltip', place: 'right', effect: 'solid' },
+                _react2.default.createElement(
+                    'h5',
+                    { className: 'title is-5 margin-bottom-5' },
+                    name,
+                    ': ',
+                    label
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'span',
+                        { className: 'tooltip-label' },
+                        'Value at point:'
+                    ),
+                    ' ',
+                    _react2.default.createElement(
+                        'strong',
+                        null,
+                        value
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'span',
+                        { className: 'tooltip-label' },
+                        'Transfer limit (+/-):'
+                    ),
+                    _react2.default.createElement(
+                        'strong',
+                        null,
+                        transfer,
+                        ' ',
+                        units[unit].label,
+                        ' ',
+                        transferIsModified ? "(modified)" : ""
+                    )
+                ),
+                _react2.default.createElement(
+                    'div',
+                    null,
+                    _react2.default.createElement(
+                        'span',
+                        { className: 'tooltip-label' },
+                        'Avg. transfer limit for zone set:'
+                    ),
+                    _react2.default.createElement(
+                        'strong',
+                        null,
+                        avgTransfer,
+                        ' ',
+                        units[unit].label
+                    )
+                ),
+                climaticCenter
+            )
+        )
+    );
+};
+
+Variable.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    name: _propTypes2.default.string.isRequired,
+    label: _propTypes2.default.string.isRequired,
+    value: _propTypes2.default.oneOfType([_propTypes2.default.number, _propTypes2.default.string]),
+    zoneCenter: _propTypes2.default.string,
+    transfer: _propTypes2.default.string.isRequired,
+    avgTransfer: _propTypes2.default.string.isRequired,
+    transferIsModified: _propTypes2.default.bool.isRequired,
+    unit: _propTypes2.default.string.isRequired,
+    units: _propTypes2.default.object,
+    method: _propTypes2.default.string.isRequired,
+    centerValue: _propTypes2.default.string,
+    onTransferChange: _propTypes2.default.func.isRequired,
+    onResetTransfer: _propTypes2.default.func.isRequired,
+    onToggle: _propTypes2.default.func.isRequired,
+    onRemove: _propTypes2.default.func.isRequired
+};
+
+exports.default = Variable;
+
+},{"prop-types":166,"react":201,"react-tooltip":193,"seedsource/components/EditableLabel":55}],84:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _ConfigurationStep = require('seedsource/containers/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+var _UnitButton = require('seedsource/containers/UnitButton');
+
+var _UnitButton2 = _interopRequireDefault(_UnitButton);
+
+var _Variables = require('seedsource/containers/Variables');
+
+var _Variables2 = _interopRequireDefault(_Variables);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var VariableStep = function VariableStep(_ref) {
+    var number = _ref.number,
+        active = _ref.active,
+        variables = _ref.variables;
+
+    if (!active) {
+        var content = _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+                'em',
+                null,
+                'Click to add variables'
+            )
+        );
+
+        if (variables.length > 0) {
+            content = _react2.default.createElement(_Variables2.default, { edit: false });
+        }
+
+        return _react2.default.createElement(
+            _ConfigurationStep2.default,
+            { title: 'Select climate variables', number: number, name: 'variables', active: false },
+            content
+        );
+    }
+
+    return _react2.default.createElement(
+        _ConfigurationStep2.default,
+        { title: 'Select climate variables', number: number, name: 'variables', active: true },
+        _react2.default.createElement(
+            'div',
+            { className: 'margin-bottom-10' },
+            _react2.default.createElement(
+                'strong',
+                null,
+                'Units: '
+            ),
+            _react2.default.createElement(
+                'div',
+                { className: 'tabs is-toggle is-inline-block is-small align-middle' },
+                _react2.default.createElement(
+                    'ul',
+                    null,
+                    _react2.default.createElement(
+                        _UnitButton2.default,
+                        { name: 'metric' },
+                        'Metric'
+                    ),
+                    _react2.default.createElement(
+                        _UnitButton2.default,
+                        { name: 'imperial' },
+                        'Imperial'
+                    )
+                )
+            )
+        ),
+        _react2.default.createElement(_Variables2.default, { edit: true })
+    );
+};
+
+VariableStep.shouldRender = function () {
+    return true;
+};
+
+VariableStep.propTypes = {
+    active: _propTypes2.default.bool.isRequired,
+    number: _propTypes2.default.number.isRequired,
+    variables: _propTypes2.default.array.isRequired
+};
+
+exports.default = VariableStep;
+
+},{"prop-types":166,"react":201,"seedsource/containers/ConfigurationStep":89,"seedsource/containers/UnitButton":114,"seedsource/containers/Variables":117}],85:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _Variable = require('seedsource/containers/Variable');
+
+var _Variable2 = _interopRequireDefault(_Variable);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var Variables = function Variables(_ref) {
+    var variables = _ref.variables,
+        unusedVariables = _ref.unusedVariables,
+        edit = _ref.edit,
+        _onChange = _ref.onChange;
+
+    var table = null;
+
+    if (variables.length > 0) {
+        table = _react2.default.createElement(
+            'table',
+            { className: 'table is-fullwidth' },
+            _react2.default.createElement(
+                'thead',
+                { className: 'align-bottom is-size-7 has-text-weight-bold' },
+                _react2.default.createElement(
+                    'tr',
+                    null,
+                    _react2.default.createElement('th', null),
+                    _react2.default.createElement(
+                        'th',
+                        null,
+                        _react2.default.createElement(
+                            'div',
+                            { className: 'modify-status' },
+                            '\xA0'
+                        ),
+                        'Name'
+                    ),
+                    _react2.default.createElement(
+                        'th',
+                        null,
+                        'Center'
+                    ),
+                    _react2.default.createElement(
+                        'th',
+                        null,
+                        'Transfer limit (+/-)'
+                    ),
+                    _react2.default.createElement('th', null)
+                )
+            ),
+            _react2.default.createElement(
+                'tbody',
+                null,
+                variables.map(function (item, index) {
+                    return _react2.default.createElement(_Variable2.default, { variable: item, index: index, key: item.name, edit: edit });
+                })
+            )
+        );
+    }
+    return _react2.default.createElement(
+        'div',
+        { className: "variables-list" + (edit ? " edit" : "") },
+        table,
+        _react2.default.createElement(
+            'div',
+            { className: 'select is-fullwidth' },
+            _react2.default.createElement(
+                'select',
+                {
+                    className: '' + (edit ? '' : ' is-hidden'),
+                    value: '',
+                    onChange: function onChange(e) {
+                        e.preventDefault();
+                        _onChange(e.target.value, variables);
+                    }
+                },
+                _react2.default.createElement(
+                    'option',
+                    { value: 'none' },
+                    'Add a variable...'
+                ),
+                unusedVariables.map(function (item) {
+                    return _react2.default.createElement(
+                        'option',
+                        { value: item.name, key: item.name },
+                        item.name,
+                        ': ',
+                        item.label
+                    );
+                })
+            )
+        )
+    );
+};
+
+Variables.propTypes = {
+    variables: _propTypes2.default.array.isRequired,
+    unusedVariables: _propTypes2.default.array.isRequired,
+    onChange: _propTypes2.default.func.isRequired
+};
+
+exports.default = Variables;
+
+},{"prop-types":166,"react":201,"seedsource/containers/Variable":115}],86:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -3013,7 +8620,490 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = window.SS_CONFIG;
 
-},{}],44:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _AccountMenu = require('seedsource/components/AccountMenu');
+
+var _AccountMenu2 = _interopRequireDefault(_AccountMenu);
+
+var _auth = require('../../actions/auth');
+
+var _io = require('../../io');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var auth = _ref.auth;
+    return auth;
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onLogin: function onLogin(email) {
+            dispatch((0, _auth.login)(email));
+        },
+
+        onLogout: function onLogout() {
+            (0, _io.get)('/accounts/logout/').then(function () {
+                dispatch((0, _auth.logout)());
+            });
+        },
+
+        checkLogin: function checkLogin() {
+            (0, _io.get)('/accounts/user-info/').then(function (response) {
+                if (response.status < 200 || response.status >= 300) {
+                    throw new Exception();
+                }
+
+                return response.json();
+            }).then(function (json) {
+                return dispatch((0, _auth.login)(json.email));
+            }).catch(function () {
+                return dispatch((0, _auth.logout)());
+            });
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_AccountMenu2.default);
+
+},{"../../actions/auth":1,"../../io":26,"react-redux":180,"seedsource/components/AccountMenu":46}],88:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _ClimateStep = require('seedsource/components/ClimateStep');
+
+var _ClimateStep2 = _interopRequireDefault(_ClimateStep);
+
+var _climate = require('../../actions/climate');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var climate = runConfiguration.climate;
+
+
+    return { climate: climate };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onChange: function onChange(type, value, climate) {
+            switch (type) {
+                case 'year':
+                    dispatch((0, _climate.selectClimateYear)(value, climate));
+                    break;
+                case 'model':
+                    dispatch((0, _climate.selectClimateModel)(value, climate));
+                    break;
+            }
+        }
+    };
+};
+
+var container = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_ClimateStep2.default);
+
+container.shouldRender = function () {
+    return true;
+};
+
+exports.default = container;
+
+},{"../../actions/climate":2,"react-redux":180,"seedsource/components/ClimateStep":49}],89:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _step = require('../../actions/step');
+
+var _ConfigurationStep = require('seedsource/components/ConfigurationStep');
+
+var _ConfigurationStep2 = _interopRequireDefault(_ConfigurationStep);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref) {
+    var name = _ref.name;
+
+    return {
+        onClick: function onClick() {
+            dispatch((0, _step.selectStep)(name));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(null, mapDispatchToProps)(_ConfigurationStep2.default);
+
+},{"../../actions/step":15,"react-redux":180,"seedsource/components/ConfigurationStep":50}],90:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _Constraint = require('seedsource/components/Constraint');
+
+var _Constraint2 = _interopRequireDefault(_Constraint);
+
+var _constraints = require('../../actions/constraints');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps() {
+    return {};
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onRemove: function onRemove(index) {
+            dispatch((0, _constraints.removeConstraint)(index));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_Constraint2.default);
+
+},{"../../actions/constraints":3,"react-redux":180,"seedsource/components/Constraint":51}],91:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _ConstraintStep = require('../components/ConstraintStep');
+
+var _ConstraintStep2 = _interopRequireDefault(_ConstraintStep);
+
+var _constraints = require('../../actions/constraints');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var constraints = runConfiguration.constraints;
+
+
+    return { constraints: constraints };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onChange: function onChange(constraint) {
+            dispatch((0, _constraints.addConstraint)(constraint));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_ConstraintStep2.default);
+
+},{"../../actions/constraints":3,"../components/ConstraintStep":52,"react-redux":180}],92:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _DistanceConstraint = require('seedsource/components/DistanceConstraint');
+
+var _DistanceConstraint2 = _interopRequireDefault(_DistanceConstraint);
+
+var _constraints = require('../../actions/constraints');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref, _ref2) {
+    var runConfiguration = _ref.runConfiguration;
+    var values = _ref2.values;
+    var unit = runConfiguration.unit,
+        point = runConfiguration.point;
+    var x = point.x,
+        y = point.y;
+    var range = values.range;
+
+
+    if (unit === 'imperial') {
+        range /= 1.60934;
+    }
+
+    var value = x === '' || y === '' ? '--' : y.toFixed(1) + ', ' + x.toFixed(1);
+    range = Math.round(range);
+
+    return { unit: unit, value: value, range: range };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onRangeChange: function onRangeChange(index, range, unit) {
+            var rangeFloat = parseFloat(range);
+
+            if (!isNaN(rangeFloat)) {
+                if (unit === 'imperial') {
+                    rangeFloat *= 1.60934;
+                }
+
+                dispatch((0, _constraints.updateConstraintValues)(index, { range: rangeFloat }));
+            }
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_DistanceConstraint2.default);
+
+},{"../../actions/constraints":3,"react-redux":180,"seedsource/components/DistanceConstraint":53}],93:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _ElevationConstraint = require('seedsource/components/ElevationConstraint');
+
+var _ElevationConstraint2 = _interopRequireDefault(_ElevationConstraint);
+
+var _constraints = require('../../actions/constraints');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref, _ref2) {
+    var runConfiguration = _ref.runConfiguration;
+    var values = _ref2.values;
+    var unit = runConfiguration.unit,
+        point = runConfiguration.point;
+    var range = values.range;
+
+    var value = point.elevation;
+
+    if (value === null) {
+        value = '--';
+    } else {
+        if (unit === 'imperial') {
+            value /= 0.3048;
+            range /= 0.3048;
+        }
+
+        value = Math.round(value);
+        range = Math.round(range);
+    }
+
+    return { unit: unit, value: value, range: range };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onRangeChange: function onRangeChange(index, range, unit) {
+            var rangeFloat = parseFloat(range);
+
+            if (!isNaN(rangeFloat)) {
+                if (unit === 'imperial') {
+                    rangeFloat *= 0.3048;
+                }
+
+                dispatch((0, _constraints.updateConstraintValues)(index, { range: rangeFloat }));
+            }
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_ElevationConstraint2.default);
+
+},{"../../actions/constraints":3,"react-redux":180,"seedsource/components/ElevationConstraint":56}],94:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _ErrorModal = require('seedsource/components/ErrorModal');
+
+var _ErrorModal2 = _interopRequireDefault(_ErrorModal);
+
+var _error = require('../../actions/error');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var error = _ref.error;
+
+    if (error === null) {
+        return { show: false, title: '', message: '', debugInfo: null };
+    }
+
+    var title = error.title,
+        message = error.message,
+        debugInfo = error.debugInfo;
+
+
+    return {
+        show: true,
+        title: title,
+        message: message,
+        debugInfo: debugInfo
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onHide: function onHide() {
+            return dispatch((0, _error.clearError)());
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_ErrorModal2.default);
+
+},{"../../actions/error":4,"react-redux":180,"seedsource/components/ErrorModal":57}],95:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _LatitudeConstraint = require('seedsource/components/LatitudeConstraint');
+
+var _LatitudeConstraint2 = _interopRequireDefault(_LatitudeConstraint);
+
+var _constraints = require('../../actions/constraints');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref, _ref2) {
+    var runConfiguration = _ref.runConfiguration;
+    var values = _ref2.values;
+    var y = runConfiguration.point.y;
+    var range = values.range;
+
+
+    var value = y !== '' ? y.toFixed(2) : '--';
+    range = range.toFixed(2);
+
+    return { value: value, range: range };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onRangeChange: function onRangeChange(index, range) {
+            var rangeFloat = parseFloat(range);
+
+            if (!isNaN(rangeFloat)) {
+                dispatch((0, _constraints.updateConstraintValues)(index, { range: rangeFloat }));
+            }
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_LatitudeConstraint2.default);
+
+},{"../../actions/constraints":3,"react-redux":180,"seedsource/components/LatitudeConstraint":59}],96:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _LocationStep = require('seedsource/components/LocationStep');
+
+var _LocationStep2 = _interopRequireDefault(_LocationStep);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var objective = runConfiguration.objective,
+        point = runConfiguration.point;
+    var elevation = point.elevation;
+
+
+    if (elevation !== null) {
+        elevation = { ft: elevation / 0.3048, m: elevation };
+    }
+
+    return { objective: objective, point: point, elevation: elevation };
+};
+
+var container = (0, _reactRedux.connect)(mapStateToProps)(_LocationStep2.default);
+
+container.shouldRender = function () {
+    return true;
+};
+
+exports.default = container;
+
+},{"react-redux":180,"seedsource/components/LocationStep":60}],97:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _constraints = require('../../actions/constraints');
+
+var _LongitudeConstraint = require('seedsource/components/LongitudeConstraint');
+
+var _LongitudeConstraint2 = _interopRequireDefault(_LongitudeConstraint);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref, _ref2) {
+    var runConfiguration = _ref.runConfiguration;
+    var values = _ref2.values;
+    var x = runConfiguration.point.x;
+    var range = values.range;
+
+
+    var value = x !== '' ? x.toFixed(2) : '--';
+    range = range.toFixed(2);
+
+    return { value: value, range: range };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onRangeChange: function onRangeChange(index, range) {
+            var rangeFloat = parseFloat(range);
+
+            if (!isNaN(rangeFloat)) {
+                dispatch((0, _constraints.updateConstraintValues)(index, { range: rangeFloat }));
+            }
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_LongitudeConstraint2.default);
+
+},{"../../actions/constraints":3,"react-redux":180,"seedsource/components/LongitudeConstraint":62}],98:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3038,6 +9128,12 @@ require('leaflet-basemaps');
 
 require('leaflet-geonames/L.Control.Geonames');
 
+require('leaflet-zoombox/L.Control.ZoomBox');
+
+var _io = require('../../io');
+
+var io = _interopRequireWildcard(_io);
+
 var _config = require('../../config');
 
 var _map = require('../../actions/map');
@@ -3045,6 +9141,12 @@ var _map = require('../../actions/map');
 var _popup2 = require('../../actions/popup');
 
 var _point = require('../../actions/point');
+
+var _utils = require('../../utils');
+
+require('../../leaflet-controls');
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -3113,6 +9215,10 @@ var Map = function (_React$Component) {
             });
 
             this.map.zoomControl.setPosition('topright');
+
+            this.map.addControl(_leaflet2.default.control.zoomBox({
+                position: 'topright'
+            }));
 
             var geonamesControl = _leaflet2.default.control.geonames({
                 position: 'topright',
@@ -3229,7 +9335,7 @@ var Map = function (_React$Component) {
         key: 'updateVariableLayer',
         value: function updateVariableLayer(variable, objective, climate, region) {
             if (variable !== null) {
-                var layerUrl = '/tiles/' + getServiceName(variable, objective, climate, region) + '/{z}/{x}/{y}.png';
+                var layerUrl = '/tiles/' + (0, _utils.getServiceName)(variable, objective, climate, region) + '/{z}/{x}/{y}.png';
 
                 if (this.variableLayer === null) {
                     this.variableLayer = _leaflet2.default.tileLayer(layerUrl, { zIndex: 1, opacity: 1 }).addTo(this.map);
@@ -3406,38 +9512,6 @@ var Map = function (_React$Component) {
             }
         }
     }, {
-        key: 'updateTimeOverlay',
-        value: function updateTimeOverlay(variable, objective, climate) {
-            var overlayNode = document.getElementById('TimeOverlay');
-
-            if (variable === null) {
-                if (!overlayNode.classList.contains('hidden')) {
-                    overlayNode.classList.add('hidden');
-                }
-            } else {
-                if (overlayNode.classList.contains('hidden')) {
-                    overlayNode.classList.remove('hidden');
-                }
-
-                var selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot;
-                var time = selectedClimate.time,
-                    model = selectedClimate.model;
-
-                var labelKey = time;
-
-                if (time !== '1961_1990' && time !== '1981_2010') {
-                    labelKey += model;
-                }
-
-                var label = _config.timeLabels[labelKey];
-                var labelNode = document.getElementById('TimeLabel');
-
-                if (labelNode.innerHTML !== label) {
-                    labelNode.innerHTML = label;
-                }
-            }
-        }
-    }, {
         key: 'updateLegends',
         value: function updateLegends(legends, activeVariable, serviceId, unit) {
             var mapLegends = [];
@@ -3539,7 +9613,7 @@ var Map = function (_React$Component) {
 
                     _leaflet2.default.DomUtil.create('div', '', container).innerHTML = '&nbsp;';
 
-                    var button = _leaflet2.default.DomUtil.create('button', 'btn btn-sm btn-primary', container);
+                    var button = _leaflet2.default.DomUtil.create('button', 'button is-primary is-fullwidth', container);
                     button.innerHTML = 'Set Point';
 
                     var _popup = _leaflet2.default.popup({
@@ -3638,6 +9712,8 @@ var Map = function (_React$Component) {
         value: function render() {
             var _this7 = this;
 
+            var timeOverlay = null;
+
             if (this.map !== null) {
                 var _props = this.props,
                     activeVariable = _props.activeVariable,
@@ -3664,16 +9740,48 @@ var Map = function (_React$Component) {
                 this.updateBoundaryLayer(region);
                 this.updateOpacity(opacity, serviceId, activeVariable);
                 this.updateVisibilityButton(serviceId, showResults);
-                this.updateTimeOverlay(activeVariable, objective, climate);
                 this.updateLegends(legends, activeVariable, serviceId, unit);
                 this.updateZoneLayer(method, zone, geometry);
                 this.updatePopup(popup, unit);
                 this.updateMapCenter(center);
+
+                // Time overlay
+                if (activeVariable !== null) {
+                    var selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot;
+                    var time = selectedClimate.time,
+                        model = selectedClimate.model;
+
+                    var labelKey = time;
+
+                    if (time !== '1961_1990' && time !== '1981_2010') {
+                        labelKey += model;
+                    }
+
+                    var label = _config.timeLabels[labelKey];
+
+                    timeOverlay = _react2.default.createElement(
+                        'div',
+                        { className: 'time-overlay' },
+                        _react2.default.createElement('span', { className: 'icon-clock-16' }),
+                        _react2.default.createElement(
+                            'span',
+                            null,
+                            '\xA0'
+                        ),
+                        'Showing: ',
+                        label
+                    );
+                }
             }
 
-            return _react2.default.createElement('div', { ref: function ref(input) {
-                    _this7.mapNode = input;
-                }, className: 'map-container' });
+            return _react2.default.createElement(
+                'div',
+                { className: 'map-container' },
+                _react2.default.createElement('div', { ref: function ref(input) {
+                        _this7.mapNode = input;
+                    }, className: 'map-container' }),
+                timeOverlay
+            );
         }
     }]);
 
@@ -3751,7 +9859,1002 @@ var mapDispatchToProps = function mapDispatchToProps(dispatch) {
 
 exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(Map);
 
-},{"../../actions/map":7,"../../actions/point":9,"../../actions/popup":10,"../../config":19,"leaflet":74,"leaflet-basemaps":71,"leaflet-geonames/L.Control.Geonames":72,"leaflet-omnivore":73,"react":113,"react-redux":105}],45:[function(require,module,exports){
+},{"../../actions/map":7,"../../actions/point":9,"../../actions/popup":10,"../../config":24,"../../io":26,"../../leaflet-controls":27,"../../utils":118,"leaflet":149,"leaflet-basemaps":145,"leaflet-geonames/L.Control.Geonames":146,"leaflet-omnivore":147,"leaflet-zoombox/L.Control.ZoomBox":148,"react":201,"react-redux":180}],99:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _GroupedButton = require('seedsource/components/GroupedButton');
+
+var _GroupedButton2 = _interopRequireDefault(_GroupedButton);
+
+var _variables = require('../../actions/variables');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state, _ref) {
+    var name = _ref.name;
+
+    return {
+        active: name === state.runConfiguration.method
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref2) {
+    var name = _ref2.name;
+
+    return {
+        onClick: function onClick() {
+            dispatch((0, _variables.selectMethod)(name));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_GroupedButton2.default);
+
+},{"../../actions/variables":17,"react-redux":180,"seedsource/components/GroupedButton":58}],100:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _GroupedButton = require('seedsource/components/GroupedButton');
+
+var _GroupedButton2 = _interopRequireDefault(_GroupedButton);
+
+var _objectives = require('../../actions/objectives');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state, _ref) {
+    var name = _ref.name;
+
+    return {
+        active: name === state.runConfiguration.objective
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref2) {
+    var name = _ref2.name;
+
+    return {
+        onClick: function onClick() {
+            dispatch((0, _objectives.selectObjective)(name));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_GroupedButton2.default);
+
+},{"../../actions/objectives":8,"react-redux":180,"seedsource/components/GroupedButton":58}],101:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _ObjectiveStep = require('seedsource/components/ObjectiveStep');
+
+var _ObjectiveStep2 = _interopRequireDefault(_ObjectiveStep);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var objective = runConfiguration.objective;
+
+
+    return { objective: objective };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps)(_ObjectiveStep2.default);
+
+},{"react-redux":180,"seedsource/components/ObjectiveStep":68}],102:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _PhotoperiodConstraint = require('seedsource/components/PhotoperiodConstraint');
+
+var _PhotoperiodConstraint2 = _interopRequireDefault(_PhotoperiodConstraint);
+
+var _constraints = require('../../actions/constraints');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var getJulianDay = function getJulianDay(year, month, day) {
+    var a = Math.floor((14 - month) / 12);
+    var y = year + 4800 - a;
+    var m = month + 12 * a - 3;
+    var julianDate = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+
+    return julianDate - 2451545 + .0008;
+};
+
+var daylight = function daylight(year, month, day, lat, lon) {
+    var radians = function radians(degrees) {
+        return degrees * Math.PI / 180;
+    };
+    var degrees = function degrees(radians) {
+        return radians * 180 / Math.PI;
+    };
+
+    var julianDay = getJulianDay(year, month, day);
+    var solarNoon = julianDay - lon / 360;
+    var solarAnomaly = (357.5291 + 0.98560028 * solarNoon) % 360;
+    var equationOfCenter = 1.9148 * Math.sin(radians(solarAnomaly)) + 0.0200 * Math.sin(radians(2 * solarAnomaly)) + 0.0003 * Math.sin(radians(3 * solarAnomaly));
+    var eclipticLongitude = (solarAnomaly + equationOfCenter + 180 + 102.9372) % 360;
+    var solarTransit = 2451545.5 + solarNoon + 0.0053 * Math.sin(radians(solarAnomaly)) - 0.0069 * Math.sin(radians(2 * eclipticLongitude));
+    var declination = Math.asin(Math.sin(radians(eclipticLongitude)) * Math.sin(radians(23.44)));
+    var hourAngle = Math.acos((Math.sin(radians(-.83)) - Math.sin(radians(lat)) * Math.sin(declination)) / (Math.cos(radians(lat)) * Math.cos(declination)));
+    var sunrise = solarTransit - degrees(hourAngle) / 360;
+    var sunset = solarTransit + degrees(hourAngle) / 360;
+
+    return (sunset - sunrise) * 24;
+};
+
+var mapStateToProps = function mapStateToProps(_ref, _ref2) {
+    var runConfiguration = _ref.runConfiguration;
+    var values = _ref2.values;
+    var hours = values.hours,
+        year = values.year,
+        month = values.month,
+        day = values.day;
+    var _runConfiguration$poi = runConfiguration.point,
+        x = _runConfiguration$poi.x,
+        y = _runConfiguration$poi.y;
+
+
+    if (hours !== null) {
+        hours = hours.toFixed(1);
+    }
+
+    var value = '--';
+    if (x !== '' && y !== '') {
+        value = daylight(year, month, day, y, x).toFixed(1) + ' hours';
+    }
+
+    return { value: value, hours: hours, month: month, day: day };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onHoursChange: function onHoursChange(index, hours) {
+            var value = parseFloat(hours);
+
+            if (!isNaN(value)) {
+                dispatch((0, _constraints.updateConstraintValues)(index, { hours: value }));
+            }
+        },
+
+        onMonthChange: function onMonthChange(index, month) {
+            dispatch((0, _constraints.updateConstraintValues)(index, { month: parseInt(month) + 1 }));
+        },
+
+        onDayChange: function onDayChange(index, day) {
+            dispatch((0, _constraints.updateConstraintValues)(index, { day: parseInt(day) }));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_PhotoperiodConstraint2.default);
+
+},{"../../actions/constraints":3,"react-redux":180,"seedsource/components/PhotoperiodConstraint":69}],103:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _PointChooser = require('seedsource/components/PointChooser');
+
+var _PointChooser2 = _interopRequireDefault(_PointChooser);
+
+var _point = require('../../actions/point');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state) {
+    var point = state.runConfiguration.point;
+    var lat = '',
+        lon = '';
+
+    if (point !== null) {
+        lat = point.y ? point.y.toFixed(4) : '';
+        lon = point.x ? point.x.toFixed(4) : '';
+    }
+
+    return { lat: lat, lon: lon };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onBlur: function onBlur(type, value) {
+            var number = parseFloat(value);
+
+            if (isNaN(number)) {
+                return;
+            }
+
+            switch (type) {
+                case 'lat':
+                    dispatch((0, _point.setLatitude)(number));
+                    break;
+                case 'lon':
+                    dispatch((0, _point.setLongitude)(number));
+                    break;
+            }
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_PointChooser2.default);
+
+},{"../../actions/point":9,"react-redux":180,"seedsource/components/PointChooser":70}],104:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _GroupedButton = require('seedsource/components/GroupedButton');
+
+var _GroupedButton2 = _interopRequireDefault(_GroupedButton);
+
+var _region = require('../../actions/region');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state, _ref) {
+    var name = _ref.name;
+
+    return {
+        active: name === state.runConfiguration.regionMethod
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref2) {
+    var name = _ref2.name;
+
+    return {
+        onClick: function onClick() {
+            dispatch((0, _region.selectRegionMethod)(name));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_GroupedButton2.default);
+
+},{"../../actions/region":11,"react-redux":180,"seedsource/components/GroupedButton":58}],105:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _RegionStep = require('seedsource/components/RegionStep');
+
+var _RegionStep2 = _interopRequireDefault(_RegionStep);
+
+var _region = require('../../actions/region');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state) {
+    var _state$runConfigurati = state.runConfiguration,
+        region = _state$runConfigurati.region,
+        regionMethod = _state$runConfigurati.regionMethod;
+
+
+    return { region: region, regionMethod: regionMethod };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onChange: function onChange(region) {
+            dispatch((0, _region.setRegion)(region));
+        }
+    };
+};
+
+var container = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_RegionStep2.default);
+
+container.shouldRender = function () {
+    return true;
+};
+
+exports.default = container;
+
+},{"../../actions/region":11,"react-redux":180,"seedsource/components/RegionStep":71}],106:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _RunConfiguration = require('seedsource/components/RunConfiguration');
+
+var _RunConfiguration2 = _interopRequireDefault(_RunConfiguration);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state) {
+    var activeStep = state.activeStep,
+        runConfiguration = state.runConfiguration,
+        lastRun = state.lastRun,
+        job = state.job,
+        pdfIsFetching = state.pdfIsFetching;
+    var objective = runConfiguration.objective,
+        method = runConfiguration.method;
+
+
+    return {
+        state: state,
+        objective: objective,
+        method: method,
+        job: job,
+        activeStep: activeStep
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps)(_RunConfiguration2.default);
+
+},{"react-redux":180,"seedsource/components/RunConfiguration":73}],107:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _RunStep = require('seedsource/components/RunStep');
+
+var _RunStep2 = _interopRequireDefault(_RunStep);
+
+var _error = require('../../actions/error');
+
+var _job = require('../../actions/job');
+
+var _saves = require('../../actions/saves');
+
+var _report = require('../../actions/report');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var configurationCanRun = function configurationCanRun(_ref) {
+    var point = _ref.point,
+        variables = _ref.variables,
+        constraints = _ref.constraints;
+
+    if (point === null || point.x === null || point.y === null) {
+        return false;
+    }
+
+    return variables.length > 0 && variables.every(function (item) {
+        return item.value !== null && item.isFetching === false;
+    });
+};
+
+var mapStateToProps = function mapStateToProps(_ref2) {
+    var runConfiguration = _ref2.runConfiguration,
+        lastRun = _ref2.lastRun,
+        job = _ref2.job,
+        auth = _ref2.auth,
+        reportIsFetching = _ref2.reportIsFetching;
+    var isLoggedIn = auth.isLoggedIn;
+
+
+    return {
+        canRun: configurationCanRun(runConfiguration) && !job.isRunning,
+        canSave: lastRun !== null,
+        configuration: runConfiguration,
+        job: job,
+        isLoggedIn: isLoggedIn,
+        reportIsFetching: reportIsFetching
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onRun: function onRun(configuration) {
+            var variables = configuration.variables,
+                constraints = configuration.constraints;
+
+
+            if (variables.some(function (item) {
+                return item.transfer === null;
+            })) {
+                dispatch((0, _error.setError)('Configuration error', 'Cannot calculate scores: one or more of your variables has no transfer limit, or a limit of 0.'));
+                return;
+            }
+
+            if (constraints.some(function (item) {
+                return Object.keys(item.values).some(function (key) {
+                    return item.values[key] === null;
+                });
+            })) {
+                dispatch((0, _error.setError)('Configuration error', 'Cannot calculate scores: one or more of your constraints is missing a value.'));
+                return;
+            }
+
+            dispatch((0, _job.runJob)(configuration));
+        },
+
+        onSave: function onSave(isLoggedIn) {
+            if (!isLoggedIn) {
+                dispatch((0, _error.setError)('Login required', 'Please login to save your run.'));
+                return;
+            }
+
+            dispatch((0, _saves.showSaveModal)());
+        },
+
+        onExport: function onExport(name) {
+            dispatch((0, _report.createReport)(name));
+        },
+
+        onExportTIF: function onExportTIF() {
+            dispatch((0, _report.runTIFJob)());
+        }
+    };
+};
+
+var container = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_RunStep2.default);
+
+container.shouldRender = function () {
+    return true;
+};
+
+exports.default = container;
+
+},{"../../actions/error":4,"../../actions/job":5,"../../actions/report":12,"../../actions/saves":13,"react-redux":180,"seedsource/components/RunStep":74}],108:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _SaveModal = require('seedsource/components/SaveModal');
+
+var _SaveModal2 = _interopRequireDefault(_SaveModal);
+
+var _saves = require('../../actions/saves');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var saves = _ref.saves,
+        runConfiguration = _ref.runConfiguration;
+    var showModal = saves.showModal,
+        lastSave = saves.lastSave,
+        isSaving = saves.isSaving;
+
+
+    return { showModal: showModal, lastSave: lastSave, isSaving: isSaving, runConfiguration: runConfiguration };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onHide: function onHide() {
+            dispatch((0, _saves.hideSaveModal)());
+        },
+
+        onSave: function onSave(configuration, title) {
+            dispatch((0, _saves.createSave)(configuration, title));
+        },
+
+        onUpdate: function onUpdate(configuration, lastSave) {
+            dispatch((0, _saves.updateSave)(configuration, lastSave));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_SaveModal2.default);
+
+},{"../../actions/saves":13,"react-redux":180,"seedsource/components/SaveModal":75}],109:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _SavedRun = require('seedsource/components/SavedRun');
+
+var _SavedRun2 = _interopRequireDefault(_SavedRun);
+
+var _saves = require('../../actions/saves');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state, props) {
+    var active = props.active,
+        save = props.save;
+
+
+    return { active: active, save: save };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref) {
+    var _onClick = _ref.onClick;
+
+    return {
+        onClick: function onClick() {
+            _onClick();
+        },
+
+        onLoad: function onLoad(save) {
+            dispatch((0, _saves.resetConfiguration)());
+
+            /* In some cases where the loaded configuration is similar to the previous one, certain events aren't
+             * fired if the event is dispatched in the same event cycle as the reset event
+             */
+            setTimeout(function () {
+                return dispatch((0, _saves.loadConfiguration)(save.configuration, save));
+            }, 0);
+        },
+
+        onDelete: function onDelete(saveId) {
+            dispatch((0, _saves.deleteSave)(saveId));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_SavedRun2.default);
+
+},{"../../actions/saves":13,"react-redux":180,"seedsource/components/SavedRun":76}],110:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _SavedRuns = require('seedsource/components/SavedRuns');
+
+var _SavedRuns2 = _interopRequireDefault(_SavedRuns);
+
+var _saves = require('../../actions/saves');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var saves = _ref.saves,
+        auth = _ref.auth;
+    var isLoggedIn = auth.isLoggedIn;
+
+
+    return { saves: saves.saves, isLoggedIn: isLoggedIn };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onLoad: function onLoad() {
+            dispatch((0, _saves.fetchSaves)());
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_SavedRuns2.default);
+
+},{"../../actions/saves":13,"react-redux":180,"seedsource/components/SavedRuns":77}],111:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _zones = require('../../actions/zones');
+
+var _SeedZoneChooser = require('seedsource/components/SeedZoneChooser');
+
+var _SeedZoneChooser2 = _interopRequireDefault(_SeedZoneChooser);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var method = runConfiguration.method,
+        species = runConfiguration.species,
+        point = runConfiguration.point,
+        zones = runConfiguration.zones;
+    var selected = zones.selected,
+        matched = zones.matched,
+        isFetchingZones = zones.isFetchingZones;
+
+
+    var pointIsValid = point !== null && point.x !== null && point.y !== null;
+
+    return {
+        zones: matched,
+        species: species,
+        selected: selected,
+        method: method,
+        pointIsValid: pointIsValid,
+        isFetchingZones: isFetchingZones
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onZoneChange: function onZoneChange(zone) {
+            dispatch((0, _zones.selectZone)(zone));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_SeedZoneChooser2.default);
+
+},{"../../actions/zones":18,"react-redux":180,"seedsource/components/SeedZoneChooser":78}],112:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _SpeciesChooser = require('seedsource/components/SpeciesChooser');
+
+var _SpeciesChooser2 = _interopRequireDefault(_SpeciesChooser);
+
+var _species = require('../../actions/species');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var method = runConfiguration.method,
+        species = runConfiguration.species;
+
+
+    return { method: method, species: species };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onSpeciesChange: function onSpeciesChange(species) {
+            dispatch((0, _species.selectSpecies)(species));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_SpeciesChooser2.default);
+
+},{"../../actions/species":14,"react-redux":180,"seedsource/components/SpeciesChooser":81}],113:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _TransferStep = require('seedsource/components/TransferStep');
+
+var _TransferStep2 = _interopRequireDefault(_TransferStep);
+
+var _variables = require('../../actions/variables');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var objective = runConfiguration.objective,
+        method = runConfiguration.method,
+        center = runConfiguration.center;
+
+
+    return { objective: objective, method: method, center: center };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onCenterChange: function onCenterChange(center) {
+            dispatch((0, _variables.selectCenter)(center));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_TransferStep2.default);
+
+},{"../../actions/variables":17,"react-redux":180,"seedsource/components/TransferStep":82}],114:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _GroupedButton = require('seedsource/components/GroupedButton');
+
+var _GroupedButton2 = _interopRequireDefault(_GroupedButton);
+
+var _variables = require('../../actions/variables');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state, _ref) {
+    var name = _ref.name;
+
+    return {
+        active: name === state.runConfiguration.unit
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref2) {
+    var name = _ref2.name;
+
+    return {
+        onClick: function onClick() {
+            dispatch((0, _variables.selectUnit)(name));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_GroupedButton2.default);
+
+},{"../../actions/variables":17,"react-redux":180,"seedsource/components/GroupedButton":58}],115:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _variables = require('../../actions/variables');
+
+var _Variable = require('seedsource/components/Variable');
+
+var _Variable2 = _interopRequireDefault(_Variable);
+
+var _config = require('../../config');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state, _ref) {
+    var variable = _ref.variable;
+    var activeVariable = state.activeVariable,
+        runConfiguration = state.runConfiguration;
+
+    var active = activeVariable === variable.name;
+    var objective = runConfiguration.objective,
+        unit = runConfiguration.unit,
+        method = runConfiguration.method,
+        center = runConfiguration.center;
+
+    var variableConfig = _config.variables.find(function (item) {
+        return item.name === variable.name;
+    });
+    var name = variable.name,
+        value = variable.value,
+        zoneCenter = variable.zoneCenter,
+        transfer = variable.transfer,
+        avgTransfer = variable.avgTransfer,
+        transferIsModified = variable.transferIsModified;
+    var label = variableConfig.label,
+        multiplier = variableConfig.multiplier,
+        units = variableConfig.units;
+
+
+    transferIsModified = transferIsModified && method === 'seedzone';
+
+    var convert = function convert(number) {
+        if (number !== null) {
+            number /= multiplier;
+
+            var precision = units.metric.precision;
+
+
+            if (unit === 'imperial') {
+                precision = units.imperial.precision;
+                number = units.imperial.convert(number);
+            }
+
+            return number.toFixed(precision);
+        }
+
+        return number;
+    };
+
+    var convertTransfer = function convertTransfer(number) {
+        if (number === null) {
+            return '--';
+        }
+
+        number /= multiplier;
+
+        var transferPrecision = units.metric.transferPrecision;
+
+
+        if (unit === 'imperial') {
+            var _units$imperial = units.imperial,
+                _convertTransfer = _units$imperial.convertTransfer,
+                _convert = _units$imperial.convert;
+
+            transferPrecision = units.imperial.transferPrecision;
+
+            if (_convertTransfer) {
+                return _convertTransfer(number).toFixed(transferPrecision);
+            } else if (_convert !== null) {
+                return _convert(number).toFixed(transferPrecision);
+            }
+        }
+
+        return number.toFixed(transferPrecision);
+    };
+
+    transfer = convertTransfer(transfer);
+    avgTransfer = convertTransfer(avgTransfer);
+    value = convert(value);
+    zoneCenter = convert(zoneCenter);
+
+    var centerValue = method === 'seedzone' && center === 'zone' && objective === 'sites' ? zoneCenter : value;
+
+    return {
+        active: active,
+        name: name,
+        label: label,
+        value: value,
+        zoneCenter: zoneCenter,
+        transfer: transfer,
+        avgTransfer: avgTransfer,
+        transferIsModified: transferIsModified,
+        unit: unit,
+        units: units,
+        method: method,
+        centerValue: centerValue
+    };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch, _ref2) {
+    var variable = _ref2.variable,
+        index = _ref2.index;
+
+    return {
+        onTransferChange: function onTransferChange(transfer, unit, units) {
+            var value = parseFloat(transfer);
+
+            if (!isNaN(value)) {
+                if (unit === 'imperial' && units !== null) {
+                    if (units.metric.convertTransfer) {
+                        value = units.metric.convertTransfer(value);
+                    } else if (units.metric.convert !== null) {
+                        value = units.metric.convert(value);
+                    }
+                }
+
+                var variableConfig = _config.variables.find(function (item) {
+                    return item.name === variable.name;
+                });
+
+                dispatch((0, _variables.modifyVariable)(variable.name, value * variableConfig.multiplier));
+            }
+        },
+
+        onResetTransfer: function onResetTransfer() {
+            dispatch((0, _variables.resetTransfer)(variable.name));
+        },
+
+        onToggle: function onToggle() {
+            dispatch((0, _variables.toggleVariable)(variable.name));
+        },
+
+        onRemove: function onRemove() {
+            dispatch((0, _variables.removeVariable)(variable.name, index));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_Variable2.default);
+
+},{"../../actions/variables":17,"../../config":24,"react-redux":180,"seedsource/components/Variable":83}],116:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _VariableStep = require('seedsource/components/VariableStep');
+
+var _VariableStep2 = _interopRequireDefault(_VariableStep);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(_ref) {
+    var runConfiguration = _ref.runConfiguration;
+    var variables = runConfiguration.variables;
+
+
+    return { variables: variables };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps)(_VariableStep2.default);
+
+},{"react-redux":180,"seedsource/components/VariableStep":84}],117:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _reactRedux = require('react-redux');
+
+var _Variables = require('seedsource/components/Variables');
+
+var _Variables2 = _interopRequireDefault(_Variables);
+
+var _config = require('../../config');
+
+var _variables = require('../../actions/variables');
+
+var _error = require('../../actions/error');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var mapStateToProps = function mapStateToProps(state) {
+    var runConfiguration = state.runConfiguration;
+    var variables = runConfiguration.variables;
+
+    var names = variables.map(function (item) {
+        return item.name;
+    });
+    var unusedVariables = _config.variables.filter(function (item) {
+        return !names.includes(item.name);
+    });
+
+    return { variables: variables, unusedVariables: unusedVariables };
+};
+
+var mapDispatchToProps = function mapDispatchToProps(dispatch) {
+    return {
+        onChange: function onChange(variable, variables) {
+            if (variables.length >= 6) {
+                dispatch((0, _error.setError)('Configuration error', 'You may only add 6 variables to your configuration. Please remove an ' + 'exiting variable before adding another.'));
+
+                return;
+            }
+
+            dispatch((0, _variables.addVariable)(variable));
+        }
+    };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps, mapDispatchToProps)(_Variables2.default);
+
+},{"../../actions/error":4,"../../actions/variables":17,"../../config":24,"react-redux":180,"seedsource/components/Variables":85}],118:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3810,9 +10913,59 @@ var staticResource = exports.staticResource = function staticResource(name) {
     return _config2.default.staticRoot + name;
 };
 
-},{"seedsource/config":43}],46:[function(require,module,exports){
+},{"seedsource/config":86}],119:[function(require,module,exports){
 
-},{}],47:[function(require,module,exports){
+},{}],120:[function(require,module,exports){
+/*!
+  Copyright (c) 2016 Jed Watson.
+  Licensed under the MIT License (MIT), see
+  http://jedwatson.github.io/classnames
+*/
+/* global define */
+
+(function () {
+	'use strict';
+
+	var hasOwn = {}.hasOwnProperty;
+
+	function classNames () {
+		var classes = [];
+
+		for (var i = 0; i < arguments.length; i++) {
+			var arg = arguments[i];
+			if (!arg) continue;
+
+			var argType = typeof arg;
+
+			if (argType === 'string' || argType === 'number') {
+				classes.push(arg);
+			} else if (Array.isArray(arg)) {
+				classes.push(classNames.apply(null, arg));
+			} else if (argType === 'object') {
+				for (var key in arg) {
+					if (hasOwn.call(arg, key) && arg[key]) {
+						classes.push(key);
+					}
+				}
+			}
+		}
+
+		return classes.join(' ');
+	}
+
+	if (typeof module !== 'undefined' && module.exports) {
+		module.exports = classNames;
+	} else if (typeof define === 'function' && typeof define.amd === 'object' && define.amd) {
+		// register as 'classnames', consistent with npm package name
+		define('classnames', [], function () {
+			return classNames;
+		});
+	} else {
+		window.classNames = classNames;
+	}
+}());
+
+},{}],121:[function(require,module,exports){
 function corslite(url, callback, cors) {
     var sent = false;
 
@@ -3907,7 +11060,7 @@ function corslite(url, callback, cors) {
 
 if (typeof module !== 'undefined') module.exports = corslite;
 
-},{}],48:[function(require,module,exports){
+},{}],122:[function(require,module,exports){
 'use strict';
 
 var dsv = require('d3-dsv'),
@@ -4157,7 +11310,7 @@ module.exports = {
     toPolygon: toPolygon
 };
 
-},{"d3-dsv":49,"sexagesimal":122}],49:[function(require,module,exports){
+},{"d3-dsv":123,"sexagesimal":210}],123:[function(require,module,exports){
 // https://d3js.org/d3-dsv/ Version 1.0.1. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4327,7 +11480,7 @@ module.exports = {
   Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
-},{}],50:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -4404,7 +11557,7 @@ var EventListener = {
 
 module.exports = EventListener;
 }).call(this,require('_process'))
-},{"./emptyFunction":55,"_process":87}],51:[function(require,module,exports){
+},{"./emptyFunction":129,"_process":162}],125:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -4438,7 +11591,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],52:[function(require,module,exports){
+},{}],126:[function(require,module,exports){
 "use strict";
 
 /**
@@ -4468,7 +11621,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],53:[function(require,module,exports){
+},{}],127:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -4506,7 +11659,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":52}],54:[function(require,module,exports){
+},{"./camelize":126}],128:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4544,7 +11697,7 @@ function containsNode(outerNode, innerNode) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":63}],55:[function(require,module,exports){
+},{"./isTextNode":137}],129:[function(require,module,exports){
 "use strict";
 
 /**
@@ -4581,7 +11734,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],56:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -4601,7 +11754,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require('_process'))
-},{"_process":87}],57:[function(require,module,exports){
+},{"_process":162}],131:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -4626,7 +11779,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],58:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4663,7 +11816,7 @@ function getActiveElement(doc) /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],59:[function(require,module,exports){
+},{}],133:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4694,7 +11847,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],60:[function(require,module,exports){
+},{}],134:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -4731,7 +11884,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":59}],61:[function(require,module,exports){
+},{"./hyphenate":133}],135:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -4787,7 +11940,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":87}],62:[function(require,module,exports){
+},{"_process":162}],136:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4810,7 +11963,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],63:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4833,7 +11986,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":62}],64:[function(require,module,exports){
+},{"./isNode":136}],138:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -4854,7 +12007,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":51}],65:[function(require,module,exports){
+},{"./ExecutionEnvironment":125}],139:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4886,7 +12039,7 @@ if (performance.now) {
 }
 
 module.exports = performanceNow;
-},{"./performance":64}],66:[function(require,module,exports){
+},{"./performance":138}],140:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -4952,7 +12105,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],67:[function(require,module,exports){
+},{}],141:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -5017,7 +12170,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require('_process'))
-},{"./emptyFunction":55,"_process":87}],68:[function(require,module,exports){
+},{"./emptyFunction":129,"_process":162}],142:[function(require,module,exports){
 /**
  * Copyright 2015, Yahoo! Inc.
  * Copyrights licensed under the New BSD License. See the accompanying LICENSE file for terms.
@@ -5084,7 +12237,7 @@ module.exports = function hoistNonReactStatics(targetComponent, sourceComponent,
     return targetComponent;
 };
 
-},{}],69:[function(require,module,exports){
+},{}],143:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -5139,7 +12292,7 @@ var invariant = function(condition, format, a, b, c, d, e, f) {
 module.exports = invariant;
 
 }).call(this,require('_process'))
-},{"_process":87}],70:[function(require,module,exports){
+},{"_process":162}],144:[function(require,module,exports){
 // the whatwg-fetch polyfill installs the fetch() function
 // on the global object (window or self)
 //
@@ -5147,9 +12300,9 @@ module.exports = invariant;
 require('whatwg-fetch');
 module.exports = self.fetch.bind(self);
 
-},{"whatwg-fetch":129}],71:[function(require,module,exports){
+},{"whatwg-fetch":222}],145:[function(require,module,exports){
 L.Control.Basemaps=L.Control.extend({_map:null,includes:L.Evented?L.Evented.prototype:L.Mixin.Event,options:{position:"bottomright",tileX:0,tileY:0,tileZ:0,layers:[]},basemap:null,onAdd:function(t){this._map=t;var e=L.DomUtil.create("div","basemaps leaflet-control closed");return L.DomEvent.disableClickPropagation(e),L.Browser.touch||L.DomEvent.disableScrollPropagation(e),this.options.basemaps.forEach(function(o,s){var a="basemap";0===s?(this.basemap=o,this._map.addLayer(o),a+=" active"):1===s&&(a+=" alt");var i={x:this.options.tileX,y:this.options.tileY},n=L.Util.template(o._url,L.extend({s:o._getSubdomain(i),x:i.x,y:o.options.tms?o._globalTileRange.max.y-i.y:i.y,z:this.options.tileZ},o.options));if(o instanceof L.TileLayer.WMS){o._map=t;var l=o.options.crs||t.options.crs,r=L.extend({},o.wmsParams),m=parseFloat(r.version),p=m>=1.3?"crs":"srs";r[p]=l.code;var c=L.point(i);c.z=this.options.tileZ;var d=o._tileCoordsToBounds(c),v=l.project(d.getNorthWest()),h=l.project(d.getSouthEast()),b=(m>=1.3&&l===EPSG4326?[h.y,v.x,v.y,h.x]:[v.x,h.y,h.x,v.y]).join(",");n+=L.Util.getParamString(r,n,o.options.uppercase)+(o.options.uppercase?"&BBOX=":"&bbox=")+b}var u=L.DomUtil.create("div",a,e),y=L.DomUtil.create("img",null,u);y.src=n,o.options&&o.options.label&&(y.title=o.options.label),L.DomEvent.on(u,"click",function(){if(o!=this.basemap){t.removeLayer(this.basemap),t.addLayer(o),o.bringToBack(),t.fire("baselayerchange",o),this.basemap=o,L.DomUtil.removeClass(document.getElementsByClassName("basemap active")[0],"active"),L.DomUtil.addClass(u,"active");var e=(s+1)%this.options.basemaps.length;L.DomUtil.removeClass(document.getElementsByClassName("basemap alt")[0],"alt"),L.DomUtil.addClass(document.getElementsByClassName("basemap")[e],"alt")}},this)},this),this.options.basemaps.length>2&&(L.DomEvent.on(e,"mouseenter",function(){L.DomUtil.removeClass(e,"closed")},this),L.DomEvent.on(e,"mouseleave",function(){L.DomUtil.addClass(e,"closed")},this)),this._container=e,this._container}}),L.control.basemaps=function(t){return new L.Control.Basemaps(t)};
-},{}],72:[function(require,module,exports){
+},{}],146:[function(require,module,exports){
 //See this url for more info about valid adminCodes: http://www.geonames.org/export/geonames-search.html
 var ADMIN_CODES = ['country', 'adminCode1', 'adminCode2', 'adminCode3', 'continentCode'];
 var BBOX = ['east', 'west', 'north', 'south'];
@@ -5464,7 +12617,7 @@ L.control.geonames = function (options) {
   return new L.Control.Geonames(options);
 };
 
-},{}],73:[function(require,module,exports){
+},{}],147:[function(require,module,exports){
 var xhr = require('corslite'),
     csv2geojson = require('csv2geojson'),
     wellknown = require('wellknown'),
@@ -5724,7 +12877,83 @@ function parseXML(str) {
     }
 }
 
-},{"corslite":47,"csv2geojson":48,"polyline":86,"togeojson":126,"topojson":127,"wellknown":128}],74:[function(require,module,exports){
+},{"corslite":121,"csv2geojson":122,"polyline":161,"togeojson":214,"topojson":215,"wellknown":221}],148:[function(require,module,exports){
+L.Control.ZoomBox = L.Control.extend({
+    _active: false,
+    _map: null,
+    includes: L.Evented ? L.Evented.prototype : L.Mixin.Events,
+    options: {
+        position: 'topleft',
+        className: 'leaflet-zoom-box-icon',
+        modal: false,
+        title: "Zoom to specific area"
+    },
+    onAdd: function (map) {
+        this._map = map;
+        this._container = L.DomUtil.create('div', 'leaflet-zoom-box-control leaflet-bar');
+        this._container.title = this.options.title;
+        var link = L.DomUtil.create('a', this.options.className, this._container);
+        link.href = "#";
+
+        // Bind to the map's boxZoom handler
+        var _origMouseDown = map.boxZoom._onMouseDown;
+        map.boxZoom._onMouseDown = function(e){
+            if (e.button === 2) return;  // prevent right-click from triggering zoom box
+            _origMouseDown.call(map.boxZoom, {
+                clientX: e.clientX,
+                clientY: e.clientY,
+                which: 1,
+                shiftKey: true
+            });
+        };
+
+        map.on('zoomend', function(){
+            if (map.getZoom() == map.getMaxZoom()){
+                L.DomUtil.addClass(link, 'leaflet-disabled');
+            }
+            else {
+                L.DomUtil.removeClass(link, 'leaflet-disabled');
+            }
+        }, this);
+        if (!this.options.modal) {
+            map.on('boxzoomend', this.deactivate, this);
+        }
+
+        L.DomEvent
+            .on(this._container, 'dblclick', L.DomEvent.stop)
+            .on(this._container, 'click', L.DomEvent.stop)
+            .on(this._container, 'mousedown', L.DomEvent.stopPropagation)
+            .on(this._container, 'click', function(){
+                this._active = !this._active;
+                if (this._active && map.getZoom() != map.getMaxZoom()){
+                    this.activate();
+                }
+                else {
+                    this.deactivate();
+                }
+            }, this);
+        return this._container;
+    },
+    activate: function() {
+        L.DomUtil.addClass(this._container, 'active');
+        this._map.dragging.disable();
+        this._map.boxZoom.addHooks();
+        L.DomUtil.addClass(this._map.getContainer(), 'leaflet-zoom-box-crosshair');
+    },
+    deactivate: function() {
+        L.DomUtil.removeClass(this._container, 'active');
+        this._map.dragging.enable();
+        this._map.boxZoom.removeHooks();
+        L.DomUtil.removeClass(this._map.getContainer(), 'leaflet-zoom-box-crosshair');
+        this._active = false;
+    }
+});
+
+L.control.zoomBox = function (options) {
+  return new L.Control.ZoomBox(options);
+};
+
+},{}],149:[function(require,module,exports){
 /* @preserve
  * Leaflet 1.2.0, a JS library for interactive maps. http://leafletjs.com
  * (c) 2010-2017 Vladimir Agafonkin, (c) 2010-2011 CloudMade
@@ -19335,7 +26564,7 @@ exports.map = createMap;
 })));
 
 
-},{}],75:[function(require,module,exports){
+},{}],150:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -19343,7 +26572,7 @@ var Symbol = root.Symbol;
 
 module.exports = Symbol;
 
-},{"./_root":82}],76:[function(require,module,exports){
+},{"./_root":157}],151:[function(require,module,exports){
 var Symbol = require('./_Symbol'),
     getRawTag = require('./_getRawTag'),
     objectToString = require('./_objectToString');
@@ -19373,7 +26602,7 @@ function baseGetTag(value) {
 
 module.exports = baseGetTag;
 
-},{"./_Symbol":75,"./_getRawTag":79,"./_objectToString":80}],77:[function(require,module,exports){
+},{"./_Symbol":150,"./_getRawTag":154,"./_objectToString":155}],152:[function(require,module,exports){
 (function (global){
 /** Detect free variable `global` from Node.js. */
 var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
@@ -19381,7 +26610,7 @@ var freeGlobal = typeof global == 'object' && global && global.Object === Object
 module.exports = freeGlobal;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],78:[function(require,module,exports){
+},{}],153:[function(require,module,exports){
 var overArg = require('./_overArg');
 
 /** Built-in value references. */
@@ -19389,7 +26618,7 @@ var getPrototype = overArg(Object.getPrototypeOf, Object);
 
 module.exports = getPrototype;
 
-},{"./_overArg":81}],79:[function(require,module,exports){
+},{"./_overArg":156}],154:[function(require,module,exports){
 var Symbol = require('./_Symbol');
 
 /** Used for built-in method references. */
@@ -19437,7 +26666,7 @@ function getRawTag(value) {
 
 module.exports = getRawTag;
 
-},{"./_Symbol":75}],80:[function(require,module,exports){
+},{"./_Symbol":150}],155:[function(require,module,exports){
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -19461,7 +26690,7 @@ function objectToString(value) {
 
 module.exports = objectToString;
 
-},{}],81:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 /**
  * Creates a unary function that invokes `func` with its argument transformed.
  *
@@ -19478,7 +26707,7 @@ function overArg(func, transform) {
 
 module.exports = overArg;
 
-},{}],82:[function(require,module,exports){
+},{}],157:[function(require,module,exports){
 var freeGlobal = require('./_freeGlobal');
 
 /** Detect free variable `self`. */
@@ -19489,7 +26718,7 @@ var root = freeGlobal || freeSelf || Function('return this')();
 
 module.exports = root;
 
-},{"./_freeGlobal":77}],83:[function(require,module,exports){
+},{"./_freeGlobal":152}],158:[function(require,module,exports){
 /**
  * Checks if `value` is object-like. A value is object-like if it's not `null`
  * and has a `typeof` result of "object".
@@ -19520,7 +26749,7 @@ function isObjectLike(value) {
 
 module.exports = isObjectLike;
 
-},{}],84:[function(require,module,exports){
+},{}],159:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     getPrototype = require('./_getPrototype'),
     isObjectLike = require('./isObjectLike');
@@ -19584,7 +26813,7 @@ function isPlainObject(value) {
 
 module.exports = isPlainObject;
 
-},{"./_baseGetTag":76,"./_getPrototype":78,"./isObjectLike":83}],85:[function(require,module,exports){
+},{"./_baseGetTag":151,"./_getPrototype":153,"./isObjectLike":158}],160:[function(require,module,exports){
 /*
 object-assign
 (c) Sindre Sorhus
@@ -19676,7 +26905,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],86:[function(require,module,exports){
+},{}],161:[function(require,module,exports){
 'use strict';
 
 /**
@@ -19831,7 +27060,7 @@ if (typeof module === 'object' && module.exports) {
     module.exports = polyline;
 }
 
-},{}],87:[function(require,module,exports){
+},{}],162:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -20017,7 +27246,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],88:[function(require,module,exports){
+},{}],163:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -20080,7 +27309,7 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
 module.exports = checkPropTypes;
 
 }).call(this,require('_process'))
-},{"./lib/ReactPropTypesSecret":92,"_process":87,"fbjs/lib/invariant":61,"fbjs/lib/warning":67}],89:[function(require,module,exports){
+},{"./lib/ReactPropTypesSecret":167,"_process":162,"fbjs/lib/invariant":135,"fbjs/lib/warning":141}],164:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -20140,7 +27369,7 @@ module.exports = function() {
   return ReactPropTypes;
 };
 
-},{"./lib/ReactPropTypesSecret":92,"fbjs/lib/emptyFunction":55,"fbjs/lib/invariant":61}],90:[function(require,module,exports){
+},{"./lib/ReactPropTypesSecret":167,"fbjs/lib/emptyFunction":129,"fbjs/lib/invariant":135}],165:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -20686,7 +27915,7 @@ module.exports = function(isValidElement, throwOnDirectAccess) {
 };
 
 }).call(this,require('_process'))
-},{"./checkPropTypes":88,"./lib/ReactPropTypesSecret":92,"_process":87,"fbjs/lib/emptyFunction":55,"fbjs/lib/invariant":61,"fbjs/lib/warning":67,"object-assign":85}],91:[function(require,module,exports){
+},{"./checkPropTypes":163,"./lib/ReactPropTypesSecret":167,"_process":162,"fbjs/lib/emptyFunction":129,"fbjs/lib/invariant":135,"fbjs/lib/warning":141,"object-assign":160}],166:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -20718,7 +27947,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 }).call(this,require('_process'))
-},{"./factoryWithThrowingShims":89,"./factoryWithTypeCheckers":90,"_process":87}],92:[function(require,module,exports){
+},{"./factoryWithThrowingShims":164,"./factoryWithTypeCheckers":165,"_process":162}],167:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -20732,7 +27961,7 @@ var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
 
-},{}],93:[function(require,module,exports){
+},{}],168:[function(require,module,exports){
 (function (process){
 /** @license React v16.0.0
  * react-dom.development.js
@@ -37957,7 +45186,7 @@ module.exports = ReactDOMFiberEntry;
 }
 
 }).call(this,require('_process'))
-},{"_process":87,"fbjs/lib/EventListener":50,"fbjs/lib/ExecutionEnvironment":51,"fbjs/lib/camelizeStyleName":53,"fbjs/lib/containsNode":54,"fbjs/lib/emptyFunction":55,"fbjs/lib/emptyObject":56,"fbjs/lib/focusNode":57,"fbjs/lib/getActiveElement":58,"fbjs/lib/hyphenateStyleName":60,"fbjs/lib/invariant":61,"fbjs/lib/performanceNow":65,"fbjs/lib/shallowEqual":66,"fbjs/lib/warning":67,"object-assign":85,"prop-types":91,"prop-types/checkPropTypes":88,"react":113}],94:[function(require,module,exports){
+},{"_process":162,"fbjs/lib/EventListener":124,"fbjs/lib/ExecutionEnvironment":125,"fbjs/lib/camelizeStyleName":127,"fbjs/lib/containsNode":128,"fbjs/lib/emptyFunction":129,"fbjs/lib/emptyObject":130,"fbjs/lib/focusNode":131,"fbjs/lib/getActiveElement":132,"fbjs/lib/hyphenateStyleName":134,"fbjs/lib/invariant":135,"fbjs/lib/performanceNow":139,"fbjs/lib/shallowEqual":140,"fbjs/lib/warning":141,"object-assign":160,"prop-types":166,"prop-types/checkPropTypes":163,"react":201}],169:[function(require,module,exports){
 /*
  React v16.0.0
  react-dom.production.min.js
@@ -38215,7 +45444,7 @@ function ck(a,b,c,d,e){ak(c)?void 0:w("200");var f=c._reactRootContainer;if(f)Xj
 var ek={createPortal:dk,hydrate:function(a,b,c){return ck(null,a,b,!0,c)},render:function(a,b,c){return ck(null,a,b,!1,c)},unstable_renderSubtreeIntoContainer:function(a,b,c,d){null!=a&&Pa.has(a)?void 0:w("38");return ck(a,b,c,!1,d)},unmountComponentAtNode:function(a){ak(a)?void 0:w("40");return a._reactRootContainer?(Xj.unbatchedUpdates(function(){ck(null,null,a,!1,function(){a._reactRootContainer=null})}),!0):!1},findDOMNode:Dh,unstable_createPortal:dk,unstable_batchedUpdates:sb.batchedUpdates,
 unstable_deferredUpdates:Xj.deferredUpdates,flushSync:Xj.flushSync,__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED:{EventPluginHub:Jb,EventPluginRegistry:sa,EventPropagators:Th,ReactControlledComponent:nb,ReactDOMComponentTree:G,ReactDOMEventListener:L}};Cj({findFiberByHostInstance:G.getClosestInstanceFromNode,findHostInstanceByFiber:Xj.findHostInstance,bundleType:0,version:"16.0.0",rendererPackageName:"react-dom"});module.exports=ek;
 
-},{"fbjs/lib/EventListener":50,"fbjs/lib/ExecutionEnvironment":51,"fbjs/lib/containsNode":54,"fbjs/lib/emptyFunction":55,"fbjs/lib/emptyObject":56,"fbjs/lib/focusNode":57,"fbjs/lib/getActiveElement":58,"fbjs/lib/invariant":61,"fbjs/lib/shallowEqual":66,"object-assign":85,"react":113}],95:[function(require,module,exports){
+},{"fbjs/lib/EventListener":124,"fbjs/lib/ExecutionEnvironment":125,"fbjs/lib/containsNode":128,"fbjs/lib/emptyFunction":129,"fbjs/lib/emptyObject":130,"fbjs/lib/focusNode":131,"fbjs/lib/getActiveElement":132,"fbjs/lib/invariant":135,"fbjs/lib/shallowEqual":140,"object-assign":160,"react":201}],170:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -38257,7 +45486,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this,require('_process'))
-},{"./cjs/react-dom.development.js":93,"./cjs/react-dom.production.min.js":94,"_process":87}],96:[function(require,module,exports){
+},{"./cjs/react-dom.development.js":168,"./cjs/react-dom.production.min.js":169,"_process":162}],171:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -38346,7 +45575,7 @@ function createProvider() {
 
 exports.default = createProvider();
 }).call(this,require('_process'))
-},{"../utils/PropTypes":106,"../utils/warning":110,"_process":87,"prop-types":91,"react":113}],97:[function(require,module,exports){
+},{"../utils/PropTypes":181,"../utils/warning":185,"_process":162,"prop-types":166,"react":201}],172:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -38655,7 +45884,7 @@ selectorFactory) {
   };
 }
 }).call(this,require('_process'))
-},{"../utils/PropTypes":106,"../utils/Subscription":107,"_process":87,"hoist-non-react-statics":68,"invariant":69,"react":113}],98:[function(require,module,exports){
+},{"../utils/PropTypes":181,"../utils/Subscription":182,"_process":162,"hoist-non-react-statics":142,"invariant":143,"react":201}],173:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -38784,7 +46013,7 @@ function createConnect() {
 }
 
 exports.default = createConnect();
-},{"../components/connectAdvanced":97,"../utils/shallowEqual":108,"./mapDispatchToProps":99,"./mapStateToProps":100,"./mergeProps":101,"./selectorFactory":102}],99:[function(require,module,exports){
+},{"../components/connectAdvanced":172,"../utils/shallowEqual":183,"./mapDispatchToProps":174,"./mapStateToProps":175,"./mergeProps":176,"./selectorFactory":177}],174:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -38813,7 +46042,7 @@ function whenMapDispatchToPropsIsObject(mapDispatchToProps) {
 }
 
 exports.default = [whenMapDispatchToPropsIsFunction, whenMapDispatchToPropsIsMissing, whenMapDispatchToPropsIsObject];
-},{"./wrapMapToProps":104,"redux":120}],100:[function(require,module,exports){
+},{"./wrapMapToProps":179,"redux":208}],175:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -38833,7 +46062,7 @@ function whenMapStateToPropsIsMissing(mapStateToProps) {
 }
 
 exports.default = [whenMapStateToPropsIsFunction, whenMapStateToPropsIsMissing];
-},{"./wrapMapToProps":104}],101:[function(require,module,exports){
+},{"./wrapMapToProps":179}],176:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -38894,7 +46123,7 @@ function whenMergePropsIsOmitted(mergeProps) {
 
 exports.default = [whenMergePropsIsFunction, whenMergePropsIsOmitted];
 }).call(this,require('_process'))
-},{"../utils/verifyPlainObject":109,"_process":87}],102:[function(require,module,exports){
+},{"../utils/verifyPlainObject":184,"_process":162}],177:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -39010,7 +46239,7 @@ function finalPropsSelectorFactory(dispatch, _ref2) {
   return selectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch, options);
 }
 }).call(this,require('_process'))
-},{"./verifySubselectors":103,"_process":87}],103:[function(require,module,exports){
+},{"./verifySubselectors":178,"_process":162}],178:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -39037,7 +46266,7 @@ function verifySubselectors(mapStateToProps, mapDispatchToProps, mergeProps, dis
   verify(mapDispatchToProps, 'mapDispatchToProps', displayName);
   verify(mergeProps, 'mergeProps', displayName);
 }
-},{"../utils/warning":110}],104:[function(require,module,exports){
+},{"../utils/warning":185}],179:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -39118,7 +46347,7 @@ function wrapMapToPropsFunc(mapToProps, methodName) {
   };
 }
 }).call(this,require('_process'))
-},{"../utils/verifyPlainObject":109,"_process":87}],105:[function(require,module,exports){
+},{"../utils/verifyPlainObject":184,"_process":162}],180:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -39142,7 +46371,7 @@ exports.Provider = _Provider2.default;
 exports.createProvider = _Provider.createProvider;
 exports.connectAdvanced = _connectAdvanced2.default;
 exports.connect = _connect2.default;
-},{"./components/Provider":96,"./components/connectAdvanced":97,"./connect/connect":98}],106:[function(require,module,exports){
+},{"./components/Provider":171,"./components/connectAdvanced":172,"./connect/connect":173}],181:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -39166,7 +46395,7 @@ var storeShape = exports.storeShape = _propTypes2.default.shape({
   dispatch: _propTypes2.default.func.isRequired,
   getState: _propTypes2.default.func.isRequired
 });
-},{"prop-types":91}],107:[function(require,module,exports){
+},{"prop-types":166}],182:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -39263,7 +46492,7 @@ var Subscription = function () {
 }();
 
 exports.default = Subscription;
-},{}],108:[function(require,module,exports){
+},{}],183:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -39298,7 +46527,7 @@ function shallowEqual(objA, objB) {
 
   return true;
 }
-},{}],109:[function(require,module,exports){
+},{}],184:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -39319,7 +46548,7 @@ function verifyPlainObject(value, displayName, methodName) {
     (0, _warning2.default)(methodName + '() in ' + displayName + ' must return a plain object. Instead received ' + value + '.');
   }
 }
-},{"./warning":110,"lodash/isPlainObject":84}],110:[function(require,module,exports){
+},{"./warning":185,"lodash/isPlainObject":159}],185:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -39345,7 +46574,1342 @@ function warning(message) {
   } catch (e) {}
   /* eslint-enable no-empty */
 }
-},{}],111:[function(require,module,exports){
+},{}],186:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = {
+
+  GLOBAL: {
+    HIDE: '__react_tooltip_hide_event',
+    REBUILD: '__react_tooltip_rebuild_event',
+    SHOW: '__react_tooltip_show_event'
+  }
+};
+},{}],187:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (target) {
+  target.prototype.isCustomEvent = function (ele) {
+    var event = this.state.event;
+
+    return event || !!ele.getAttribute('data-event');
+  };
+
+  /* Bind listener for custom event */
+  target.prototype.customBindListener = function (ele) {
+    var _this = this;
+
+    var _state = this.state,
+        event = _state.event,
+        eventOff = _state.eventOff;
+
+    var dataEvent = ele.getAttribute('data-event') || event;
+    var dataEventOff = ele.getAttribute('data-event-off') || eventOff;
+
+    dataEvent.split(' ').forEach(function (event) {
+      ele.removeEventListener(event, customListener);
+      customListener = checkStatus.bind(_this, dataEventOff);
+      ele.addEventListener(event, customListener, false);
+    });
+    if (dataEventOff) {
+      dataEventOff.split(' ').forEach(function (event) {
+        ele.removeEventListener(event, _this.hideTooltip);
+        ele.addEventListener(event, _this.hideTooltip, false);
+      });
+    }
+  };
+
+  /* Unbind listener for custom event */
+  target.prototype.customUnbindListener = function (ele) {
+    var _state2 = this.state,
+        event = _state2.event,
+        eventOff = _state2.eventOff;
+
+    var dataEvent = event || ele.getAttribute('data-event');
+    var dataEventOff = eventOff || ele.getAttribute('data-event-off');
+
+    ele.removeEventListener(dataEvent, customListener);
+    if (dataEventOff) ele.removeEventListener(dataEventOff, this.hideTooltip);
+  };
+};
+
+/**
+ * Custom events to control showing and hiding of tooltip
+ *
+ * @attributes
+ * - `event` {String}
+ * - `eventOff` {String}
+ */
+
+var checkStatus = function checkStatus(dataEventOff, e) {
+  var show = this.state.show;
+  var id = this.props.id;
+
+  var dataIsCapture = e.currentTarget.getAttribute('data-iscapture');
+  var isCapture = dataIsCapture && dataIsCapture === 'true' || this.props.isCapture;
+  var currentItem = e.currentTarget.getAttribute('currentItem');
+
+  if (!isCapture) e.stopPropagation();
+  if (show && currentItem === 'true') {
+    if (!dataEventOff) this.hideTooltip(e);
+  } else {
+    e.currentTarget.setAttribute('currentItem', 'true');
+    setUntargetItems(e.currentTarget, this.getTargetArray(id));
+    this.showTooltip(e);
+  }
+};
+
+var setUntargetItems = function setUntargetItems(currentTarget, targetArray) {
+  for (var i = 0; i < targetArray.length; i++) {
+    if (currentTarget !== targetArray[i]) {
+      targetArray[i].setAttribute('currentItem', 'false');
+    } else {
+      targetArray[i].setAttribute('currentItem', 'true');
+    }
+  }
+};
+
+var customListener = void 0;
+},{}],188:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (target) {
+  target.prototype.getEffect = function (currentTarget) {
+    var dataEffect = currentTarget.getAttribute('data-effect');
+    return dataEffect || this.props.effect || 'float';
+  };
+};
+},{}],189:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (target) {
+  target.prototype.isCapture = function (currentTarget) {
+    var dataIsCapture = currentTarget.getAttribute('data-iscapture');
+    return dataIsCapture && dataIsCapture === 'true' || this.props.isCapture || false;
+  };
+};
+},{}],190:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (target) {
+  /**
+   * Hide all tooltip
+   * @trigger ReactTooltip.hide()
+   */
+  target.hide = function (target) {
+    dispatchGlobalEvent(_constant2.default.GLOBAL.HIDE, { target: target });
+  };
+
+  /**
+   * Rebuild all tooltip
+   * @trigger ReactTooltip.rebuild()
+   */
+  target.rebuild = function () {
+    dispatchGlobalEvent(_constant2.default.GLOBAL.REBUILD);
+  };
+
+  /**
+   * Show specific tooltip
+   * @trigger ReactTooltip.show()
+   */
+  target.show = function (target) {
+    dispatchGlobalEvent(_constant2.default.GLOBAL.SHOW, { target: target });
+  };
+
+  target.prototype.globalRebuild = function () {
+    if (this.mount) {
+      this.unbindListener();
+      this.bindListener();
+    }
+  };
+
+  target.prototype.globalShow = function (event) {
+    if (this.mount) {
+      // Create a fake event, specific show will limit the type to `solid`
+      // only `float` type cares e.clientX e.clientY
+      var e = { currentTarget: event.detail.target };
+      this.showTooltip(e, true);
+    }
+  };
+
+  target.prototype.globalHide = function (event) {
+    if (this.mount) {
+      var hasTarget = event && event.detail && event.detail.target && true || false;
+      this.hideTooltip({ currentTarget: hasTarget && event.detail.target }, hasTarget);
+    }
+  };
+};
+
+var _constant = require('../constant');
+
+var _constant2 = _interopRequireDefault(_constant);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var dispatchGlobalEvent = function dispatchGlobalEvent(eventName, opts) {
+  // Compatibale with IE
+  // @see http://stackoverflow.com/questions/26596123/internet-explorer-9-10-11-event-constructor-doesnt-work
+  var event = void 0;
+
+  if (typeof window.CustomEvent === 'function') {
+    event = new window.CustomEvent(eventName, { detail: opts });
+  } else {
+    event = document.createEvent('Event');
+    event.initEvent(eventName, false, true);
+    event.detail = opts;
+  }
+
+  window.dispatchEvent(event);
+}; /**
+    * Static methods for react-tooltip
+    */
+},{"../constant":186}],191:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (target) {
+  target.prototype.bindRemovalTracker = function () {
+    var _this = this;
+
+    var MutationObserver = getMutationObserverClass();
+    if (MutationObserver == null) return;
+
+    var observer = new MutationObserver(function (mutations) {
+      var _iteratorNormalCompletion = true;
+      var _didIteratorError = false;
+      var _iteratorError = undefined;
+
+      try {
+        for (var _iterator = mutations[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+          var mutation = _step.value;
+          var _iteratorNormalCompletion2 = true;
+          var _didIteratorError2 = false;
+          var _iteratorError2 = undefined;
+
+          try {
+            for (var _iterator2 = mutation.removedNodes[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+              var element = _step2.value;
+
+              if (element === _this.state.currentTarget) {
+                _this.hideTooltip();
+                return;
+              }
+            }
+          } catch (err) {
+            _didIteratorError2 = true;
+            _iteratorError2 = err;
+          } finally {
+            try {
+              if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                _iterator2.return();
+              }
+            } finally {
+              if (_didIteratorError2) {
+                throw _iteratorError2;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion && _iterator.return) {
+            _iterator.return();
+          }
+        } finally {
+          if (_didIteratorError) {
+            throw _iteratorError;
+          }
+        }
+      }
+    });
+
+    observer.observe(window.document, { childList: true, subtree: true });
+
+    this.removalTracker = observer;
+  };
+
+  target.prototype.unbindRemovalTracker = function () {
+    if (this.removalTracker) {
+      this.removalTracker.disconnect();
+      this.removalTracker = null;
+    }
+  };
+};
+
+/**
+ * Tracking target removing from DOM.
+ * It's nessesary to hide tooltip when it's target disappears.
+ * Otherwise, the tooltip would be shown forever until another target
+ * is triggered.
+ *
+ * If MutationObserver is not available, this feature just doesn't work.
+ */
+
+// https://hacks.mozilla.org/2012/05/dom-mutationobserver-reacting-to-dom-changes-without-killing-browser-performance/
+var getMutationObserverClass = function getMutationObserverClass() {
+  return window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
+};
+},{}],192:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (target) {
+  target.prototype.bindWindowEvents = function (resizeHide) {
+    // ReactTooltip.hide
+    window.removeEventListener(_constant2.default.GLOBAL.HIDE, this.globalHide);
+    window.addEventListener(_constant2.default.GLOBAL.HIDE, this.globalHide, false);
+
+    // ReactTooltip.rebuild
+    window.removeEventListener(_constant2.default.GLOBAL.REBUILD, this.globalRebuild);
+    window.addEventListener(_constant2.default.GLOBAL.REBUILD, this.globalRebuild, false);
+
+    // ReactTooltip.show
+    window.removeEventListener(_constant2.default.GLOBAL.SHOW, this.globalShow);
+    window.addEventListener(_constant2.default.GLOBAL.SHOW, this.globalShow, false);
+
+    // Resize
+    if (resizeHide) {
+      window.removeEventListener('resize', this.onWindowResize);
+      window.addEventListener('resize', this.onWindowResize, false);
+    }
+  };
+
+  target.prototype.unbindWindowEvents = function () {
+    window.removeEventListener(_constant2.default.GLOBAL.HIDE, this.globalHide);
+    window.removeEventListener(_constant2.default.GLOBAL.REBUILD, this.globalRebuild);
+    window.removeEventListener(_constant2.default.GLOBAL.SHOW, this.globalShow);
+    window.removeEventListener('resize', this.onWindowResize);
+  };
+
+  /**
+   * invoked by resize event of window
+   */
+  target.prototype.onWindowResize = function () {
+    if (!this.mount) return;
+    this.hideTooltip();
+  };
+};
+
+var _constant = require('../constant');
+
+var _constant2 = _interopRequireDefault(_constant);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+},{"../constant":186}],193:[function(require,module,exports){
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _class, _class2, _temp;
+
+/* Decoraters */
+
+
+/* Utils */
+
+
+/* CSS */
+
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _reactDom = require('react-dom');
+
+var _reactDom2 = _interopRequireDefault(_reactDom);
+
+var _classnames = require('classnames');
+
+var _classnames2 = _interopRequireDefault(_classnames);
+
+var _staticMethods = require('./decorators/staticMethods');
+
+var _staticMethods2 = _interopRequireDefault(_staticMethods);
+
+var _windowListener = require('./decorators/windowListener');
+
+var _windowListener2 = _interopRequireDefault(_windowListener);
+
+var _customEvent = require('./decorators/customEvent');
+
+var _customEvent2 = _interopRequireDefault(_customEvent);
+
+var _isCapture = require('./decorators/isCapture');
+
+var _isCapture2 = _interopRequireDefault(_isCapture);
+
+var _getEffect = require('./decorators/getEffect');
+
+var _getEffect2 = _interopRequireDefault(_getEffect);
+
+var _trackRemoval = require('./decorators/trackRemoval');
+
+var _trackRemoval2 = _interopRequireDefault(_trackRemoval);
+
+var _getPosition = require('./utils/getPosition');
+
+var _getPosition2 = _interopRequireDefault(_getPosition);
+
+var _getTipContent = require('./utils/getTipContent');
+
+var _getTipContent2 = _interopRequireDefault(_getTipContent);
+
+var _aria = require('./utils/aria');
+
+var _nodeListToArray = require('./utils/nodeListToArray');
+
+var _nodeListToArray2 = _interopRequireDefault(_nodeListToArray);
+
+var _style = require('./style');
+
+var _style2 = _interopRequireDefault(_style);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var ReactTooltip = (0, _staticMethods2.default)(_class = (0, _windowListener2.default)(_class = (0, _customEvent2.default)(_class = (0, _isCapture2.default)(_class = (0, _getEffect2.default)(_class = (0, _trackRemoval2.default)(_class = (_temp = _class2 = function (_Component) {
+  _inherits(ReactTooltip, _Component);
+
+  function ReactTooltip(props) {
+    _classCallCheck(this, ReactTooltip);
+
+    var _this = _possibleConstructorReturn(this, (ReactTooltip.__proto__ || Object.getPrototypeOf(ReactTooltip)).call(this, props));
+
+    _this.state = {
+      place: 'top', // Direction of tooltip
+      type: 'dark', // Color theme of tooltip
+      effect: 'float', // float or fixed
+      show: false,
+      border: false,
+      placeholder: '',
+      offset: {},
+      extraClass: '',
+      html: false,
+      delayHide: 0,
+      delayShow: 0,
+      event: props.event || null,
+      eventOff: props.eventOff || null,
+      currentEvent: null, // Current mouse event
+      currentTarget: null, // Current target of mouse event
+      ariaProps: (0, _aria.parseAria)(props), // aria- and role attributes
+      isEmptyTip: false,
+      disable: false
+    };
+
+    _this.bind(['showTooltip', 'updateTooltip', 'hideTooltip', 'globalRebuild', 'globalShow', 'globalHide', 'onWindowResize']);
+
+    _this.mount = true;
+    _this.delayShowLoop = null;
+    _this.delayHideLoop = null;
+    _this.intervalUpdateContent = null;
+    return _this;
+  }
+
+  /**
+   * For unify the bind and unbind listener
+   */
+
+
+  _createClass(ReactTooltip, [{
+    key: 'bind',
+    value: function bind(methodArray) {
+      var _this2 = this;
+
+      methodArray.forEach(function (method) {
+        _this2[method] = _this2[method].bind(_this2);
+      });
+    }
+  }, {
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _props = this.props,
+          insecure = _props.insecure,
+          resizeHide = _props.resizeHide;
+
+      if (insecure) {
+        this.setStyleHeader(); // Set the style to the <link>
+      }
+      this.bindListener(); // Bind listener for tooltip
+      this.bindWindowEvents(resizeHide); // Bind global event for static method
+    }
+  }, {
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(props) {
+      var ariaProps = this.state.ariaProps;
+
+      var newAriaProps = (0, _aria.parseAria)(props);
+
+      var isChanged = Object.keys(newAriaProps).some(function (props) {
+        return newAriaProps[props] !== ariaProps[props];
+      });
+      if (isChanged) {
+        this.setState({ ariaProps: newAriaProps });
+      }
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      this.mount = false;
+
+      this.clearTimer();
+
+      this.unbindListener();
+      this.removeScrollListener();
+      this.unbindWindowEvents();
+    }
+
+    /**
+     * Pick out corresponded target elements
+     */
+
+  }, {
+    key: 'getTargetArray',
+    value: function getTargetArray(id) {
+      var targetArray = void 0;
+      if (!id) {
+        targetArray = document.querySelectorAll('[data-tip]:not([data-for])');
+      } else {
+        var escaped = id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        targetArray = document.querySelectorAll('[data-tip][data-for="' + escaped + '"]');
+      }
+      // targetArray is a NodeList, convert it to a real array
+      return (0, _nodeListToArray2.default)(targetArray);
+    }
+
+    /**
+     * Bind listener to the target elements
+     * These listeners used to trigger showing or hiding the tooltip
+     */
+
+  }, {
+    key: 'bindListener',
+    value: function bindListener() {
+      var _this3 = this;
+
+      var _props2 = this.props,
+          id = _props2.id,
+          globalEventOff = _props2.globalEventOff;
+
+      var targetArray = this.getTargetArray(id);
+
+      targetArray.forEach(function (target) {
+        var isCaptureMode = _this3.isCapture(target);
+        var effect = _this3.getEffect(target);
+        if (target.getAttribute('currentItem') === null) {
+          target.setAttribute('currentItem', 'false');
+        }
+        _this3.unbindBasicListener(target);
+
+        if (_this3.isCustomEvent(target)) {
+          _this3.customBindListener(target);
+          return;
+        }
+
+        target.addEventListener('mouseenter', _this3.showTooltip, isCaptureMode);
+        if (effect === 'float') {
+          target.addEventListener('mousemove', _this3.updateTooltip, isCaptureMode);
+        }
+        target.addEventListener('mouseleave', _this3.hideTooltip, isCaptureMode);
+      });
+
+      // Global event to hide tooltip
+      if (globalEventOff) {
+        window.removeEventListener(globalEventOff, this.hideTooltip);
+        window.addEventListener(globalEventOff, this.hideTooltip, false);
+      }
+
+      // Track removal of targetArray elements from DOM
+      this.bindRemovalTracker();
+    }
+
+    /**
+     * Unbind listeners on target elements
+     */
+
+  }, {
+    key: 'unbindListener',
+    value: function unbindListener() {
+      var _this4 = this;
+
+      var _props3 = this.props,
+          id = _props3.id,
+          globalEventOff = _props3.globalEventOff;
+
+      var targetArray = this.getTargetArray(id);
+      targetArray.forEach(function (target) {
+        _this4.unbindBasicListener(target);
+        if (_this4.isCustomEvent(target)) _this4.customUnbindListener(target);
+      });
+
+      if (globalEventOff) window.removeEventListener(globalEventOff, this.hideTooltip);
+      this.unbindRemovalTracker();
+    }
+
+    /**
+     * Invoke this before bind listener and ummount the compont
+     * it is necessary to invloke this even when binding custom event
+     * so that the tooltip can switch between custom and default listener
+     */
+
+  }, {
+    key: 'unbindBasicListener',
+    value: function unbindBasicListener(target) {
+      var isCaptureMode = this.isCapture(target);
+      target.removeEventListener('mouseenter', this.showTooltip, isCaptureMode);
+      target.removeEventListener('mousemove', this.updateTooltip, isCaptureMode);
+      target.removeEventListener('mouseleave', this.hideTooltip, isCaptureMode);
+    }
+
+    /**
+     * When mouse enter, show the tooltip
+     */
+
+  }, {
+    key: 'showTooltip',
+    value: function showTooltip(e, isGlobalCall) {
+      var _this5 = this;
+
+      if (isGlobalCall) {
+        // Don't trigger other elements belongs to other ReactTooltip
+        var targetArray = this.getTargetArray(this.props.id);
+        var isMyElement = targetArray.some(function (ele) {
+          return ele === e.currentTarget;
+        });
+        if (!isMyElement || this.state.show) return;
+      }
+      // Get the tooltip content
+      // calculate in this phrase so that tip width height can be detected
+      var _props4 = this.props,
+          children = _props4.children,
+          multiline = _props4.multiline,
+          getContent = _props4.getContent;
+
+      var originTooltip = e.currentTarget.getAttribute('data-tip');
+      var isMultiline = e.currentTarget.getAttribute('data-multiline') || multiline || false;
+
+      // Generate tootlip content
+      var content = void 0;
+      if (getContent) {
+        if (Array.isArray(getContent)) {
+          content = getContent[0] && getContent[0]();
+        } else {
+          content = getContent();
+        }
+      }
+      var placeholder = (0, _getTipContent2.default)(originTooltip, children, content, isMultiline);
+      var isEmptyTip = typeof placeholder === 'string' && placeholder === '' || placeholder === null;
+
+      // If it is focus event or called by ReactTooltip.show, switch to `solid` effect
+      var switchToSolid = e instanceof window.FocusEvent || isGlobalCall;
+
+      // if it needs to skip adding hide listener to scroll
+      var scrollHide = true;
+      if (e.currentTarget.getAttribute('data-scroll-hide')) {
+        scrollHide = e.currentTarget.getAttribute('data-scroll-hide') === 'true';
+      } else if (this.props.scrollHide != null) {
+        scrollHide = this.props.scrollHide;
+      }
+
+      // To prevent previously created timers from triggering
+      this.clearTimer();
+
+      this.setState({
+        placeholder: placeholder,
+        isEmptyTip: isEmptyTip,
+        place: e.currentTarget.getAttribute('data-place') || this.props.place || 'top',
+        type: e.currentTarget.getAttribute('data-type') || this.props.type || 'dark',
+        effect: switchToSolid && 'solid' || this.getEffect(e.currentTarget),
+        offset: e.currentTarget.getAttribute('data-offset') || this.props.offset || {},
+        html: e.currentTarget.getAttribute('data-html') ? e.currentTarget.getAttribute('data-html') === 'true' : this.props.html || false,
+        delayShow: e.currentTarget.getAttribute('data-delay-show') || this.props.delayShow || 0,
+        delayHide: e.currentTarget.getAttribute('data-delay-hide') || this.props.delayHide || 0,
+        border: e.currentTarget.getAttribute('data-border') ? e.currentTarget.getAttribute('data-border') === 'true' : this.props.border || false,
+        extraClass: e.currentTarget.getAttribute('data-class') || this.props.class || this.props.className || '',
+        disable: e.currentTarget.getAttribute('data-tip-disable') ? e.currentTarget.getAttribute('data-tip-disable') === 'true' : this.props.disable || false
+      }, function () {
+        if (scrollHide) _this5.addScrollListener(e);
+        _this5.updateTooltip(e);
+
+        if (getContent && Array.isArray(getContent)) {
+          _this5.intervalUpdateContent = setInterval(function () {
+            if (_this5.mount) {
+              var _getContent = _this5.props.getContent;
+
+              var _placeholder = (0, _getTipContent2.default)(originTooltip, _getContent[0](), isMultiline);
+              var _isEmptyTip = typeof _placeholder === 'string' && _placeholder === '';
+              _this5.setState({
+                placeholder: _placeholder,
+                isEmptyTip: _isEmptyTip
+              });
+            }
+          }, getContent[1]);
+        }
+      });
+    }
+
+    /**
+     * When mouse hover, updatetooltip
+     */
+
+  }, {
+    key: 'updateTooltip',
+    value: function updateTooltip(e) {
+      var _this6 = this;
+
+      var _state = this.state,
+          delayShow = _state.delayShow,
+          show = _state.show,
+          isEmptyTip = _state.isEmptyTip,
+          disable = _state.disable;
+      var afterShow = this.props.afterShow;
+      var placeholder = this.state.placeholder;
+
+      var delayTime = show ? 0 : parseInt(delayShow, 10);
+      var eventTarget = e.currentTarget;
+
+      if (isEmptyTip || disable) return; // if the tooltip is empty, disable the tooltip
+      var updateState = function updateState() {
+        if (Array.isArray(placeholder) && placeholder.length > 0 || placeholder) {
+          var isInvisible = !_this6.state.show;
+          _this6.setState({
+            currentEvent: e,
+            currentTarget: eventTarget,
+            show: true
+          }, function () {
+            _this6.updatePosition();
+            if (isInvisible && afterShow) afterShow();
+          });
+        }
+      };
+
+      clearTimeout(this.delayShowLoop);
+      if (delayShow) {
+        this.delayShowLoop = setTimeout(updateState, delayTime);
+      } else {
+        updateState();
+      }
+    }
+
+    /**
+     * When mouse leave, hide tooltip
+     */
+
+  }, {
+    key: 'hideTooltip',
+    value: function hideTooltip(e, hasTarget) {
+      var _this7 = this;
+
+      var _state2 = this.state,
+          delayHide = _state2.delayHide,
+          isEmptyTip = _state2.isEmptyTip,
+          disable = _state2.disable;
+      var afterHide = this.props.afterHide;
+
+      if (!this.mount) return;
+      if (isEmptyTip || disable) return; // if the tooltip is empty, disable the tooltip
+      if (hasTarget) {
+        // Don't trigger other elements belongs to other ReactTooltip
+        var targetArray = this.getTargetArray(this.props.id);
+        var isMyElement = targetArray.some(function (ele) {
+          return ele === e.currentTarget;
+        });
+        if (!isMyElement || !this.state.show) return;
+      }
+      var resetState = function resetState() {
+        var isVisible = _this7.state.show;
+        _this7.setState({
+          show: false
+        }, function () {
+          _this7.removeScrollListener();
+          if (isVisible && afterHide) afterHide();
+        });
+      };
+
+      this.clearTimer();
+      if (delayHide) {
+        this.delayHideLoop = setTimeout(resetState, parseInt(delayHide, 10));
+      } else {
+        resetState();
+      }
+    }
+
+    /**
+     * Add scroll eventlistener when tooltip show
+     * automatically hide the tooltip when scrolling
+     */
+
+  }, {
+    key: 'addScrollListener',
+    value: function addScrollListener(e) {
+      var isCaptureMode = this.isCapture(e.currentTarget);
+      window.addEventListener('scroll', this.hideTooltip, isCaptureMode);
+    }
+  }, {
+    key: 'removeScrollListener',
+    value: function removeScrollListener() {
+      window.removeEventListener('scroll', this.hideTooltip);
+    }
+
+    // Calculation the position
+
+  }, {
+    key: 'updatePosition',
+    value: function updatePosition() {
+      var _this8 = this;
+
+      var _state3 = this.state,
+          currentEvent = _state3.currentEvent,
+          currentTarget = _state3.currentTarget,
+          place = _state3.place,
+          effect = _state3.effect,
+          offset = _state3.offset;
+
+      var node = _reactDom2.default.findDOMNode(this);
+      var result = (0, _getPosition2.default)(currentEvent, currentTarget, node, place, effect, offset);
+
+      if (result.isNewState) {
+        // Switch to reverse placement
+        return this.setState(result.newState, function () {
+          _this8.updatePosition();
+        });
+      }
+      // Set tooltip position
+      node.style.left = result.position.left + 'px';
+      node.style.top = result.position.top + 'px';
+    }
+
+    /**
+     * Set style tag in header
+     * in this way we can insert default css
+     */
+
+  }, {
+    key: 'setStyleHeader',
+    value: function setStyleHeader() {
+      if (!document.getElementsByTagName('head')[0].querySelector('style[id="react-tooltip"]')) {
+        var tag = document.createElement('style');
+        tag.id = 'react-tooltip';
+        tag.innerHTML = _style2.default;
+        document.getElementsByTagName('head')[0].appendChild(tag);
+      }
+    }
+
+    /**
+     * CLear all kinds of timeout of interval
+     */
+
+  }, {
+    key: 'clearTimer',
+    value: function clearTimer() {
+      clearTimeout(this.delayShowLoop);
+      clearTimeout(this.delayHideLoop);
+      clearInterval(this.intervalUpdateContent);
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _state4 = this.state,
+          placeholder = _state4.placeholder,
+          extraClass = _state4.extraClass,
+          html = _state4.html,
+          ariaProps = _state4.ariaProps,
+          disable = _state4.disable,
+          isEmptyTip = _state4.isEmptyTip;
+
+      var tooltipClass = (0, _classnames2.default)('__react_component_tooltip', { 'show': this.state.show && !disable && !isEmptyTip }, { 'border': this.state.border }, { 'place-top': this.state.place === 'top' }, { 'place-bottom': this.state.place === 'bottom' }, { 'place-left': this.state.place === 'left' }, { 'place-right': this.state.place === 'right' }, { 'type-dark': this.state.type === 'dark' }, { 'type-success': this.state.type === 'success' }, { 'type-warning': this.state.type === 'warning' }, { 'type-error': this.state.type === 'error' }, { 'type-info': this.state.type === 'info' }, { 'type-light': this.state.type === 'light' });
+
+      var Wrapper = this.props.wrapper;
+      if (ReactTooltip.supportedWrappers.indexOf(Wrapper) < 0) {
+        Wrapper = ReactTooltip.defaultProps.wrapper;
+      }
+
+      if (html) {
+        return _react2.default.createElement(Wrapper, _extends({ className: tooltipClass + ' ' + extraClass
+        }, ariaProps, {
+          'data-id': 'tooltip',
+          dangerouslySetInnerHTML: { __html: placeholder } }));
+      } else {
+        return _react2.default.createElement(
+          Wrapper,
+          _extends({ className: tooltipClass + ' ' + extraClass
+          }, ariaProps, {
+            'data-id': 'tooltip' }),
+          placeholder
+        );
+      }
+    }
+  }]);
+
+  return ReactTooltip;
+}(_react.Component), _class2.propTypes = {
+  children: _propTypes2.default.any,
+  place: _propTypes2.default.string,
+  type: _propTypes2.default.string,
+  effect: _propTypes2.default.string,
+  offset: _propTypes2.default.object,
+  multiline: _propTypes2.default.bool,
+  border: _propTypes2.default.bool,
+  insecure: _propTypes2.default.bool,
+  class: _propTypes2.default.string,
+  className: _propTypes2.default.string,
+  id: _propTypes2.default.string,
+  html: _propTypes2.default.bool,
+  delayHide: _propTypes2.default.number,
+  delayShow: _propTypes2.default.number,
+  event: _propTypes2.default.string,
+  eventOff: _propTypes2.default.string,
+  watchWindow: _propTypes2.default.bool,
+  isCapture: _propTypes2.default.bool,
+  globalEventOff: _propTypes2.default.string,
+  getContent: _propTypes2.default.any,
+  afterShow: _propTypes2.default.func,
+  afterHide: _propTypes2.default.func,
+  disable: _propTypes2.default.bool,
+  scrollHide: _propTypes2.default.bool,
+  resizeHide: _propTypes2.default.bool,
+  wrapper: _propTypes2.default.string
+}, _class2.defaultProps = {
+  insecure: true,
+  resizeHide: true,
+  wrapper: 'div'
+}, _class2.supportedWrappers = ['div', 'span'], _temp)) || _class) || _class) || _class) || _class) || _class) || _class;
+
+/* export default not fit for standalone, it will exports {default:...} */
+
+
+module.exports = ReactTooltip;
+},{"./decorators/customEvent":187,"./decorators/getEffect":188,"./decorators/isCapture":189,"./decorators/staticMethods":190,"./decorators/trackRemoval":191,"./decorators/windowListener":192,"./style":194,"./utils/aria":195,"./utils/getPosition":196,"./utils/getTipContent":197,"./utils/nodeListToArray":198,"classnames":120,"prop-types":166,"react":201,"react-dom":170}],194:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = '.__react_component_tooltip{border-radius:3px;display:inline-block;font-size:13px;left:-999em;opacity:0;padding:8px 21px;position:fixed;pointer-events:none;transition:opacity 0.3s ease-out;top:-999em;visibility:hidden;z-index:999}.__react_component_tooltip:before,.__react_component_tooltip:after{content:"";width:0;height:0;position:absolute}.__react_component_tooltip.show{opacity:0.9;margin-top:0px;margin-left:0px;visibility:visible}.__react_component_tooltip.type-dark{color:#fff;background-color:#222}.__react_component_tooltip.type-dark.place-top:after{border-top-color:#222;border-top-style:solid;border-top-width:6px}.__react_component_tooltip.type-dark.place-bottom:after{border-bottom-color:#222;border-bottom-style:solid;border-bottom-width:6px}.__react_component_tooltip.type-dark.place-left:after{border-left-color:#222;border-left-style:solid;border-left-width:6px}.__react_component_tooltip.type-dark.place-right:after{border-right-color:#222;border-right-style:solid;border-right-width:6px}.__react_component_tooltip.type-dark.border{border:1px solid #fff}.__react_component_tooltip.type-dark.border.place-top:before{border-top:8px solid #fff}.__react_component_tooltip.type-dark.border.place-bottom:before{border-bottom:8px solid #fff}.__react_component_tooltip.type-dark.border.place-left:before{border-left:8px solid #fff}.__react_component_tooltip.type-dark.border.place-right:before{border-right:8px solid #fff}.__react_component_tooltip.type-success{color:#fff;background-color:#8DC572}.__react_component_tooltip.type-success.place-top:after{border-top-color:#8DC572;border-top-style:solid;border-top-width:6px}.__react_component_tooltip.type-success.place-bottom:after{border-bottom-color:#8DC572;border-bottom-style:solid;border-bottom-width:6px}.__react_component_tooltip.type-success.place-left:after{border-left-color:#8DC572;border-left-style:solid;border-left-width:6px}.__react_component_tooltip.type-success.place-right:after{border-right-color:#8DC572;border-right-style:solid;border-right-width:6px}.__react_component_tooltip.type-success.border{border:1px solid #fff}.__react_component_tooltip.type-success.border.place-top:before{border-top:8px solid #fff}.__react_component_tooltip.type-success.border.place-bottom:before{border-bottom:8px solid #fff}.__react_component_tooltip.type-success.border.place-left:before{border-left:8px solid #fff}.__react_component_tooltip.type-success.border.place-right:before{border-right:8px solid #fff}.__react_component_tooltip.type-warning{color:#fff;background-color:#F0AD4E}.__react_component_tooltip.type-warning.place-top:after{border-top-color:#F0AD4E;border-top-style:solid;border-top-width:6px}.__react_component_tooltip.type-warning.place-bottom:after{border-bottom-color:#F0AD4E;border-bottom-style:solid;border-bottom-width:6px}.__react_component_tooltip.type-warning.place-left:after{border-left-color:#F0AD4E;border-left-style:solid;border-left-width:6px}.__react_component_tooltip.type-warning.place-right:after{border-right-color:#F0AD4E;border-right-style:solid;border-right-width:6px}.__react_component_tooltip.type-warning.border{border:1px solid #fff}.__react_component_tooltip.type-warning.border.place-top:before{border-top:8px solid #fff}.__react_component_tooltip.type-warning.border.place-bottom:before{border-bottom:8px solid #fff}.__react_component_tooltip.type-warning.border.place-left:before{border-left:8px solid #fff}.__react_component_tooltip.type-warning.border.place-right:before{border-right:8px solid #fff}.__react_component_tooltip.type-error{color:#fff;background-color:#BE6464}.__react_component_tooltip.type-error.place-top:after{border-top-color:#BE6464;border-top-style:solid;border-top-width:6px}.__react_component_tooltip.type-error.place-bottom:after{border-bottom-color:#BE6464;border-bottom-style:solid;border-bottom-width:6px}.__react_component_tooltip.type-error.place-left:after{border-left-color:#BE6464;border-left-style:solid;border-left-width:6px}.__react_component_tooltip.type-error.place-right:after{border-right-color:#BE6464;border-right-style:solid;border-right-width:6px}.__react_component_tooltip.type-error.border{border:1px solid #fff}.__react_component_tooltip.type-error.border.place-top:before{border-top:8px solid #fff}.__react_component_tooltip.type-error.border.place-bottom:before{border-bottom:8px solid #fff}.__react_component_tooltip.type-error.border.place-left:before{border-left:8px solid #fff}.__react_component_tooltip.type-error.border.place-right:before{border-right:8px solid #fff}.__react_component_tooltip.type-info{color:#fff;background-color:#337AB7}.__react_component_tooltip.type-info.place-top:after{border-top-color:#337AB7;border-top-style:solid;border-top-width:6px}.__react_component_tooltip.type-info.place-bottom:after{border-bottom-color:#337AB7;border-bottom-style:solid;border-bottom-width:6px}.__react_component_tooltip.type-info.place-left:after{border-left-color:#337AB7;border-left-style:solid;border-left-width:6px}.__react_component_tooltip.type-info.place-right:after{border-right-color:#337AB7;border-right-style:solid;border-right-width:6px}.__react_component_tooltip.type-info.border{border:1px solid #fff}.__react_component_tooltip.type-info.border.place-top:before{border-top:8px solid #fff}.__react_component_tooltip.type-info.border.place-bottom:before{border-bottom:8px solid #fff}.__react_component_tooltip.type-info.border.place-left:before{border-left:8px solid #fff}.__react_component_tooltip.type-info.border.place-right:before{border-right:8px solid #fff}.__react_component_tooltip.type-light{color:#222;background-color:#fff}.__react_component_tooltip.type-light.place-top:after{border-top-color:#fff;border-top-style:solid;border-top-width:6px}.__react_component_tooltip.type-light.place-bottom:after{border-bottom-color:#fff;border-bottom-style:solid;border-bottom-width:6px}.__react_component_tooltip.type-light.place-left:after{border-left-color:#fff;border-left-style:solid;border-left-width:6px}.__react_component_tooltip.type-light.place-right:after{border-right-color:#fff;border-right-style:solid;border-right-width:6px}.__react_component_tooltip.type-light.border{border:1px solid #222}.__react_component_tooltip.type-light.border.place-top:before{border-top:8px solid #222}.__react_component_tooltip.type-light.border.place-bottom:before{border-bottom:8px solid #222}.__react_component_tooltip.type-light.border.place-left:before{border-left:8px solid #222}.__react_component_tooltip.type-light.border.place-right:before{border-right:8px solid #222}.__react_component_tooltip.place-top{margin-top:-10px}.__react_component_tooltip.place-top:before{border-left:10px solid transparent;border-right:10px solid transparent;bottom:-8px;left:50%;margin-left:-10px}.__react_component_tooltip.place-top:after{border-left:8px solid transparent;border-right:8px solid transparent;bottom:-6px;left:50%;margin-left:-8px}.__react_component_tooltip.place-bottom{margin-top:10px}.__react_component_tooltip.place-bottom:before{border-left:10px solid transparent;border-right:10px solid transparent;top:-8px;left:50%;margin-left:-10px}.__react_component_tooltip.place-bottom:after{border-left:8px solid transparent;border-right:8px solid transparent;top:-6px;left:50%;margin-left:-8px}.__react_component_tooltip.place-left{margin-left:-10px}.__react_component_tooltip.place-left:before{border-top:6px solid transparent;border-bottom:6px solid transparent;right:-8px;top:50%;margin-top:-5px}.__react_component_tooltip.place-left:after{border-top:5px solid transparent;border-bottom:5px solid transparent;right:-6px;top:50%;margin-top:-4px}.__react_component_tooltip.place-right{margin-left:10px}.__react_component_tooltip.place-right:before{border-top:6px solid transparent;border-bottom:6px solid transparent;left:-8px;top:50%;margin-top:-5px}.__react_component_tooltip.place-right:after{border-top:5px solid transparent;border-bottom:5px solid transparent;left:-6px;top:50%;margin-top:-4px}.__react_component_tooltip .multi-line{display:block;padding:2px 0px;text-align:center}';
+},{}],195:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.parseAria = parseAria;
+/**
+ * Support aria- and role in ReactTooltip
+ *
+ * @params props {Object}
+ * @return {Object}
+ */
+function parseAria(props) {
+  var ariaObj = {};
+  Object.keys(props).filter(function (prop) {
+    // aria-xxx and role is acceptable
+    return (/(^aria-\w+$|^role$)/.test(prop)
+    );
+  }).forEach(function (prop) {
+    ariaObj[prop] = props[prop];
+  });
+
+  return ariaObj;
+}
+},{}],196:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (e, target, node, place, effect, offset) {
+  var tipWidth = node.clientWidth;
+  var tipHeight = node.clientHeight;
+
+  var _getCurrentOffset = getCurrentOffset(e, target, effect),
+      mouseX = _getCurrentOffset.mouseX,
+      mouseY = _getCurrentOffset.mouseY;
+
+  var defaultOffset = getDefaultPosition(effect, target.clientWidth, target.clientHeight, tipWidth, tipHeight);
+
+  var _calculateOffset = calculateOffset(offset),
+      extraOffset_X = _calculateOffset.extraOffset_X,
+      extraOffset_Y = _calculateOffset.extraOffset_Y;
+
+  var windowWidth = window.innerWidth;
+  var windowHeight = window.innerHeight;
+
+  var _getParent = getParent(node),
+      parentTop = _getParent.parentTop,
+      parentLeft = _getParent.parentLeft;
+
+  // Get the edge offset of the tooltip
+
+
+  var getTipOffsetLeft = function getTipOffsetLeft(place) {
+    var offset_X = defaultOffset[place].l;
+    return mouseX + offset_X + extraOffset_X;
+  };
+  var getTipOffsetRight = function getTipOffsetRight(place) {
+    var offset_X = defaultOffset[place].r;
+    return mouseX + offset_X + extraOffset_X;
+  };
+  var getTipOffsetTop = function getTipOffsetTop(place) {
+    var offset_Y = defaultOffset[place].t;
+    return mouseY + offset_Y + extraOffset_Y;
+  };
+  var getTipOffsetBottom = function getTipOffsetBottom(place) {
+    var offset_Y = defaultOffset[place].b;
+    return mouseY + offset_Y + extraOffset_Y;
+  };
+
+  // Judge if the tooltip has over the window(screen)
+  var outsideVertical = function outsideVertical() {
+    var result = false;
+    var newPlace = void 0;
+    if (getTipOffsetTop('left') < 0 && getTipOffsetBottom('left') <= windowHeight && getTipOffsetBottom('bottom') <= windowHeight) {
+      result = true;
+      newPlace = 'bottom';
+    } else if (getTipOffsetBottom('left') > windowHeight && getTipOffsetTop('left') >= 0 && getTipOffsetTop('top') >= 0) {
+      result = true;
+      newPlace = 'top';
+    }
+    return { result: result, newPlace: newPlace };
+  };
+  var outsideLeft = function outsideLeft() {
+    var _outsideVertical = outsideVertical(),
+        result = _outsideVertical.result,
+        newPlace = _outsideVertical.newPlace; // Deal with vertical as first priority
+
+
+    if (result && outsideHorizontal().result) {
+      return { result: false // No need to change, if change to vertical will out of space
+      };
+    }
+    if (!result && getTipOffsetLeft('left') < 0 && getTipOffsetRight('right') <= windowWidth) {
+      result = true; // If vertical ok, but let out of side and right won't out of side
+      newPlace = 'right';
+    }
+    return { result: result, newPlace: newPlace };
+  };
+  var outsideRight = function outsideRight() {
+    var _outsideVertical2 = outsideVertical(),
+        result = _outsideVertical2.result,
+        newPlace = _outsideVertical2.newPlace;
+
+    if (result && outsideHorizontal().result) {
+      return { result: false // No need to change, if change to vertical will out of space
+      };
+    }
+    if (!result && getTipOffsetRight('right') > windowWidth && getTipOffsetLeft('left') >= 0) {
+      result = true;
+      newPlace = 'left';
+    }
+    return { result: result, newPlace: newPlace };
+  };
+
+  var outsideHorizontal = function outsideHorizontal() {
+    var result = false;
+    var newPlace = void 0;
+    if (getTipOffsetLeft('top') < 0 && getTipOffsetRight('top') <= windowWidth && getTipOffsetRight('right') <= windowWidth) {
+      result = true;
+      newPlace = 'right';
+    } else if (getTipOffsetRight('top') > windowWidth && getTipOffsetLeft('top') >= 0 && getTipOffsetLeft('left') >= 0) {
+      result = true;
+      newPlace = 'left';
+    }
+    return { result: result, newPlace: newPlace };
+  };
+  var outsideTop = function outsideTop() {
+    var _outsideHorizontal = outsideHorizontal(),
+        result = _outsideHorizontal.result,
+        newPlace = _outsideHorizontal.newPlace;
+
+    if (result && outsideVertical().result) {
+      return { result: false };
+    }
+    if (!result && getTipOffsetTop('top') < 0 && getTipOffsetBottom('bottom') <= windowHeight) {
+      result = true;
+      newPlace = 'bottom';
+    }
+    return { result: result, newPlace: newPlace };
+  };
+  var outsideBottom = function outsideBottom() {
+    var _outsideHorizontal2 = outsideHorizontal(),
+        result = _outsideHorizontal2.result,
+        newPlace = _outsideHorizontal2.newPlace;
+
+    if (result && outsideVertical().result) {
+      return { result: false };
+    }
+    if (!result && getTipOffsetBottom('bottom') > windowHeight && getTipOffsetTop('top') >= 0) {
+      result = true;
+      newPlace = 'top';
+    }
+    return { result: result, newPlace: newPlace };
+  };
+
+  // Return new state to change the placement to the reverse if possible
+  var outsideLeftResult = outsideLeft();
+  var outsideRightResult = outsideRight();
+  var outsideTopResult = outsideTop();
+  var outsideBottomResult = outsideBottom();
+
+  if (place === 'left' && outsideLeftResult.result) {
+    return {
+      isNewState: true,
+      newState: { place: outsideLeftResult.newPlace }
+    };
+  } else if (place === 'right' && outsideRightResult.result) {
+    return {
+      isNewState: true,
+      newState: { place: outsideRightResult.newPlace }
+    };
+  } else if (place === 'top' && outsideTopResult.result) {
+    return {
+      isNewState: true,
+      newState: { place: outsideTopResult.newPlace }
+    };
+  } else if (place === 'bottom' && outsideBottomResult.result) {
+    return {
+      isNewState: true,
+      newState: { place: outsideBottomResult.newPlace }
+    };
+  }
+
+  // Return tooltip offset position
+  return {
+    isNewState: false,
+    position: {
+      left: parseInt(getTipOffsetLeft(place) - parentLeft, 10),
+      top: parseInt(getTipOffsetTop(place) - parentTop, 10)
+    }
+  };
+};
+
+// Get current mouse offset
+var getCurrentOffset = function getCurrentOffset(e, currentTarget, effect) {
+  var boundingClientRect = currentTarget.getBoundingClientRect();
+  var targetTop = boundingClientRect.top;
+  var targetLeft = boundingClientRect.left;
+  var targetWidth = currentTarget.clientWidth;
+  var targetHeight = currentTarget.clientHeight;
+
+  if (effect === 'float') {
+    return {
+      mouseX: e.clientX,
+      mouseY: e.clientY
+    };
+  }
+  return {
+    mouseX: targetLeft + targetWidth / 2,
+    mouseY: targetTop + targetHeight / 2
+  };
+};
+
+// List all possibility of tooltip final offset
+// This is useful in judging if it is necessary for tooltip to switch position when out of window
+/**
+ * Calculate the position of tooltip
+ *
+ * @params
+ * - `e` {Event} the event of current mouse
+ * - `target` {Element} the currentTarget of the event
+ * - `node` {DOM} the react-tooltip object
+ * - `place` {String} top / right / bottom / left
+ * - `effect` {String} float / solid
+ * - `offset` {Object} the offset to default position
+ *
+ * @return {Object
+ * - `isNewState` {Bool} required
+ * - `newState` {Object}
+ * - `position` {OBject} {left: {Number}, top: {Number}}
+ */
+var getDefaultPosition = function getDefaultPosition(effect, targetWidth, targetHeight, tipWidth, tipHeight) {
+  var top = void 0;
+  var right = void 0;
+  var bottom = void 0;
+  var left = void 0;
+  var disToMouse = 3;
+  var triangleHeight = 2;
+  var cursorHeight = 12; // Optimize for float bottom only, cause the cursor will hide the tooltip
+
+  if (effect === 'float') {
+    top = {
+      l: -(tipWidth / 2),
+      r: tipWidth / 2,
+      t: -(tipHeight + disToMouse + triangleHeight),
+      b: -disToMouse
+    };
+    bottom = {
+      l: -(tipWidth / 2),
+      r: tipWidth / 2,
+      t: disToMouse + cursorHeight,
+      b: tipHeight + disToMouse + triangleHeight + cursorHeight
+    };
+    left = {
+      l: -(tipWidth + disToMouse + triangleHeight),
+      r: -disToMouse,
+      t: -(tipHeight / 2),
+      b: tipHeight / 2
+    };
+    right = {
+      l: disToMouse,
+      r: tipWidth + disToMouse + triangleHeight,
+      t: -(tipHeight / 2),
+      b: tipHeight / 2
+    };
+  } else if (effect === 'solid') {
+    top = {
+      l: -(tipWidth / 2),
+      r: tipWidth / 2,
+      t: -(targetHeight / 2 + tipHeight + triangleHeight),
+      b: -(targetHeight / 2)
+    };
+    bottom = {
+      l: -(tipWidth / 2),
+      r: tipWidth / 2,
+      t: targetHeight / 2,
+      b: targetHeight / 2 + tipHeight + triangleHeight
+    };
+    left = {
+      l: -(tipWidth + targetWidth / 2 + triangleHeight),
+      r: -(targetWidth / 2),
+      t: -(tipHeight / 2),
+      b: tipHeight / 2
+    };
+    right = {
+      l: targetWidth / 2,
+      r: tipWidth + targetWidth / 2 + triangleHeight,
+      t: -(tipHeight / 2),
+      b: tipHeight / 2
+    };
+  }
+
+  return { top: top, bottom: bottom, left: left, right: right };
+};
+
+// Consider additional offset into position calculation
+var calculateOffset = function calculateOffset(offset) {
+  var extraOffset_X = 0;
+  var extraOffset_Y = 0;
+
+  if (Object.prototype.toString.apply(offset) === '[object String]') {
+    offset = JSON.parse(offset.toString().replace(/\'/g, '\"'));
+  }
+  for (var key in offset) {
+    if (key === 'top') {
+      extraOffset_Y -= parseInt(offset[key], 10);
+    } else if (key === 'bottom') {
+      extraOffset_Y += parseInt(offset[key], 10);
+    } else if (key === 'left') {
+      extraOffset_X -= parseInt(offset[key], 10);
+    } else if (key === 'right') {
+      extraOffset_X += parseInt(offset[key], 10);
+    }
+  }
+
+  return { extraOffset_X: extraOffset_X, extraOffset_Y: extraOffset_Y };
+};
+
+// Get the offset of the parent elements
+var getParent = function getParent(currentTarget) {
+  var currentParent = currentTarget;
+  while (currentParent) {
+    if (window.getComputedStyle(currentParent).getPropertyValue('transform') !== 'none') break;
+    currentParent = currentParent.parentElement;
+  }
+
+  var parentTop = currentParent && currentParent.getBoundingClientRect().top || 0;
+  var parentLeft = currentParent && currentParent.getBoundingClientRect().left || 0;
+
+  return { parentTop: parentTop, parentLeft: parentLeft };
+};
+},{}],197:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (tip, children, getContent, multiline) {
+  if (children) return children;
+  if (getContent !== undefined && getContent !== null) return getContent; // getContent can be 0, '', etc.
+  if (getContent === null) return null; // Tip not exist and childern is null or undefined
+
+  var regexp = /<br\s*\/?>/;
+  if (!multiline || multiline === 'false' || !regexp.test(tip)) {
+    // No trim(), so that user can keep their input
+    return tip;
+  }
+
+  // Multiline tooltip content
+  return tip.split(regexp).map(function (d, i) {
+    return _react2.default.createElement(
+      'span',
+      { key: i, className: 'multi-line' },
+      d
+    );
+  });
+};
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+},{"react":201}],198:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+exports.default = function (nodeList) {
+  var length = nodeList.length;
+  if (nodeList.hasOwnProperty) {
+    return Array.prototype.slice.call(nodeList);
+  }
+  return new Array(length).fill().map(function (index) {
+    return nodeList[index];
+  });
+};
+},{}],199:[function(require,module,exports){
 (function (process){
 /** @license React v16.0.0
  * react.development.js
@@ -41047,7 +49611,7 @@ module.exports = ReactEntry;
 }
 
 }).call(this,require('_process'))
-},{"_process":87,"fbjs/lib/emptyFunction":55,"fbjs/lib/emptyObject":56,"fbjs/lib/invariant":61,"fbjs/lib/warning":67,"object-assign":85,"prop-types/checkPropTypes":88}],112:[function(require,module,exports){
+},{"_process":162,"fbjs/lib/emptyFunction":129,"fbjs/lib/emptyObject":130,"fbjs/lib/invariant":135,"fbjs/lib/warning":141,"object-assign":160,"prop-types/checkPropTypes":163}],200:[function(require,module,exports){
 /*
  React v16.0.0
  react.production.min.js
@@ -41072,7 +49636,7 @@ Object.keys(a).join(", ")+"}":d,""));return g}function O(a,b){return"object"===t
 function R(a,b,d,e,c){var g="";null!=d&&(g=(""+d).replace(J,"$\x26/")+"/");b=L(b,g,e,c);null==a||N(a,"",Q,b);M(b)}var S={forEach:function(a,b,d){if(null==a)return a;b=L(null,null,b,d);null==a||N(a,"",P,b);M(b)},map:function(a,b,d){if(null==a)return a;var e=[];R(a,e,null,b,d);return e},count:function(a){return null==a?0:N(a,"",r.thatReturnsNull,null)},toArray:function(a){var b=[];R(a,b,null,r.thatReturnsArgument);return b}};
 module.exports={Children:{map:S.map,forEach:S.forEach,count:S.count,toArray:S.toArray,only:function(a){G.isValidElement(a)?void 0:t("143");return a}},Component:B.Component,PureComponent:B.PureComponent,unstable_AsyncComponent:B.AsyncComponent,createElement:G.createElement,cloneElement:G.cloneElement,isValidElement:G.isValidElement,createFactory:G.createFactory,version:"16.0.0",__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED:{ReactCurrentOwner:C,assign:f}};
 
-},{"fbjs/lib/emptyFunction":55,"fbjs/lib/emptyObject":56,"fbjs/lib/invariant":61,"object-assign":85}],113:[function(require,module,exports){
+},{"fbjs/lib/emptyFunction":129,"fbjs/lib/emptyObject":130,"fbjs/lib/invariant":135,"object-assign":160}],201:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -41083,7 +49647,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this,require('_process'))
-},{"./cjs/react.development.js":111,"./cjs/react.production.min.js":112,"_process":87}],114:[function(require,module,exports){
+},{"./cjs/react.development.js":199,"./cjs/react.production.min.js":200,"_process":162}],202:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -41107,7 +49671,7 @@ var thunk = createThunkMiddleware();
 thunk.withExtraArgument = createThunkMiddleware;
 
 exports['default'] = thunk;
-},{}],115:[function(require,module,exports){
+},{}],203:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -41166,7 +49730,7 @@ function applyMiddleware() {
     };
   };
 }
-},{"./compose":118}],116:[function(require,module,exports){
+},{"./compose":206}],204:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -41218,7 +49782,7 @@ function bindActionCreators(actionCreators, dispatch) {
   }
   return boundActionCreators;
 }
-},{}],117:[function(require,module,exports){
+},{}],205:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -41364,7 +49928,7 @@ function combineReducers(reducers) {
   };
 }
 }).call(this,require('_process'))
-},{"./createStore":119,"./utils/warning":121,"_process":87,"lodash/isPlainObject":84}],118:[function(require,module,exports){
+},{"./createStore":207,"./utils/warning":209,"_process":162,"lodash/isPlainObject":159}],206:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -41401,7 +49965,7 @@ function compose() {
     };
   });
 }
-},{}],119:[function(require,module,exports){
+},{}],207:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -41663,7 +50227,7 @@ var ActionTypes = exports.ActionTypes = {
     replaceReducer: replaceReducer
   }, _ref2[_symbolObservable2['default']] = observable, _ref2;
 }
-},{"lodash/isPlainObject":84,"symbol-observable":123}],120:[function(require,module,exports){
+},{"lodash/isPlainObject":159,"symbol-observable":211}],208:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -41712,7 +50276,7 @@ exports.bindActionCreators = _bindActionCreators2['default'];
 exports.applyMiddleware = _applyMiddleware2['default'];
 exports.compose = _compose2['default'];
 }).call(this,require('_process'))
-},{"./applyMiddleware":115,"./bindActionCreators":116,"./combineReducers":117,"./compose":118,"./createStore":119,"./utils/warning":121,"_process":87}],121:[function(require,module,exports){
+},{"./applyMiddleware":203,"./bindActionCreators":204,"./combineReducers":205,"./compose":206,"./createStore":207,"./utils/warning":209,"_process":162}],209:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -41738,7 +50302,7 @@ function warning(message) {
   } catch (e) {}
   /* eslint-enable no-empty */
 }
-},{}],122:[function(require,module,exports){
+},{}],210:[function(require,module,exports){
 module.exports = element;
 module.exports.pair = pair;
 module.exports.format = format;
@@ -41820,10 +50384,10 @@ function swapdim(a, b, dim) {
   if (dim === 'W' || dim === 'E') return [b, a];
 }
 
-},{}],123:[function(require,module,exports){
+},{}],211:[function(require,module,exports){
 module.exports = require('./lib/index');
 
-},{"./lib/index":124}],124:[function(require,module,exports){
+},{"./lib/index":212}],212:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -41855,7 +50419,7 @@ if (typeof self !== 'undefined') {
 var result = (0, _ponyfill2['default'])(root);
 exports['default'] = result;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":125}],125:[function(require,module,exports){
+},{"./ponyfill":213}],213:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -41879,7 +50443,7 @@ function symbolObservablePonyfill(root) {
 
 	return result;
 };
-},{}],126:[function(require,module,exports){
+},{}],214:[function(require,module,exports){
 (function (process){
 var toGeoJSON = (function() {
     'use strict';
@@ -42245,7 +50809,7 @@ var toGeoJSON = (function() {
 if (typeof module !== 'undefined') module.exports = toGeoJSON;
 
 }).call(this,require('_process'))
-},{"_process":87,"xmldom":46}],127:[function(require,module,exports){
+},{"_process":162,"xmldom":119}],215:[function(require,module,exports){
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -42791,7 +51355,212 @@ if (typeof module !== 'undefined') module.exports = toGeoJSON;
   exports.presimplify = presimplify;
 
 }));
-},{}],128:[function(require,module,exports){
+},{}],216:[function(require,module,exports){
+var v1 = require('./v1');
+var v4 = require('./v4');
+
+var uuid = v4;
+uuid.v1 = v1;
+uuid.v4 = v4;
+
+module.exports = uuid;
+
+},{"./v1":219,"./v4":220}],217:[function(require,module,exports){
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+var byteToHex = [];
+for (var i = 0; i < 256; ++i) {
+  byteToHex[i] = (i + 0x100).toString(16).substr(1);
+}
+
+function bytesToUuid(buf, offset) {
+  var i = offset || 0;
+  var bth = byteToHex;
+  return bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]];
+}
+
+module.exports = bytesToUuid;
+
+},{}],218:[function(require,module,exports){
+(function (global){
+// Unique ID creation requires a high quality random # generator.  In the
+// browser this is a little complicated due to unknown quality of Math.random()
+// and inconsistent support for the `crypto` API.  We do the best we can via
+// feature-detection
+var rng;
+
+var crypto = global.crypto || global.msCrypto; // for IE 11
+if (crypto && crypto.getRandomValues) {
+  // WHATWG crypto RNG - http://wiki.whatwg.org/wiki/Crypto
+  var rnds8 = new Uint8Array(16); // eslint-disable-line no-undef
+  rng = function whatwgRNG() {
+    crypto.getRandomValues(rnds8);
+    return rnds8;
+  };
+}
+
+if (!rng) {
+  // Math.random()-based (RNG)
+  //
+  // If all else fails, use Math.random().  It's fast, but is of unspecified
+  // quality.
+  var rnds = new Array(16);
+  rng = function() {
+    for (var i = 0, r; i < 16; i++) {
+      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
+      rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
+    }
+
+    return rnds;
+  };
+}
+
+module.exports = rng;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],219:[function(require,module,exports){
+var rng = require('./lib/rng');
+var bytesToUuid = require('./lib/bytesToUuid');
+
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
+
+// random #'s we need to init node and clockseq
+var _seedBytes = rng();
+
+// Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+var _nodeId = [
+  _seedBytes[0] | 0x01,
+  _seedBytes[1], _seedBytes[2], _seedBytes[3], _seedBytes[4], _seedBytes[5]
+];
+
+// Per 4.2.2, randomize (14 bit) clockseq
+var _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
+
+// Previous uuid creation time
+var _lastMSecs = 0, _lastNSecs = 0;
+
+// See https://github.com/broofa/node-uuid for API details
+function v1(options, buf, offset) {
+  var i = buf && offset || 0;
+  var b = buf || [];
+
+  options = options || {};
+
+  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
+
+  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
+
+  // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
+
+  // Time since last uuid creation (in msecs)
+  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+  // Per 4.2.1.2, Bump clockseq on clock regression
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  }
+
+  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  }
+
+  // Per 4.2.1.2 Throw error if too many uuids are requested
+  if (nsecs >= 10000) {
+    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq;
+
+  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+  msecs += 12219292800000;
+
+  // `time_low`
+  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff;
+
+  // `time_mid`
+  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff;
+
+  // `time_high_and_version`
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+  b[i++] = tmh >>> 16 & 0xff;
+
+  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+  b[i++] = clockseq >>> 8 | 0x80;
+
+  // `clock_seq_low`
+  b[i++] = clockseq & 0xff;
+
+  // `node`
+  var node = options.node || _nodeId;
+  for (var n = 0; n < 6; ++n) {
+    b[i + n] = node[n];
+  }
+
+  return buf ? buf : bytesToUuid(b);
+}
+
+module.exports = v1;
+
+},{"./lib/bytesToUuid":217,"./lib/rng":218}],220:[function(require,module,exports){
+var rng = require('./lib/rng');
+var bytesToUuid = require('./lib/bytesToUuid');
+
+function v4(options, buf, offset) {
+  var i = buf && offset || 0;
+
+  if (typeof(options) == 'string') {
+    buf = options == 'binary' ? new Array(16) : null;
+    options = null;
+  }
+  options = options || {};
+
+  var rnds = options.random || (options.rng || rng)();
+
+  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+  rnds[6] = (rnds[6] & 0x0f) | 0x40;
+  rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+  // Copy bytes to buffer, if provided
+  if (buf) {
+    for (var ii = 0; ii < 16; ++ii) {
+      buf[i + ii] = rnds[ii];
+    }
+  }
+
+  return buf || bytesToUuid(rnds);
+}
+
+module.exports = v4;
+
+},{"./lib/bytesToUuid":217,"./lib/rng":218}],221:[function(require,module,exports){
 /*eslint-disable no-cond-assign */
 module.exports = parse;
 module.exports.parse = parse;
@@ -43063,7 +51832,7 @@ function stringify (gj) {
   }
 }
 
-},{}],129:[function(require,module,exports){
+},{}],222:[function(require,module,exports){
 (function(self) {
   'use strict';
 
@@ -43526,4 +52295,4 @@ function stringify (gj) {
   self.fetch.polyfill = true
 })(typeof self !== 'undefined' ? self : this);
 
-},{}]},{},[20]);
+},{}]},{},[25]);

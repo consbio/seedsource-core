@@ -16,6 +16,10 @@ $primary: $blue;
   padding: .5em .5em;
 }
 
+.navbar {
+  z-index: 5;
+}
+
 .navbar-end > .navbar-item:last-child {
   margin-right: 10px;
 }
@@ -76,8 +80,24 @@ $sidebar-width: 440px;
   z-index: 2; // Raise box shadow above leaflet map
 }
 
+@include mobile {
+  .sidebar {
+    width: 100%;
+    position: absolute;
+    box-shadow: none;
+    background-color: #fff;
+  }
+}
+
 .sidebar-inner {
   width: $sidebar-width;
+}
+
+@include mobile {
+  .sidebar-inner {
+    width: 100%;
+    min-width: $sidebar-width;
+  }
 }
 
 .sidebar .tab-content {
@@ -108,6 +128,16 @@ $sidebar-width: 440px;
 .sidebar .overlay .progress-container {
   margin-right: 30px;
   margin-top: 50%;
+}
+
+@include mobile {
+  .map {
+    position: absolute;
+    top: calc(#{$header-height} + #{$tab-header-height});
+    width: 100%;
+    height: $tab-content-height;
+    z-index: 0;
+  }
 }
 
 .error-debug-info {

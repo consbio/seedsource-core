@@ -13,7 +13,7 @@ const App = () => (
             <div className="column is-narrow sidebar">
                 <Sidebar />
             </div>
-            <div className="column">
+            <div className="column map">
                 <Map />
             </div>
         </div>

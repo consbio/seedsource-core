@@ -29,6 +29,9 @@ class Sidebar extends React.Component {
                         <li className={activeTab === 'saves' ? 'is-active' : null}>
                             <a onClick={() => this.selectTab('saves')}>Saved Runs</a>
                         </li>
+                        <li className={(activeTab === 'map' ? 'is-active' : null) + ' is-hidden-tablet'}>
+                            <a onClick={() => this.selectTab('map')}>Map</a>
+                        </li>
                     </ul>
                 </div>
                 <div className={'tab-content ' + (activeTab !== 'about' ? 'is-hidden' : '')}>

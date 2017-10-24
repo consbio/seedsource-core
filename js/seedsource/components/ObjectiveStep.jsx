@@ -17,7 +17,7 @@ class ObjectiveStep extends React.Component {
 
         return (
             <ConfigurationStep title="Select objective" number={number} name="objective" active={true}>
-                <div className="tabs is-toggle is-medium">
+                <div className="tabs is-toggle is-small">
                     <ul>
                         <ObjectiveButton name="seedlots">Find seedlots</ObjectiveButton>
                         <ObjectiveButton name="sites">Find planting sites</ObjectiveButton>

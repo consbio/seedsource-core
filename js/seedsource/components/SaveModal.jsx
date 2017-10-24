@@ -19,6 +19,11 @@ class SaveModal extends React.Component {
             let title = 'Saved run - ' + months[today.getMonth()] + ' ' + today.getDate() + ', ' + today.getFullYear()
 
             this.setState({overwrite: false, title: title})
+
+            setTimeout(() => {
+                this.titleInput.focus()
+                this.titleInput.select()
+            }, 1)
         }
     }
 
@@ -47,6 +52,7 @@ class SaveModal extends React.Component {
                         onChange={e => {
                             this.setState({title: e.target.value})
                         }}
+                        ref={input => { this.titleInput = input }}
                     />
                     <div>&nbsp;</div>
                     <button className="button is-primary" type="submit">Save</button>
@@ -86,7 +92,7 @@ class SaveModal extends React.Component {
         }
 
         return (
-            <ModalCard title="Save Run Configuration">
+            <ModalCard title="Save Run Configuration" active={showModal} onHide={() => onHide()}>
                 {body}
             </ModalCard>
         )

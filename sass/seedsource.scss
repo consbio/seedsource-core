@@ -20,6 +20,10 @@ $primary: $blue;
   margin-right: 10px;
 }
 
+.tabs:not(:last-child) {
+  margin-bottom: 1em;
+}
+
 $directions: left top right bottom;
 $spacings: 5 10 15;
 
@@ -48,7 +52,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 
 $header-height: 52px;
 $family-strong: "Arial Black", "Arial Bold", Gadget, sans-serif;
-$tab-header-height: 66px;
+$tab-header-height: 58px;
 $tab-content-height: calc(100vh - #{$header-height} - #{$tab-header-height});
 $sidebar-width: 440px;
 
@@ -188,6 +192,66 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   border: 0;
   cursor: default;
   color: black;
+}
+
+.configuration-list {
+  margin-left: -15px;
+  margin-right: -15px;
+}
+
+.configuration-item {
+  padding-left: 15px;
+  border-top: 1px solid #D8D8D8;
+  height: 45px;
+}
+
+.configuration-item:first-child {
+  border-top: 0px;
+}
+
+.configuration-item.focused {
+  background-color: #D9D9D9;
+}
+
+.configuration-item .save-title {
+  font-weight: bold;
+}
+
+.configuration-item .save-date {
+  font-style: italic;
+  font-size: 0.8em;
+}
+
+.configuration-item .buttons {
+  box-shadow: -2px 0px 5px -2px;
+  width: 0px;
+  transition: width .5s;
+  overflow: hidden;
+}
+
+.configuration-item.focused .buttons {
+  width: 80px;
+}
+
+.configuration-item .buttons button {
+  display: block;
+  border: 0px;
+  text-align: left;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  width: 80px;
+}
+.configuration-item .buttons button:first-child {
+  background-color: $primary;
+  border-bottom: 1px solid #333;
+  color: $primary-invert;
+}
+
+.configuration-item .buttons button:last-child {
+  background-color: $danger;
+  color: $danger-invert;
 }
 
 .map-container {

@@ -167,7 +167,7 @@ export const failSaves = () => {
 
 export const fetchSaves = () => {
     return (dispatch, getState) => {
-        let { isLoggedIn } = getState()
+        let { isLoggedIn } = getState().auth
 
         if (isLoggedIn) {
             dispatch(requestSaves())

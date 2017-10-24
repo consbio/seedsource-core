@@ -96,7 +96,6 @@ $sidebar-width: 440px;
 @include mobile {
   .sidebar-inner {
     width: 100%;
-    min-width: $sidebar-width;
   }
 }
 
@@ -119,6 +118,12 @@ $sidebar-width: 440px;
   background-color: rgba(255, 255, 255, .92);
   z-index: 5;
   padding: 0px 20px;
+}
+
+@include mobile {
+  .sidebar .overlay {
+    width: 100%;
+  }
 }
 
 .sidebar .overlay progress {
@@ -392,4 +397,10 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 
 .leaflet-default-icon-path {
   background-image: url(../images/marker-icon.png);
+}
+
+@include mobile {
+  .leaflet-control.basemaps {
+    display: none;
+  }
 }

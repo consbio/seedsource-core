@@ -8,6 +8,18 @@ $primary: $blue;
 @import '~leaflet-geonames/L.Control.Geonames';
 @import '~leaflet-zoombox/L.Control.ZoomBox';
 
+/* IE fixes */
+@include tablet {
+  .modal-card {
+    margin: 0;
+  }
+}
+
+.modal-card-body {
+  max-height: calc(100vh - 146px);
+}
+/* End IE fixes */
+
 .table th {
   vertical-align: bottom;
 }

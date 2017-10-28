@@ -16,6 +16,7 @@
   },
   "homepage": "https://github.com/consbio/seedsource-core#readme",
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "isomorphic-fetch": "^2.2.1",
     "leaflet": "^1.2.0",
     "leaflet-basemaps": "^0.2.2",

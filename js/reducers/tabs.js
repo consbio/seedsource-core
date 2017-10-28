@@ -7,7 +7,7 @@ export default (state = 'about', action) => {
             return action.tab
 
         case LOAD_CONFIGURATION:
-            return 'configuration'
+            return 'tool'
 
         default:
             return state

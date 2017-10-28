@@ -30,7 +30,7 @@ class AccountMenu extends React.Component {
         }
 
         return [
-            <div className="navbar is-light is-size-6" key="modals">
+            <div className="has-text-dark is-size-6" key="modals">
                 <SignupModal
                     ref={input => { this.accountModal = input }}
                     onSignup={email => onLogin(email)}

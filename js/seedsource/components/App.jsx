@@ -1,6 +1,6 @@
 import React from 'react'
 import Navbar from 'seedsource/components/Navbar'
-import Sidebar from 'seedsource/components/Sidebar'
+import Sidebar from 'seedsource/containers/Sidebar'
 import Map from 'seedsource/containers/Map'
 import ErrorModal from 'seedsource/containers/ErrorModal'
 

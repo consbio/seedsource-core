@@ -1,6 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import ModalCard from 'seedsource/components/ModalCard'
+import SocialLogin from 'seedsource/components/SocialLogin'
 import { post } from '../../io'
 
 class LoginModal extends React.Component {
@@ -113,6 +114,8 @@ class LoginModal extends React.Component {
                     </div>
                 </div>
             </form>
+            <hr />
+            <SocialLogin />
         </ModalCard>
     }
 }

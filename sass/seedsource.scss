@@ -75,6 +75,23 @@ $sidebar-width: 440px;
   font-family: $family-strong;
 }
 
+.is-loading {
+  @extend .button.is-loading;
+
+  color: inherit !important;
+}
+
+.is-loading:after {
+  @extend .button.is-loading:after;
+
+  position: relative !important;
+  left: 0;
+  top: 0;
+  vertical-align: middle;
+  display: inline-block;
+  margin-left: 10px;
+}
+
 .sidebar {
   box-shadow: 2px 0px 10px;
   z-index: 2; // Raise box shadow above leaflet map

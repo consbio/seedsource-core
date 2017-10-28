@@ -23,6 +23,10 @@
 <body>
     <div id="SeedsourceApp"></div>
 
-    <script type="text/javascript" src="{% static "js/seedsource.js" %}"></script>
+    {% if debug %}
+        <script type="text/javascript" src="{% static "js/seedsource.js" %}"></script>
+    {% else %}
+        <script type="text/javascript" src="{% static "js/seedsource.min.js" %}"></script>
+    {% endif %}
 </body>
 </html>

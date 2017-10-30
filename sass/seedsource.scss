@@ -20,6 +20,24 @@ $primary: $blue;
 }
 /* End IE fixes */
 
+@include tablet {
+  .tabs.is-boxed li.is-active-tablet a {
+    color: $tabs-link-active-color;
+    background-color: $tabs-boxed-link-active-background-color;
+    border-color: $tabs-boxed-link-active-border-color;
+    border-bottom-color: $tabs-boxed-link-active-border-bottom-color !important;
+  }
+}
+
+@include mobile {
+  .tabs.is-boxed li.is-active-mobile a {
+    color: $tabs-link-active-color;
+    background-color: $tabs-boxed-link-active-background-color;
+    border-color: $tabs-boxed-link-active-border-color;
+    border-bottom-color: $tabs-boxed-link-active-border-bottom-color !important;
+  }
+}
+
 .table th {
   vertical-align: bottom;
 }
@@ -430,6 +448,14 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 
 @include mobile {
   .leaflet-control.basemaps {
+    display: none;
+  }
+
+  .leaflet-legend {
+    display: none;
+  }
+
+  .leaflet-opacity-control {
     display: none;
   }
 }

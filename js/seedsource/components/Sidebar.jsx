@@ -11,7 +11,7 @@ const Sidebar = ({ activeTab, onSelect }) => (
                 <li className={activeTab === 'about' ? 'is-active' : null}>
                     <a onClick={() => onSelect('about')}>About
                     </a></li>
-                <li className={activeTab === 'tool' ? 'is-active' : null}>
+                <li className={activeTab === 'tool' ? 'is-active' : activeTab === 'map' ? 'is-active-tablet' : null}>
                     <a onClick={() => onSelect('tool')}>Tool</a>
                 </li>
                 <li className={activeTab === 'saves' ? 'is-active' : null}>
@@ -25,7 +25,9 @@ const Sidebar = ({ activeTab, onSelect }) => (
         <div className={'tab-content ' + (activeTab !== 'about' ? 'is-hidden' : '')}>
             <About />
         </div>
-        <div className={'tab-content ' + (activeTab !== 'tool' ? 'is-hidden' : '')}>
+        <div className={
+            'tab-content ' + (activeTab === 'map' ? 'is-hidden-mobile' : activeTab !== 'tool' ? 'is-hidden' : '')
+        }>
             <RunConfiguration />
         </div>
         <div className={'tab-content ' + (activeTab !== 'saves' ? 'is-hidden' : '')}>

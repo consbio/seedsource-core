@@ -1,5 +1,6 @@
 import { executeGPTask } from '../io'
 import { setError } from './error'
+import { selectTab } from './tabs'
 import { constraints as constraintsConfig } from '../config'
 
 export const START_JOB = 'START_JOB'
@@ -66,6 +67,7 @@ export const runJob = configuration => {
 
        return executeGPTask('generate_scores', inputs, json => dispatch(receiveJobStatus(json))).then(() => {
            dispatch(finishJob(configuration))
+           dispatch(selectTab('map'))
        }).catch(err => {
            console.log(err)
 

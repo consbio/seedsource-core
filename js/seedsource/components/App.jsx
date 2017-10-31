@@ -5,7 +5,7 @@ import Map from 'seedsource/containers/Map'
 import ErrorModal from 'seedsource/containers/ErrorModal'
 
 const App = () => (
-    <div>
+    <div className="seedsource-app">
         <ErrorModal />
         <Navbar />
 

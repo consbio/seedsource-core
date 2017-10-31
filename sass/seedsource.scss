@@ -38,6 +38,16 @@ $primary: $blue;
   }
 }
 
+@mixin ios-mobile-portrait {
+  @media only screen
+  and (min-device-width: 320px)
+  and (max-device-width: 480px)
+  and (-webkit-min-device-pixel-ratio: 2)
+  and (orientation: portrait) {
+    @content;
+  }
+}
+
 .table th {
   vertical-align: bottom;
 }
@@ -52,6 +62,15 @@ $primary: $blue;
 
 .navbar-end > .navbar-item:last-child {
   margin-right: 10px;
+}
+
+@include mobile {
+  .navbar.is-active {
+    position: absolute;
+    height: 100vh;
+    width: 100vw;
+    overflow: auto;
+  }
 }
 
 .tabs:not(:last-child) {
@@ -89,6 +108,30 @@ $family-strong: "Arial Black", "Arial Bold", Gadget, sans-serif;
 $tab-header-height: 58px;
 $tab-content-height: calc(100vh - #{$header-height} - #{$tab-header-height});
 $sidebar-width: 440px;
+$ios-footer-height: 80px;
+
+@include mobile {
+  .navbar-menu {
+    max-height: calc(100vh - #{$header-height});
+    overflow: auto;
+  }
+
+  .navbar-item:hover, .navbar-link:hover {
+    color: $navbar-item-color !important;
+    background-color: $navbar-background-color !important;
+  }
+}
+
+@include ios-mobile-portrait {
+  .navbar {
+    max-height: calc(100vh - #{$ios-footer-height});
+    overflow: hidden;
+  }
+
+  .navbar-menu {
+    max-height: calc(100vh - #{$header-height} - #{$ios-footer-height}) !important;
+  }
+}
 
 .align-middle {
   vertical-align: middle;
@@ -122,6 +165,17 @@ $sidebar-width: 440px;
   margin-left: 10px;
 }
 
+.seedsource-app {
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+@include ios-mobile-portrait {
+  .seedsource-app {
+    max-height: calc(100vh - #{$ios-footer-height}) !important;
+  }
+}
+
 .sidebar {
   box-shadow: 2px 0px 10px;
   z-index: 2; // Raise box shadow above leaflet map
@@ -152,6 +206,13 @@ $sidebar-width: 440px;
   min-height: $tab-content-height;
   overflow: auto;
   padding: 0px 15px 0px 15px;
+}
+
+@include ios-mobile-portrait {
+  .sidebar .tab-content {
+    max-height: calc(100vh - #{$header-height} - #{$tab-header-height} - #{$ios-footer-height}) !important;
+    min-height: calc(100vh - #{$header-height} - #{$tab-header-height} - #{$ios-footer-height}) !important;
+  }
 }
 
 .sidebar .overlay {
@@ -188,7 +249,14 @@ $sidebar-width: 440px;
     top: calc(#{$header-height} + #{$tab-header-height});
     width: 100%;
     height: $tab-content-height;
+    overflow: hidden;
     z-index: 0;
+  }
+}
+
+@include ios-mobile-portrait {
+  .map {
+    height: calc(100vh - #{$header-height} - #{$tab-header-height} - #{$ios-footer-height}) !important;
   }
 }
 
@@ -447,15 +515,12 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 }
 
 @include mobile {
-  .leaflet-control.basemaps {
-    display: none;
-  }
-
-  .leaflet-legend {
-    display: none;
-  }
-
-  .leaflet-opacity-control {
+  .leaflet-legend,
+  .leaflet-control.basemaps,
+  .leaflet-opacity-control,
+  .leaflet-geonames-search,
+  .leaflet-zoom-box-control
+  {
     display: none;
   }
 }

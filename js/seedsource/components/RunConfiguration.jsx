@@ -10,7 +10,7 @@ import ConstraintStep from 'seedsource/containers/ConstraintStep'
 import RunStep from 'seedsource/containers/RunStep'
 import { collapsibleSteps } from '../../config'
 
-let RunConfiguration = ({ state, objective, method, job, activeStep }) => {
+let RunConfiguration = ({ state, job, activeStep }) => {
     let overlay = null
 
     if (job.isRunning) {
@@ -19,7 +19,7 @@ let RunConfiguration = ({ state, objective, method, job, activeStep }) => {
         if (job.queued) {
             label = (
                 <div>
-                    <h4 className="title is-4 is-loading">Waiting for other jobs to finish...</h4>
+                    <h4 className="title is-4 is-5-mobile is-loading">Waiting for other jobs to finish...</h4>
                     <div>
                         Another job is currently running. Your job is queued and will run as soon as other jobs
                         are finished.
@@ -70,8 +70,6 @@ let RunConfiguration = ({ state, objective, method, job, activeStep }) => {
 RunConfiguration.propTypes = {
     activeStep: PropTypes.string.isRequired,
     state: PropTypes.object.isRequired,
-    objective: PropTypes.string.isRequired,
-    method: PropTypes.string.isRequired,
     job: PropTypes.object.isRequired
 }
 

@@ -14,7 +14,7 @@ const RunStep = props => {
         <ConfigurationStep title="Map your Results" number={number} name="run" active={false}>
             <div>
                 <h4></h4>
-                <a
+                <button
                     className="button is-primary is-large is-fullwidth"
                     disabled={!canRun}
                     onClick={e => {
@@ -22,21 +22,22 @@ const RunStep = props => {
                     }}
                 >
                     Run Tool
-                </a>
+                </button>
             </div>
             <div className="margin-top-10">
                 <div>
-                    <a
+                    <button
                         className="button is-pulled-left"
                         disabled={!canSave}
-                        onClick={() => {
+                        onClick={e => {
+                            e.preventDefault()
                             onSave(isLoggedIn)
                         }}
                     >
                         <span className="icon12 icon-save" aria-hidden="true"></span> Save Last Run
-                    </a>
+                    </button>
                     <Dropdown
-                        className="is-pulled-right is-right"
+                        className="is-pulled-right is-right is-hidden-mobile"
                         up={true}
                         title="Export As..."
                         disabled={!canSave || reportIsFetching}

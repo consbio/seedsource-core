@@ -3,12 +3,9 @@ import RunConfiguration from 'seedsource/components/RunConfiguration'
 
 const mapStateToProps = state => {
     let { activeStep, runConfiguration, lastRun, job, pdfIsFetching } = state
-    let { objective, method } = runConfiguration
 
     return {
         state,
-        objective,
-        method,
         job,
         activeStep
     }

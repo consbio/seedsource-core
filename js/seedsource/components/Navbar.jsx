@@ -14,7 +14,7 @@ class Navbar extends React.Component {
         let isActive = this.state.isActive ? 'is-active' : ''
 
         return (
-            <nav className='navbar is-dark' role='navigation' aria-label='main navigation'>
+            <nav className={isActive + ' navbar is-dark'} role='navigation' aria-label='main navigation'>
                 <div className='navbar-brand'>
                     <div className='navbar-item'>
                         <img src={staticResource('images/logo.png')} className='image is-24x24 margin-right-5' alt={config.title} />

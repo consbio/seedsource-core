@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Core functionality underlying a collection of climate suitability tools.",
   "scripts": {
-    "watch": "gulp sass js watch"
+    "watch": "gulp sass js watch",
+    "build": "gulp js sass --production"
   },
   "repository": {
     "type": "git",

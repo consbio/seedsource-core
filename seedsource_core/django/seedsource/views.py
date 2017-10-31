@@ -39,7 +39,7 @@ class RunConfigurationViewset(viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
     def get_queryset(self):
-        return RunConfiguration.objects.filter(owner=self.request.user)
+        return RunConfiguration.objects.filter(owner=self.request.user).order_by('-modified')
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

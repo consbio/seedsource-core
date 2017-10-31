@@ -8,7 +8,11 @@
 
     <title>{{ title }}</title>
 
-    <link rel="stylesheet" href="{% static "css/seedsource.css" %}">
+    {% if debug %}
+        <link rel="stylesheet" href="{% static "css/seedsource.css" %}">
+    {% else %}
+        <link rel="stylesheet" href="{% static "css/seedsource.min.css" %}">
+    {% endif %}
 
     <link rel="icon" href="{% static "images/favicon-32x32.png" %}" sizes="32x32" />
     <link rel="icon" href="{% static "images/favicon-16x16.png" %}" sizes="16x16" />

@@ -7,6 +7,7 @@ $primary: $blue;
 @import '~leaflet-basemaps/L.Control.Basemaps';
 @import '~leaflet-geonames/L.Control.Geonames';
 @import '~leaflet-zoombox/L.Control.ZoomBox';
+@import '~leaflet-range/L.Control.Range';
 
 @mixin ios-mobile-portrait {
   @media only screen

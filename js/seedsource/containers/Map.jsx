@@ -10,6 +10,7 @@ import { topojson } from 'leaflet-omnivore'
 import 'leaflet-basemaps'
 import 'leaflet-geonames/L.Control.Geonames'
 import 'leaflet-zoombox/L.Control.ZoomBox'
+import 'leaflet-range/L.Control.Range'
 
 import * as io from '../../io'
 import { variables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
@@ -304,10 +305,10 @@ class Map extends React.Component {
     updateOpacity(opacity, serviceId, variable) {
         if (serviceId !== null || variable !== null) {
             if (this.opacityControl === null) {
-                this.opacityControl = L.control.opacity()
+                this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
                 this.map.addControl(this.opacityControl)
 
-                this.opacityControl.on('change', e => {
+                this.opacityControl.on('input', e => {
                     this.props.onOpacityChange(e.value / 100)
                 })
             }

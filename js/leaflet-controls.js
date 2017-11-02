@@ -1,59 +1,5 @@
 import L from 'leaflet'
 
-L.Control.Opacity = L.Control.extend({
-    options: {
-        position: 'topright',
-        value: 100
-    },
-
-    onAdd: function(map) {
-        var container = L.DomUtil.create('div', 'leaflet-opacity-control leaflet-bar');
-        L.DomUtil.create('span', 'icon-contrast-16', container);
-
-        var slider = L.DomUtil.create('input', '', container);
-        slider.type = 'range';
-        slider.setAttribute('orient', 'vertical');
-        slider.min = 20;
-        slider.max = 100;
-        slider.step = 1;
-        slider.value = this.options.value;
-
-        L.DomEvent.on(slider, 'mousedown mouseup click', L.DomEvent.stopPropagation);
-
-        /* IE11 seems to process events in the wrong order, so the only way to prevent map movement while dragging the
-         * slider is to disable map dragging when the cursor enters the slider (by the time the mousedown event fires
-         * it's too late becuase the event seems to go to the map first, which results in any subsequent motion
-         * resulting in map movement even after map.dragging.disable() is called.
-         */
-        L.DomEvent.on(slider, 'mouseenter', function(e) {
-            map.dragging.disable()
-        });
-        L.DomEvent.on(slider, 'mouseleave', function(e) {
-            map.dragging.enable();
-        });
-
-        L.DomEvent.on(slider, 'input change', function(e) {
-            this.fire('change', {value: e.target.value});
-        }.bind(this));
-
-        this._slider = slider;
-        this._container = container;
-
-        return this._container;
-    },
-
-    setValue: function(value) {
-        this.options.value = value
-        this._slider.value = value
-    },
-
-    includes: L.Evented.prototype
-});
-
-L.control.opacity = function (options) {
-  return new L.Control.Opacity(options);
-};
-
 L.Control.Button = L.Control.extend({
     options: {
         position: 'topright',

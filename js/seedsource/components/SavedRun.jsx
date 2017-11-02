@@ -23,6 +23,7 @@ const SavedRun = ({ active, save, onClick, onLoad, onDelete }) => {
                             onLoad(save)
                         }
                     }}
+                    className="button is-primary"
                 >
                     <span className="icon-load-12" aria-hidden="true"></span> Load
                 </button>
@@ -32,6 +33,7 @@ const SavedRun = ({ active, save, onClick, onLoad, onDelete }) => {
                             onDelete(save.uuid)
                         }
                     }}
+                    className="button is-danger"
                 >
                     <span className="icon-trash-12" aria-hidden="true"></span> Delete
                 </button>

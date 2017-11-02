@@ -8,6 +8,16 @@ $primary: $blue;
 @import '~leaflet-geonames/L.Control.Geonames';
 @import '~leaflet-zoombox/L.Control.ZoomBox';
 
+@mixin ios-mobile-portrait {
+  @media only screen
+  and (min-device-width: 320px)
+  and (max-device-width: 480px)
+  and (-webkit-min-device-pixel-ratio: 2)
+  and (orientation: portrait) {
+    @content;
+  }
+}
+
 $header-height: 52px;
 $family-strong: "Arial Black", "Arial Bold", Gadget, sans-serif;
 $tab-header-height: 58px;
@@ -59,11 +69,20 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
     margin: 0;
   }
 }
-
-.modal-card-body {
-  max-height: calc(100vh - 146px);
-}
 /* End IE fixes */
+
+@include ios-mobile-portrait {
+  .modal-card {
+    position: static;
+    margin-top: #{$header-height * 1.5};
+  }
+
+  .modal-card-body {
+    max-height: calc(100vh - 146px - #{$header-height * 1.5});
+    background: $white;
+    z-index: 10;
+  }
+}
 
 .table th {
   vertical-align: bottom;
@@ -109,6 +128,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
       position: fixed;
       width: 100%;
     }
+
     .navbar-menu {
       position: fixed;
       width: 100%;
@@ -136,6 +156,11 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
       border-color: $tabs-boxed-link-active-border-color;
       border-bottom-color: $tabs-boxed-link-active-border-bottom-color !important;
     }
+  }
+
+  .button.is-fullwidth {
+    display: inline-block;
+    text-align: center;
   }
 }
 
@@ -235,7 +260,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 
 .sidebar .overlay .progress-container {
   margin-right: 30px;
-  margin-top: 50%;
+  margin-top: calc(50vh - #{$header-height + $tab-header-height});
 }
 
 @include mobile {

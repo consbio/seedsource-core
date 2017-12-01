@@ -8,6 +8,8 @@ import rasterio
 import tempfile
 from django.conf import settings
 from io import BytesIO
+
+from django.template.loader import render_to_string
 from ncdjango.geoprocessing.params import StringParameter
 from ncdjango.geoprocessing.workflow import Task
 from ncdjango.models import Service, Variable, SERVICE_DATA_ROOT
@@ -52,6 +54,10 @@ class WriteTIF(Task):
                     dst.write(np.array(data, dtype=dtype), 1)
                     dst.write_mask(np.logical_not(data.mask))
 
-                zf.writestr('sst_results.tif', tif_data.getvalue(), compress_type=zipfile.ZIP_DEFLATED)
+                zf.writestr('SST Results/results.tif', tif_data.getvalue(), compress_type=zipfile.ZIP_DEFLATED)
+                zf.writestr(
+                    'SST Results/README.txt', render_to_string('txt/download_readme.txt', {}),
+                    compress_type=zipfile.ZIP_DEFLATED
+                )
 
         return os.path.basename(filename)

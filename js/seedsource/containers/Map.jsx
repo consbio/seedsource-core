@@ -7,6 +7,7 @@ import React from 'react'
 import { connect } from 'react-redux'
 import L from 'leaflet'
 import { topojson } from 'leaflet-omnivore'
+import { Lethargy } from 'lethargy'
 import 'leaflet-basemaps'
 import 'leaflet-geonames/L.Control.Geonames'
 import 'leaflet-zoombox/L.Control.ZoomBox'
@@ -44,6 +45,24 @@ class Map extends React.Component {
 
     // Initial map setup
     componentDidMount() {
+        let lethargy = new Lethargy(7, 10, 0.05)  // Help minimize jumpy zoom with Apple mice and trackpads
+        L.Map.ScrollWheelZoom.prototype._onWheelScroll = function(e) {
+            L.DomEvent.stop(e)
+
+            if (lethargy.check(e) === false) {
+                return
+            }
+
+            let delta = L.DomEvent.getWheelDelta(e)
+            if (delta <= -0.25) delta = -0.25
+            if (delta >= 0.25) delta = 0.25
+
+            this._delta += delta
+            this._lastMousePos = this._map.mouseEventToContainerPoint(e)
+
+            this._performZoom()
+        }
+
         this.map = L.map(this.mapNode, {
             zoom: 4,
             center: [55.0, -112.0],

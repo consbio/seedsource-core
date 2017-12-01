@@ -3,6 +3,8 @@ import { setError } from './error'
 import { dumpConfiguration } from './saves'
 import { reports } from '../config'
 
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 export const REQUEST_REPORT = 'REQUEST_REPORT'
 export const RECEIVE_REPORT = 'RECEIVE_REPORT'
 export const FAIL_REPORT = 'FAIL_REPORT'
@@ -77,7 +79,9 @@ export const createReport = name => {
                 throw new Error('Bad status creating report: ' + response.status)
             }
         }).then(blob => {
-            const filename = 'report.' + getState().report.name
+            let today = new Date()
+            const filename = 'SST Report ' + months[today.getMonth()] + ' ' + today.getDate() + ', ' +
+                today.getFullYear() +  '.' + getState().report.name
             if (navigator.msSaveBlob !== undefined) {
                 navigator.msSaveBlob(blob, filename)
             }
@@ -121,7 +125,8 @@ export const runTIFJob = () => {
         return executeGPTask('write_tif', inputs).then(json => {
             dispatch(receiveReport())
             let { filename } = JSON.parse(json.outputs)
-            window.location = '/downloads/' + filename
+            window.location = '/downloads/' + filename + '?date=' + encodeURIComponent(' ' + months[today.getMonth()] +
+                ' ' + today.getDate() + ', ' + today.getFullYear())
         }).catch(err => {
             console.log(err)
 

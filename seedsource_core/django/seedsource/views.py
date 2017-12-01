@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db.models import Q
 from django.http import HttpResponse
+from django.utils.timezone import now
 from django.views.generic.base import TemplateView
 from numpy.ma.core import is_masked
 from rest_framework import viewsets
@@ -112,7 +113,9 @@ class GeneratePDFView(ReportViewBase):
     def _response(self, report):
         pdf_data = report.get_pdf_data()
         response = HttpResponse(content=pdf_data.getvalue(), content_type='application/x-pdf')
-        response['Content-disposition'] = 'attachment; filename=report.pdf'
+        response['Content-disposition'] = 'attachment; filename="SST Report {}.pdf"'.format(
+            now().strftime('%b %-d, %Y')
+        )
         return response
 
 
@@ -120,7 +123,9 @@ class GeneratePowerPointView(ReportViewBase):
     def _response(self, report):
         pptx_data = report.get_pptx_data()
         response = HttpResponse(content=pptx_data.getvalue(), content_type='application/vnd.ms-powerpoint')
-        response['Content-disposition'] = 'attachment; filename=report.pptx'
+        response['Content-disposition'] = 'attachment; filename="SST Report {}.pptx"'.format(
+            now().strftime('%b %-d, %Y')
+        )
         return response
 
 

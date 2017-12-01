@@ -124,7 +124,10 @@ export const runTIFJob = () => {
 
         return executeGPTask('write_tif', inputs).then(json => {
             dispatch(receiveReport())
+            
             let { filename } = JSON.parse(json.outputs)
+            let today = new Date()
+
             window.location = '/downloads/' + filename + '?date=' + encodeURIComponent(' ' + months[today.getMonth()] +
                 ' ' + today.getDate() + ', ' + today.getFullYear())
         }).catch(err => {

@@ -365,8 +365,16 @@ export const regions = [
         label: 'North Central'
     },
     {
+        name: 'uscentral1',
+        label: 'Central US'
+    },
+    {
         name: 'ne1',
         label: 'North East'
+    },
+    {
+        name: 'useast1',
+        label: "Eastern US"
     }
 ]
 

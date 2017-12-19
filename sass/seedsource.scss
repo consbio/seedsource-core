@@ -165,6 +165,15 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
   }
 }
 
+@include tablet {
+  .tabs.is-boxed li.is-active-tablet a {
+    color: $tabs-link-active-color;
+    background-color: $tabs-boxed-link-active-background-color;
+    border-color: $tabs-boxed-link-active-border-color;
+    border-bottom-color: $tabs-boxed-link-active-border-bottom-color !important;
+  }
+}
+
 .align-middle {
   vertical-align: middle;
 }

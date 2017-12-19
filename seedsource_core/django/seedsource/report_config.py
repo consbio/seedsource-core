@@ -48,7 +48,7 @@ def format_precip_value(value, is_imperial):
 
 
 def format_whole_value(value, is_imperial):
-    return round(value)
+    return str(round(value))
 
 
 VARIABLE_CONFIG = {

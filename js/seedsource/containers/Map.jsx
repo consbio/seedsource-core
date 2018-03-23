@@ -90,6 +90,7 @@ class Map extends React.Component {
         }))
 
         let geonamesControl = L.control.geonames({
+            geonamesURL: 'https://secure.geonames.org/searchJSON',
             position: 'topright',
             username: 'seedsource',
             showMarker: false,

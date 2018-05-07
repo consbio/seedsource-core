@@ -1,4 +1,5 @@
 {% load staticfiles %}
+{% load render_bundle from webpack_loader %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -8,11 +9,7 @@
 
     <title>{{ title }}</title>
 
-    {% if debug %}
-        <link rel="stylesheet" href="{% static "css/seedsource.css" %}">
-    {% else %}
-        <link rel="stylesheet" href="{% static "css/seedsource.min.css" %}">
-    {% endif %}
+    {% render_bundle 'main' 'css' %}
 
     <link rel="icon" href="{% static "images/favicon-32x32.png" %}" sizes="32x32" />
     <link rel="icon" href="{% static "images/favicon-16x16.png" %}" sizes="16x16" />
@@ -29,10 +26,9 @@
 <body>
     <div id="SeedsourceApp"></div>
 
-    {% if debug %}
-        <script type="text/javascript" src="{% static "js/seedsource.js" %}"></script>
-    {% else %}
-        <script type="text/javascript" src="{% static "js/seedsource.min.js" %}"></script>
+    {% if not debug %}
+        {% render_bundle 'vendor' 'js' %}
     {% endif %}
+    {% render_bundle 'main' 'js' %}
 </body>
 </html>

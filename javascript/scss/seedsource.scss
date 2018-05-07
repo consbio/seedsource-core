@@ -3,7 +3,7 @@
 $primary: $blue;
 
 @import '~bulma/bulma';
-@import '~leaflet/dist/leaflet';
+@import '~leaflet/dist/leaflet.css';
 @import '~leaflet-basemaps/L.Control.Basemaps';
 @import '~leaflet-geonames/L.Control.Geonames';
 @import '~leaflet-zoombox/L.Control.ZoomBox';
@@ -43,7 +43,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 @each $icon in $icons {
   @each $size in $icon-sizes {
     .icon-#{$icon}-#{$size} {
-      background: url('../images/icon-#{$icon}.svg') no-repeat center center;
+      background: url('/images/icon-#{$icon}.svg') no-repeat center center;
       width: #{$size}px;
       height: #{$size}px;
       display: inline-block;
@@ -195,8 +195,8 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
   color: inherit !important;
 }
 
-.is-loading:after {
-  @extend .button.is-loading:after;
+.is-loading::after {
+  @extend .is-loading::after;
 
   position: relative !important;
   left: 0;
@@ -492,7 +492,7 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 }
 
 .leaflet-default-icon-path {
-  background-image: url(../images/marker-icon.png);
+  background-image: url(/images/marker-icon.png);
 }
 
 @include mobile {

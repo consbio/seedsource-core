@@ -563,6 +563,17 @@ class Map extends React.Component {
     }
 
     render() {
+        let geojson = {}
+        this.props.constraints.map((constraint) => {
+            if (constraint.type === "shapefile") {
+                geojson = constraint.values.geoJSON
+            }
+        })
+        if (geojson.features) {
+            L.geoJSON(geojson).addTo(this.map)
+        }
+
+
         let timeOverlay = null
 
         if (this.map !== null) {
@@ -612,14 +623,14 @@ class Map extends React.Component {
 const mapStateToProps = state => {
     let { runConfiguration, activeVariable, map, job, legends, popup, lastRun } = state
     let { opacity, showResults, center } = map
-    let { objective, point, climate, unit, method, zones, region, regionMethod } = runConfiguration
+    let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
     let { geometry } = zones
     let zone = zones.selected
     let resultRegion = lastRun ? lastRun.region : null
 
     return {
         activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
-        zone, center, region, regionMethod, resultRegion
+        zone, center, region, regionMethod, resultRegion, constraints
     }
 }
 

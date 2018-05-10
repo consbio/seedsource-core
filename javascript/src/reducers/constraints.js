@@ -11,6 +11,7 @@ export default (state = [], action) => {
             return state.filter((constraint, i) => i !== action.index)
 
         case UPDATE_CONSTRAINT_VALUES:
+            console.log("action: ", action)
             return state.map((constraint, i) =>
                 i === action.index ? morph(constraint, {values: morph(constraint.values, action.values)}) : constraint
             )

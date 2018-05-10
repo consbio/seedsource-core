@@ -337,6 +337,14 @@ export const constraints = {
             let { x, y } = configuration.point
             return { lat: y, lon: x, distance: range}
         }
+    },
+    shapefile: {
+        values: {
+            geoJSON: {}
+        },
+        serialize: (configuration, { geoJSON }) => {
+            return { geoJSON }
+        }
     }
 }
 

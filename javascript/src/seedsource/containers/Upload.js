@@ -26,9 +26,6 @@ class Upload extends React.Component {
         event.stopPropagation()
         event.preventDefault()
 
-
-        // this.props.updateUploadStatus(true)
-
         let files
 
         if (event.dataTransfer && event.dataTransfer.files.length) {
@@ -70,7 +67,7 @@ class Upload extends React.Component {
                             status: 'error',
                             messages: { errors: ['Could not read the zipped shapefile.'] }
                         })
-                        // logException(errors)
+                        alert(errors)
                     })
             }
             reader.readAsArrayBuffer(zipFile)
@@ -82,7 +79,7 @@ class Upload extends React.Component {
                         resolve(e.target.result)
                     } catch (error) {
                         reject(new Error('Could not open the selected file.'))
-                        // logException(error)
+                        alert(`Could not open the selected file. ${error}`)
                     }
                 }
                 reader.readAsArrayBuffer(shpFile)
@@ -103,7 +100,7 @@ class Upload extends React.Component {
                                 proj: null,
                                 warnings: ['Could not fetch the projection data.']
                             })
-                            // logException(error)
+                            alert(`Could not fetch the projection data. ${error}`)
                         }
                     }
                     reader.readAsText(prjFile)
@@ -111,10 +108,11 @@ class Upload extends React.Component {
                     resolve({
                         proj: null,
                         warnings: [
-                            `No projection file found. Assume WSG84.
+                            `No projection file found. Assume WGS84.
                             If you see the wrong projection, try including the prj file.`
                         ]
                     })
+                    alert(`No projection file found. Assume WGS84. If you see the wrong projection, try including the prj file.`)
                 }
             })
 
@@ -134,7 +132,7 @@ class Upload extends React.Component {
                             )
                         } catch (e) {
                             reject(new Error('Could not read the selected shapefile'))
-                            // logException(e)
+                            alert('Could not read the selected shapefile')
                         }
                     })
                     .catch(error => reject(error)))
@@ -151,7 +149,6 @@ class Upload extends React.Component {
             if (results.geojson.features.length) {
                 const sampleShape = results.geojson.features[0]
                 console.log("success!! geojson: ", results.geojson)
-                this.props.onFileUpload(this.props.index, results.geojson)
                 this.setState({
                     uploadMessages: results.messages || {},
                     filename: results.filename,
@@ -162,15 +159,20 @@ class Upload extends React.Component {
                 this.setState({
                     uploadMessages: { warning: ['There is no shape in the selected shapefile.'] }
                 })
+                alert('There is no shape in the selected shapefile.')
             }
             this.setState({
                 uploadMessages: results.messages || {},
                 filename: results.filename
             })
+            this.props.onFileUpload(this.props.index, results.geojson)
         } else {
             this.setState({ uploadMessages: results.messages })
+            console.log(this.state.uploadMessages)
+            let messageArray = Object.keys(this.state.uploadMessages).map(key => { return this.state.uploadMessages[key] })
+            alert(`Error with file(s). ${messageArray.join(" ")}`)
+            this.props.onFileUpload(this.props.index, {features: []})
         }
-        // this.props.updateUploadStatus(false)
     }
 
 

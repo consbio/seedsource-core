@@ -9,9 +9,9 @@ import os
 from PIL import Image, ImageMath
 from PIL import ImageDraw
 from base64 import b64encode
-from clover.geometry.bbox import BBox
-from clover.render.renderers.stretched import StretchedRenderer
-from clover.utilities.color import Color
+from trefoil.geometry.bbox import BBox
+from trefoil.render.renderers.stretched import StretchedRenderer
+from trefoil.utilities.color import Color
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.template.loader import render_to_string

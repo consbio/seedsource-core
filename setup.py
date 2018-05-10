@@ -25,6 +25,6 @@ setup(
         'weasyprint'
     ],
     dependency_links=[
-        'https://github.com/consbio/clover/archive/master.zip#egg=clover'
+        'https://github.com/consbio/trefoil/archive/master.zip#egg=trefoil'
     ]
 )

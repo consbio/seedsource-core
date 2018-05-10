@@ -1,5 +1,5 @@
 import numpy
-from clover.geometry.bbox import BBox
+from trefoil.geometry.bbox import BBox
 from ncdjango.geoprocessing.data import Raster
 
 from seedsource_core.django.seedsource.tasks.generate_scores import GenerateScores

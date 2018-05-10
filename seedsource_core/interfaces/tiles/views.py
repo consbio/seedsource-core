@@ -1,6 +1,6 @@
 import mercantile
-from clover.geometry.bbox import BBox
-from clover.utilities.color import Color
+from trefoil.geometry.bbox import BBox
+from trefoil.utilities.color import Color
 from ncdjango.config import RenderConfiguration, ImageConfiguration
 from ncdjango.views import GetImageViewBase
 from pyproj import Proj

@@ -1,9 +1,9 @@
 import os
 import numpy
 import pyproj
-from clover.geometry.bbox import BBox
-from clover.render.renderers.stretched import StretchedRenderer
-from clover.utilities.color import Color
+from trefoil.geometry.bbox import BBox
+from trefoil.render.renderers.stretched import StretchedRenderer
+from trefoil.utilities.color import Color
 from django.db import transaction
 from django.core.management.base import BaseCommand
 from ncdjango.models import Service, Variable

@@ -5,7 +5,7 @@ from functools import partial
 
 import numpy
 import pyproj
-from clover.netcdf.variable import SpatialCoordinateVariables
+from trefoil.netcdf.variable import SpatialCoordinateVariables
 from django.conf import settings
 from ncdjango.models import Service
 from netCDF4 import Dataset

@@ -3,8 +3,8 @@ import shutil
 from tempfile import mkdtemp
 
 import numpy
-from clover.netcdf.crs import set_crs
-from clover.netcdf.variable import SpatialCoordinateVariables
+from trefoil.netcdf.crs import set_crs
+from trefoil.netcdf.variable import SpatialCoordinateVariables
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from ncdjango.models import Service

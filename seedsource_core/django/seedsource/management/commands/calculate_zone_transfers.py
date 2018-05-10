@@ -4,8 +4,8 @@ import os
 from statistics import mean
 
 import numpy
-from clover.geometry.bbox import BBox
-from clover.netcdf.variable import SpatialCoordinateVariables
+from trefoil.geometry.bbox import BBox
+from trefoil.netcdf.variable import SpatialCoordinateVariables
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
 from django.core.management import BaseCommand

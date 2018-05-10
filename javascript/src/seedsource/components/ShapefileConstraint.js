@@ -1,10 +1,8 @@
 import React from 'react'
-import Constraint from 'seedsource/containers/Constraint'
-import EditableLabel from 'seedsource/components/EditableLabel'
 import Upload from 'seedsource/containers/Upload'
+import PropTypes from 'prop-types'
 
 
-//TODO: add onchange type function to input
 const ShapefileConstraint = ({index, onRemove}) => {
     return (
         <tr className="constraint">
@@ -23,6 +21,11 @@ const ShapefileConstraint = ({index, onRemove}) => {
             </td>
         </tr>
     )
+}
+
+ShapefileConstraint.propTypes = {
+    index: PropTypes.number.isRequired,
+    onRemove: PropTypes.func.isRequired
 }
 
 export default ShapefileConstraint

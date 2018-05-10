@@ -1,10 +1,10 @@
 import React from 'react'
 import { connect } from 'react-redux'
+import PropTypes from 'prop-types'
 import shp from 'shpjs'
 
 import { updateUploadStatus } from 'actions/map'
 import {updateConstraintValues} from "../../actions/constraints";
-// import logException from 'utils/logger'
 
 class Upload extends React.Component {
     constructor(props) {
@@ -182,6 +182,11 @@ class Upload extends React.Component {
         )
     }
 }
+
+Upload.propTypes = {
+    onFileUpload: PropTypes.func.isRequired
+}
+
 
 const mapDispatchToProps = dispatch => {
     return {

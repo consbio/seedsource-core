@@ -18,7 +18,7 @@ const ShapefileConstraint = ({index, onRemove}) => {
                 ></a>
             </td>
             <td><strong>Shapefile</strong></td>
-            <td>
+            <td colSpan="2">
                 <Upload index={index}/>
             </td>
         </tr>

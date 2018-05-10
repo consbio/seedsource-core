@@ -148,7 +148,6 @@ class Upload extends React.Component {
         if (results.status === 'success') {
             if (results.geojson.features.length) {
                 const sampleShape = results.geojson.features[0]
-                console.log("success!! geojson: ", results.geojson)
                 this.setState({
                     uploadMessages: results.messages || {},
                     filename: results.filename,
@@ -168,7 +167,6 @@ class Upload extends React.Component {
             this.props.onFileUpload(this.props.index, results.geojson)
         } else {
             this.setState({ uploadMessages: results.messages })
-            console.log(this.state.uploadMessages)
             let messageArray = Object.keys(this.state.uploadMessages).map(key => { return this.state.uploadMessages[key] })
             alert(`Error with file(s). ${messageArray.join(" ")}`)
             this.props.onFileUpload(this.props.index, {features: []})

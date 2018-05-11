@@ -181,7 +181,8 @@ class Upload extends React.Component {
 }
 
 Upload.propTypes = {
-    onFileUpload: PropTypes.func.isRequired
+    onFileUpload: PropTypes.func.isRequired,
+    sendError: PropTypes.func.isRequired
 }
 
 

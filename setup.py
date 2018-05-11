@@ -23,8 +23,5 @@ setup(
         'pyproj',
         'python-pptx',
         'weasyprint'
-    ],
-    dependency_links=[
-        'https://github.com/consbio/trefoil/archive/master.zip#egg=trefoil'
     ]
 )

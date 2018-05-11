@@ -51,6 +51,7 @@ class Map extends React.Component {
         this.popup = null
         this.mapIsMoving = false
         this.shapefile = null
+        this.geojson = null
     }
 
     // Initial map setup
@@ -456,15 +457,17 @@ class Map extends React.Component {
     }
 
     updateShapefileLayer(geojson) {
-        if (!geojson.features && !this.shapefile) {
+        if (geojson === this.geojson) {
             return
         }
+        this.geojson = geojson
         if (this.shapefile) {
             this.map.removeLayer(this.shapefile)
         }
-        if (geojson.features) {
+        if (geojson.features && geojson.features.length) {
             this.shapefile = L.geoJSON(geojson)
             this.map.addLayer(this.shapefile)
+            this.map.flyToBounds(this.shapefile.getBounds())
         } else {
             this.shapefile = null
         }

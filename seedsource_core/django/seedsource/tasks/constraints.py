@@ -11,8 +11,8 @@ from ncdjango.models import Service
 from netCDF4 import Dataset
 from rasterio.features import rasterize
 from shapely.geometry import Point
+from shapely.geometry import shape
 from shapely.ops import transform
-
 
 class Constraint(object):
     def __init__(self, data, region):
@@ -28,7 +28,8 @@ class Constraint(object):
             'photoperiod': PhotoperiodConstraint,
             'latitude': LatitudeConstraint,
             'longitude': LongitudeConstraint,
-            'distance': DistanceConstraint
+            'distance': DistanceConstraint,
+            'shapefile': GeometryConstraint
         }[constraint]
 
     def apply_constraint(self, **kwargs):
@@ -320,3 +321,12 @@ class DistanceConstraint(Constraint):
             dtype=numpy.uint8
         )
 
+class GeometryConstraint(Constraint): 
+    def get_mask(self, geoJSON=None):
+        features = geoJSON['features']
+        shapes = shape(features[0]['geometry'])
+        coords = SpatialCoordinateVariables.from_bbox(self.data.extent, *reversed(self.data.shape))
+        return rasterize(
+            shapes, out_shape=self.data.shape, fill=1, transform=coords.affine, all_touched=True, default_value=0,
+            dtype=numpy.uint8 
+        )

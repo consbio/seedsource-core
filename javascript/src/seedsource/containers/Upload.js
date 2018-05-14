@@ -25,6 +25,8 @@ class Upload extends React.Component {
         event.stopPropagation()
         event.preventDefault()
 
+        document.getElementById("loadShapefileModal").style.display = "inherit"
+
         let files
 
         if (event.dataTransfer && event.dataTransfer.files.length) {
@@ -35,7 +37,6 @@ class Upload extends React.Component {
 
         let zipFile
         let shpFile
-        const dbfFiles = {}
         const prjFiles = {}
         for (let i = 0; i < files.length; i += 1) {
             const file = files[i]
@@ -44,8 +45,6 @@ class Upload extends React.Component {
                 break
             } else if (file.name.match(/\.shp$/i)) {
                 shpFile = file
-            } else if (file.name.match(/\.dbf$/i)) {
-                dbfFiles[file.name.slice(0, -4)] = file
             } else if (file.name.match(/\.prj$/i)) {
                 prjFiles[file.name.slice(0, -4)] = file
             }
@@ -161,11 +160,13 @@ class Upload extends React.Component {
             //     uploadMessages: results.messages || {},
             //     filename: results.filename
             // })
+            document.getElementById("loadShapefileModal").style.display = "none"
             this.props.onFileUpload(this.props.index, results.geojson)
         } else {
             // this.setState({ uploadMessages: results.messages })
-            // let messageArray = Object.keys(this.state.uploadMessages).map(key => { return this.state.uploadMessages[key] }).join(" ")}
-            this.props.sendError('Error with file(s)', null, results.messages)
+            // let messageArray = Object.keys(this.state.uploadMessages).map(key => { return this.state.uploadMessages[key] }).join(" ")
+            this.props.sendError('Error with file(s)', null, null)
+            document.getElementById("loadShapefileModal").style.display = "none"
             this.props.onFileUpload(this.props.index, {features: []})
         }
     }
@@ -175,6 +176,12 @@ class Upload extends React.Component {
         return (
             <div>
                 <input type="file" onChange={this.handleFileUpload} multiple />
+                <div className="overlay" id="loadShapefileModal">
+                    <div className="progress-container">
+                        Processing...
+                        <progress></progress>
+                    </div>
+                </div>
             </div>
         )
     }

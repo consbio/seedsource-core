@@ -343,8 +343,8 @@ export const constraints = {
             geoJSON: {},
             filename: null
         },
-        serialize: (configuration, { geoJSON, filename }) => {
-            return { geoJSON, filename }
+        serialize: (configuration, { geoJSON }) => {
+            return { geoJSON }
         }
     }
 }

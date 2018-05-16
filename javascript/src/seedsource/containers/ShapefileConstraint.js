@@ -2,9 +2,6 @@ import { connect } from 'react-redux'
 import ShapefileConstraint from 'seedsource/components/ShapefileConstraint'
 import { removeConstraint } from '../../actions/constraints'
 
-const mapStateToProps = () => {
-    return {}
-}
 
 const mapDispatchToProps = dispatch => {
     return {
@@ -14,4 +11,4 @@ const mapDispatchToProps = dispatch => {
     }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(ShapefileConstraint)
+export default connect(null, mapDispatchToProps)(ShapefileConstraint)

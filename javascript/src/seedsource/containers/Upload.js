@@ -5,30 +5,20 @@ import shp from 'shpjs'
 import { updateConstraintValues } from '../../actions/constraints'
 import { setError } from '../../actions/error'
 
+
 class Upload extends React.Component {
     constructor(props) {
         super(props)
-
-        // Would this be useful for reports?
-        // this.state = {
-        //     filename: '',
-        //     uploadMessages: {},
-        //     shapeType: ''
-        // }
-
         this.handleFileUpload = this.handleFileUpload.bind(this)
-        this.handleUploadFinish = this.handleUploadFinish.bind(this)
+        this.state = {
+            isLoading: false
+        }
     }
 
 
     handleFileUpload(event) {
-        event.stopPropagation()
-        event.preventDefault()
-
-        document.getElementById("loadShapefileModal").style.display = "inherit"
-
+        this.setState({isLoading: true})
         let files
-
         if (event.dataTransfer && event.dataTransfer.files.length) {
             files = event.dataTransfer.files
         } else if (event.target) {
@@ -37,7 +27,7 @@ class Upload extends React.Component {
 
         let zipFile
         let shpFile
-        const prjFiles = {}
+        let prjFile
         for (let i = 0; i < files.length; i += 1) {
             const file = files[i]
             if (file.name.match(/\.zip/i)) {
@@ -46,142 +36,94 @@ class Upload extends React.Component {
             } else if (file.name.match(/\.shp$/i)) {
                 shpFile = file
             } else if (file.name.match(/\.prj$/i)) {
-                prjFiles[file.name.slice(0, -4)] = file
+                prjFile = file
             }
         }
+
         if (zipFile) {
             const reader = new FileReader()
-            reader.onload = (e) => {
+            reader.onerror = (e => {
+                this.setState({isLoading: false})
+                this.props.sendError('Error', 'Could not read the zip file.', e.message)
+                return
+            })
+            reader.onload = (e => {
                 shp(e.target.result)
                     .then((geojson) => {
-                        this.handleUploadFinish({
-                            status: 'success',
-                            // filename: zipFile.name,
-                            geojson
-                        })
+                        this.setState({isLoading: false})
+                        this.props.onFileUpload(this.props.index, geojson, zipFile.filename)
+                        return
                     })
-                    .catch((errors) => {
-                        this.handleUploadFinish({
-                            status: 'error',
-                            messages: { errors: ['Could not read the zipped shapefile.'] }
-                        })
+                    .catch((error) => {
+                        this.setState({isLoading: false})
+                        this.props.sendError('Error', 'Could not read the zip file.', error.message)
+                        return
                     })
-            }
+            })
             reader.readAsArrayBuffer(zipFile)
         } else if (shpFile) {
             const shpPromise = new Promise((resolve, reject) => {
                 const reader = new FileReader()
+                reader.onerror = (e) => {
+                    reject(e)
+                }
                 reader.onload = (e) => {
-                    try {
-                        resolve(e.target.result)
-                    } catch (error) {
-                        reject(new Error('Could not open the selected file.'))
-                        this.props.sendError('Error', 'Could not open the .shp file.', error)
-                    }
+                    resolve({
+                        shp: e.target.result,
+                        name: shpFile.name
+                    })
                 }
                 reader.readAsArrayBuffer(shpFile)
             })
-
-            const prjFile = prjFiles[`${shpFile.name.slice(0, -4)}`]
-            const prjPromise = new Promise((resolve) => {
+            const prjPromise = new Promise((resolve, reject) => {
                 if (prjFile) {
                     const reader = new FileReader()
-                    reader.onload = (e) => {
-                        try {
-                            resolve({
-                                proj: e.target.result,
-                                // warnings: []
-                            })
-                        } catch (error) {
-                            resolve({
-                                proj: null,
-                                // warnings: ['Could not fetch the projection data.']
-                            })
-                            this.props.sendError('Warning', 'Could not process .prj file.', error)
-                        }
+                    reader.onerror = (e) => {
+                        reject(e)
                     }
-                    reader.readAsText(prjFile)
+                    reader.onload = (e) => {
+                        resolve({
+                            prj: e.target.result
+                        })
+                    }
+                    reader.readAsArrayBuffer(prjFile)
                 } else {
                     resolve({
-                        proj: null,
-                        // warnings: [
-                        //     `No projection file found. Assume WGS84.
-                        //     If you see the wrong projection, try including the prj file.`
-                        // ]
+                        prj: null,
+                        warning: 'No projection file found. Assuming WGS84. If you see the wrong projection, try including the prj file.'
                     })
-                    this.props.sendError('Warning', 'No projection file found. Assume WGS84. If you see the wrong projection, try including the prj file.')
                 }
             })
-
-            const projectedShpPromise = new Promise((resolve, reject) =>
-                Promise.all([shpPromise, prjPromise])
-                    .then((results) => {
-                        try {
-                            let handleFinish = (finish) => {this.handleUploadFinish(finish)}
-                            let parsedShp = shp.parseShp(results[0], results[1].proj)
-                            resolve(
-                                handleFinish({
-                                    status: 'success',
-                                    // filename: shpFile.name,
-                                    geojson: shp.combine([parsedShp, []]),
-                                    // messages: { warnings: results[1].warnings }
-                                })
-                            )
-                        } catch (e) {
-                            reject(new Error('Could not read the selected shapefile'))
-                            this.props.sendError('Error', 'Could not read the selected shapefile')
-                        }
-                    })
-                    .catch(error => reject(error)))
+            Promise.all([shpPromise, prjPromise])
+                .then(results => {
+                    let parsedShp = shp.parseShp(results[0].shp, results[1].prj)
+                    let geojson = shp.combine([parsedShp, []])
+                    this.setState({isLoading: false})
+                    if (results[1].warning) {
+                        this.props.sendError('Warning', results[1].warning)
+                    }
+                    this.props.onFileUpload(this.props.index, geojson, results[0].name)
+                }).catch(error => {
+                    this.setState({isLoading: false})
+                    this.props.sendError('Error', "Shapefile not loaded", error.message)
+                })
         } else {
-            this.handleUploadFinish({
-                status: 'error',
-                // messages: { errors: ['The selected file is not supported.'] }
-            })
-            this.props.sendError('Error', 'The selected file is not supported')
+            this.setState({isLoading: false})
+            this.props.sendError('Error', 'File(s) not supported')
         }
     }
-
-    handleUploadFinish(results) {
-        if (results.status === 'success') {
-            if (results.geojson.features.length) {
-                // this.setState({
-                //     uploadMessages: results.messages || {},
-                //     filename: results.filename,
-                //     shapeType: sampleShape.geometry.type,
-                // })
-            } else {
-                // this.setState({
-                //     uploadMessages: { warning: ['There is no shape in the selected shapefile.'] }
-                // })
-                this.props.sendError('Helpful Hint', 'There is no shape in the selected shapefile.')
-            }
-            // this.setState({
-            //     uploadMessages: results.messages || {},
-            //     filename: results.filename
-            // })
-            document.getElementById("loadShapefileModal").style.display = "none"
-            this.props.onFileUpload(this.props.index, results.geojson)
-        } else {
-            // this.setState({ uploadMessages: results.messages })
-            // let messageArray = Object.keys(this.state.uploadMessages).map(key => { return this.state.uploadMessages[key] }).join(" ")
-            this.props.sendError('Error with file(s)', null, null)
-            document.getElementById("loadShapefileModal").style.display = "none"
-            this.props.onFileUpload(this.props.index, {features: []})
-        }
-    }
-
 
     render() {
         return (
             <div>
                 <input type="file" onChange={this.handleFileUpload} multiple />
-                <div className="overlay" id="loadShapefileModal">
+                {this.state.isLoading ?
+                <div className="overlay">
                     <div className="progress-container">
                         Processing...
                         <progress></progress>
                     </div>
-                </div>
+                </div> : "" }
             </div>
         )
     }
@@ -195,8 +137,8 @@ Upload.propTypes = {
 
 const mapDispatchToProps = dispatch => {
     return {
-        onFileUpload: (index, geoJSON) => {
-            dispatch(updateConstraintValues(index, { geoJSON }))
+        onFileUpload: (index, geoJSON, filename) => {
+            dispatch(updateConstraintValues(index, { geoJSON, filename }))
         },
         sendError: (title, message, debugInfo = null) => {
             dispatch(setError(title, message, debugInfo))

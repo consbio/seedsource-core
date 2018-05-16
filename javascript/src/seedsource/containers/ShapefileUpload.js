@@ -6,7 +6,7 @@ import { updateConstraintValues } from '../../actions/constraints'
 import { setError } from '../../actions/error'
 
 
-class Upload extends React.Component {
+class ShapefileUpload extends React.Component {
     constructor(props) {
         super(props)
         this.handleFileUpload = this.handleFileUpload.bind(this)
@@ -20,44 +20,36 @@ class Upload extends React.Component {
         this.setState({isLoading: true})
         let files
         if (event.dataTransfer && event.dataTransfer.files.length) {
-            files = event.dataTransfer.files
+            files = Object.values(event.dataTransfer.files)
         } else if (event.target) {
-            files = event.target.files
+            files = Object.values(event.target.files)
         }
 
-        let zipFile
-        let shpFile
-        let prjFile
-        for (let i = 0; i < files.length; i += 1) {
-            const file = files[i]
-            if (file.name.match(/\.zip/i)) {
-                zipFile = file
-                break
-            } else if (file.name.match(/\.shp$/i)) {
-                shpFile = file
-            } else if (file.name.match(/\.prj$/i)) {
-                prjFile = file
-            }
+
+        if (files.reduce((total, file) => {return total + file.size}, 0) > 2100000) {
+            this.setState({isLoading: false})
+            return this.props.sendError('Error', 'Cannot process shapefiles larger than 2MB')
         }
+
+        let zipFile = files.find(file => file.name.match(/\.zip/i))
+        let shpFile = files.find(file => file.name.match(/\.shp/i))
+        let prjFile = files.find(file => file.name.match(/\.prj/i))
 
         if (zipFile) {
             const reader = new FileReader()
             reader.onerror = (e => {
                 this.setState({isLoading: false})
                 this.props.sendError('Error', 'Could not read the zip file.', e.message)
-                return
             })
             reader.onload = (e => {
                 shp(e.target.result)
                     .then((geojson) => {
                         this.setState({isLoading: false})
                         this.props.onFileUpload(this.props.index, geojson, zipFile.filename)
-                        return
                     })
                     .catch((error) => {
                         this.setState({isLoading: false})
                         this.props.sendError('Error', 'Could not read the zip file.', error.message)
-                        return
                     })
             })
             reader.readAsArrayBuffer(zipFile)
@@ -96,13 +88,14 @@ class Upload extends React.Component {
             })
             Promise.all([shpPromise, prjPromise])
                 .then(results => {
-                    let parsedShp = shp.parseShp(results[0].shp, results[1].prj)
+                    let [shpResult, prjResult] = results
+                    let parsedShp = shp.parseShp(shpResult.shp, prjResult.prj)
                     let geojson = shp.combine([parsedShp, []])
                     this.setState({isLoading: false})
                     if (results[1].warning) {
-                        this.props.sendError('Warning', results[1].warning)
+                        this.props.sendError('Warning', prjResult.warning)
                     }
-                    this.props.onFileUpload(this.props.index, geojson, results[0].name)
+                    this.props.onFileUpload(this.props.index, geojson, shpResult.name)
                 }).catch(error => {
                     this.setState({isLoading: false})
                     this.props.sendError('Error', "Shapefile not loaded", error.message)
@@ -123,13 +116,13 @@ class Upload extends React.Component {
                         Processing...
                         <progress></progress>
                     </div>
-                </div> : "" }
+                </div> : null }
             </div>
         )
     }
 }
 
-Upload.propTypes = {
+ShapefileUpload.propTypes = {
     onFileUpload: PropTypes.func.isRequired,
     sendError: PropTypes.func.isRequired
 }
@@ -147,6 +140,6 @@ const mapDispatchToProps = dispatch => {
 }
 
 
-export default connect(null, mapDispatchToProps)(Upload)
+export default connect(null, mapDispatchToProps)(ShapefileUpload)
 
 

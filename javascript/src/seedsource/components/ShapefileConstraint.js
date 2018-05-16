@@ -1,5 +1,5 @@
 import React from 'react'
-import Upload from 'seedsource/containers/Upload'
+import ShapefileUpload from 'seedsource/containers/ShapefileUpload'
 import PropTypes from 'prop-types'
 
 
@@ -17,7 +17,7 @@ const ShapefileConstraint = ({index, onRemove}) => {
             </td>
             <td><strong>Shapefile</strong></td>
             <td colSpan="2">
-                <Upload index={index}/>
+                <ShapefileUpload index={index}/>
             </td>
         </tr>
     )

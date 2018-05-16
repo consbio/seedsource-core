@@ -465,7 +465,7 @@ class Map extends React.Component {
             this.map.removeLayer(this.shapefile)
         }
         if (geojson.features && geojson.features.length) {
-            this.shapefile = L.geoJSON(geojson)
+            this.shapefile = L.geoJSON(geojson, { style: { "fill": false }})
             this.map.addLayer(this.shapefile)
             this.map.flyToBounds(this.shapefile.getBounds())
         } else {
@@ -636,12 +636,7 @@ const mapStateToProps = state => {
     let { geometry } = zones
     let zone = zones.selected
     let resultRegion = lastRun ? lastRun.region : null
-    let geojson = {}
-    constraints.map((constraint) => {
-        if (constraint.type === "shapefile") {
-            geojson = constraint.values.geoJSON
-        }
-    })
+    let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
 
     return {
         activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,

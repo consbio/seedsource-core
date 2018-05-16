@@ -340,10 +340,11 @@ export const constraints = {
     },
     shapefile: {
         values: {
-            geoJSON: {}
+            geoJSON: {},
+            filename: null
         },
-        serialize: (configuration, { geoJSON }) => {
-            return { geoJSON }
+        serialize: (configuration, { geoJSON, filename }) => {
+            return { geoJSON, filename }
         }
     }
 }

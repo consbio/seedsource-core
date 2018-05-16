@@ -45,7 +45,7 @@ class ShapefileUpload extends React.Component {
                 shp(e.target.result)
                     .then((geojson) => {
                         this.setState({isLoading: false})
-                        this.props.onFileUpload(this.props.index, geojson, zipFile.filename)
+                        this.props.onFileUpload(this.props.index, geojson, zipFile.name)
                     })
                     .catch((error) => {
                         this.setState({isLoading: false})

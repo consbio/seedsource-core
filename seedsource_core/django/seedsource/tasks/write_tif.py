@@ -38,7 +38,7 @@ class WriteTIF(Task):
         dtype = np.uint8
         nodata = data.fill_value
 
-        fd, filename = tempfile.mkstemp(prefix=settings.DATASET_DOWNLOAD_DIR, suffix='.zip')
+        fd, filename = tempfile.mkstemp(dir=settings.DATASET_DOWNLOAD_DIR, suffix='.zip')
         os.close(fd)
         os.chmod(filename, S_IRUSR | S_IWUSR | S_IRGRP)
 

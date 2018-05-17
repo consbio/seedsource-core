@@ -107,11 +107,17 @@ class Report(object):
             name, values = constraint['type'], constraint['values']
             config = CONSTRAINT_CONFIG[name]
 
-            constraints.append({
-                'label': config.label,
-                'value': config.format_value(self.configuration, is_imperial),
-                'range': config.format_range(values, is_imperial)
-            })
+            if name == 'shapefile':
+                constraints.append({
+                    'label': config.label,
+                    'filename': values['filename']
+                })
+            else:
+                constraints.append({
+                    'label': config.label,
+                    'value': config.format_value(self.configuration, is_imperial),
+                    'range': config.format_range(values, is_imperial)
+                })
 
         return constraints
 

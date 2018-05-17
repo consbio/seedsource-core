@@ -79,6 +79,13 @@ class Report(object):
                 'rcp85': 'RCP8.5'
             }[climate['model']]
 
+    def get_constraint_geometry(self):
+        for constraint in self.configuration['constraints']:
+            name, values = constraint['type'], constraint['values']
+            if name == 'shapefile':
+                return values['geoJSON']
+        return None
+
     def get_context_variables(self):
         variables = []
         is_imperial = self.configuration['unit'] == 'imperial'
@@ -154,7 +161,7 @@ class Report(object):
 
         map_image, map_bbox = MapImage(
             IMAGE_SIZE, (point['x'], point['y']), self.zoom, self.tile_layers, self.configuration.get('region'),
-            zone_id, self.opacity
+            zone_id, self.opacity, constraint_geometry=self.get_constraint_geometry()
         ).get_image()
         to_world = image_to_world(map_bbox, map_image.size)
         map_bbox = map_bbox.project(Proj(init='epsg:4326'), edge_points=0)
@@ -228,7 +235,7 @@ class Report(object):
 
 
 class MapImage(object):
-    def __init__(self, size, point, zoom, tile_layers, region, zone_id, opacity):
+    def __init__(self, size, point, zoom, tile_layers, region, zone_id, opacity, constraint_geometry=None):
         self._configure_event_loop()
 
         self.num_tiles = [math.ceil(size[x] / TILE_SIZE[x]) + 1 for x in (0, 1)]
@@ -272,6 +279,7 @@ class MapImage(object):
         self.region = region
         self.zone_id = zone_id
         self.opacity = opacity
+        self.constraint_geometry = constraint_geometry
 
     def _configure_event_loop(self):
         if sys.platform == 'win32':
@@ -345,6 +353,16 @@ class MapImage(object):
         for geometry in region.polygons.coords:
             self.draw_geometry(im, geometry[0], (0, 0, 102), 1)
 
+    def draw_constraint_geometry(self, im):
+        if self.constraint_geometry:
+            for feature in self.constraint_geometry['features']:
+                geometry = feature['geometry']
+                polygons = geometry['coordinates']
+                if geometry['type'] != 'MultiPolygon':
+                    polygons = [polygons]
+                for poly in polygons:
+                    self.draw_geometry(im, poly[0], (49, 136, 255), 2)
+
     def get_marker_image(self):
         marker = Image.open(os.path.join(get_images_dir(), 'marker-icon.png'))
         shadow = Image.open(os.path.join(get_images_dir(), 'marker-shadow.png'))
@@ -377,6 +395,7 @@ class MapImage(object):
 
         self.draw_zone_geometry(im)
         self.draw_region_geometry(im)
+        self.draw_constraint_geometry(im)
 
         marker_im = self.get_marker_image()
         im.paste(marker_im, (0, 0), marker_im)

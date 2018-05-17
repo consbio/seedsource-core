@@ -1,6 +1,7 @@
 import asyncio
 import math
 import sys
+from asyncio import ensure_future
 from datetime import datetime
 
 import aiohttp
@@ -167,7 +168,7 @@ class Report(object):
         scale_bar_y = map_image.size[1] - 15
         scale_bar_start = transform(mercator, wgs84, *to_world(scale_bar_x, scale_bar_y))
         scale_bar_end = transform(mercator, wgs84, *to_world(scale_bar_x + 96, scale_bar_y))
-        scale = '{} mi'.format(round(vincenty(scale_bar_start, scale_bar_end).miles, 1))
+        scale = '{} mi'.format(round(vincenty(reversed(scale_bar_start), reversed(scale_bar_end)).miles, 1))
 
         legend = RESULTS_RENDERER.get_legend()[0]
 
@@ -273,6 +274,8 @@ class MapImage(object):
             asyncio.set_event_loop(asyncio.SelectorEventLoop())
 
     def get_layer_images(self):
+        layer_images = [Image.new('RGBA', self.image_size) for _ in self.tile_layers]
+
         async def fetch_tile(client, layer_url, tile, im):
             headers = {}
 
@@ -288,22 +291,23 @@ class MapImage(object):
                 tile_im = Image.open(BytesIO(await r.read()))
                 im.paste(tile_im, ((tile.x - self.ul_tile.x) * 256, (tile.y - self.ul_tile.y) * 256))
 
-        layer_images = [Image.new('RGBA', self.image_size) for _ in self.tile_layers]
+        async def fetch_tiles():
+            async with aiohttp.ClientSession() as client:
+                futures = []
 
-        with aiohttp.ClientSession() as client:
-            requests = []
+                for i in range(self.num_tiles[0] * self.num_tiles[1]):
+                    tile = mercantile.Tile(
+                        x=self.ul_tile.x + i % self.num_tiles[0],
+                        y=self.ul_tile.y + i // self.num_tiles[0],
+                        z=self.zoom
+                    )
 
-            for i in range(self.num_tiles[0] * self.num_tiles[1]):
-                tile = mercantile.Tile(
-                    x=self.ul_tile.x + i % self.num_tiles[0],
-                    y=self.ul_tile.y + i // self.num_tiles[0],
-                    z=self.zoom
-                )
+                    for j, layer_url in enumerate(self.tile_layers):
+                        futures.append(ensure_future(fetch_tile(client, layer_url, tile, layer_images[j])))
 
-                for j, layer_url in enumerate(self.tile_layers):
-                    requests.append(fetch_tile(client, layer_url, tile, layer_images[j]))
+                    await asyncio.wait(futures, return_when=asyncio.ALL_COMPLETED)
 
-            asyncio.get_event_loop().run_until_complete(asyncio.gather(*requests))
+        asyncio.get_event_loop().run_until_complete(fetch_tiles())
 
         return layer_images
 

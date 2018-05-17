@@ -184,9 +184,14 @@ class PPTCreator(object):
         table.cell(0, 2).text = 'Range (+/-)'
 
         for i, constraint in enumerate(constraints, start=1):
-            table.cell(i, 0).text = constraint['label']
-            table.cell(i, 1).text = constraint['value']
-            table.cell(i, 2).text = constraint['range']
+            if constraint['label'] == 'Shapefile':
+                table.cell(i, 0).text = constraint['label']
+                table.cell(i, 1)._tc.set('gridSpan', str(2))
+                table.cell(i, 1).text = constraint['filename']
+            else:
+                table.cell(i, 0).text = constraint['label']
+                table.cell(i, 1).text = constraint['value']
+                table.cell(i, 2).text = constraint['range']
 
     def add_presenter_notes(self, slide, context):
         text_frame = slide.notes_slide.notes_text_frame
@@ -261,8 +266,15 @@ class PPTCreator(object):
             # Constraints table
             constraints = context['constraints']
             name_width = max([len('Constraint')] + [len(x['label']) for x in constraints]) + 3
-            value_width = max([len('Value')] + [len(x['value']) for x in constraints]) + 3
-            range_width = max([len('Range (+/-)')] + [len(x['range']) for x in constraints])
+            value_width = max([len('Value')] + [len(x['value']) for x in filter(lambda c: c['label'] != 'Shapefile', constraints)]) + 3
+            range_width = max([len('Range (+/-)')] + [len(x['range']) for x in filter(lambda c: c['label'] != 'Shapefile', constraints)])
+
+            # Ensure we have room for shapefile name, if there is one
+            shape_constraint = list(filter(lambda c: c['label'] == 'Shapefile', constraints))
+            if shape_constraint:
+                filename_width = len(shape_constraint[0]['filename'])
+                if filename_width > value_width + range_width:
+                    range_width = filename_width - value_width
 
             lines += [
                 (('', 12, False),),
@@ -276,13 +288,21 @@ class PPTCreator(object):
             ]
 
             for constraint in constraints:
-                lines += [
-                    ((''.join([
-                        constraint['label'].ljust(name_width),
-                        constraint['value'].ljust(value_width),
-                        constraint['range'].ljust(range_width)
-                    ]), 12, False),)
-                ]
+                if constraint['label'] == 'Shapefile':
+                    lines += [
+                        ((''.join([
+                            constraint['label'].ljust(name_width),
+                            constraint['filename'].ljust(value_width + range_width)
+                        ]), 12, False),)
+                    ]
+                else:
+                    lines += [
+                        ((''.join([
+                            constraint['label'].ljust(name_width),
+                            constraint['value'].ljust(value_width),
+                            constraint['range'].ljust(range_width)
+                        ]), 12, False),)
+                    ]
 
         self.add_text(text_frame, lines)
 

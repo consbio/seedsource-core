@@ -357,9 +357,12 @@ class MapImage(object):
         if self.constraint_geometry:
             for feature in self.constraint_geometry['features']:
                 geometry = feature['geometry']
-                polygons = geometry['coordinates']
-                if geometry['type'] != 'MultiPolygon':
-                    polygons = [polygons]
+                if geometry['type'] == 'MultiPolygon':
+                    polygons = geometry['coordinates']
+                elif geometry['type'] == 'Polygon':
+                    polygons = [geometry['coordinates']]
+                else:
+                    continue
                 for poly in polygons:
                     self.draw_geometry(im, poly[0], (49, 136, 255), 2)
 

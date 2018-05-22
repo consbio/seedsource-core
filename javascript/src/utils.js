@@ -30,7 +30,3 @@ export const getCookies = () => {
 
     return cookies
 }
-
-export const staticResource = (name) => {
-    return config.staticRoot + name
-}

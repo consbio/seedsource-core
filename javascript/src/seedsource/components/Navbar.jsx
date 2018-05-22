@@ -1,5 +1,5 @@
 import React from 'react'
-import { staticResource } from '../../utils'
+import logo from '../../../images/logo.png'
 import config from 'seedsource/config'
 import Menu from 'seedsource/components/Menu'
 import AccountMenu from 'seedsource/containers/AccountMenu'
@@ -17,7 +17,7 @@ class Navbar extends React.Component {
             <nav className={isActive + ' navbar is-dark'} role='navigation' aria-label='main navigation'>
                 <div className='navbar-brand'>
                     <div className='navbar-item'>
-                        <img src={staticResource('images/logo.png')} className='image is-24x24 margin-right-5' alt={config.title} />
+                        <img src={logo} className='image is-24x24 margin-right-5' alt={config.title} />
                         <span className='is-size-4 is-size-5-mobile has-text-weight-bold'>{config.title}</span>
                     </div>
                     <div

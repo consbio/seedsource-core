@@ -116,11 +116,13 @@ class Report(object):
 
             if name == 'shapefile':
                 constraints.append({
+                    'type': name,
                     'label': config.label,
                     'filename': values['filename']
                 })
             else:
                 constraints.append({
+                    'type': name,
                     'label': config.label,
                     'value': config.format_value(self.configuration, is_imperial),
                     'range': config.format_range(values, is_imperial)

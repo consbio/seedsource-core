@@ -184,7 +184,7 @@ class PPTCreator(object):
         table.cell(0, 2).text = 'Range (+/-)'
 
         for i, constraint in enumerate(constraints, start=1):
-            if constraint['label'] == 'Shapefile':
+            if constraint['type'] == 'shapefile':
                 table.cell(i, 0).text = constraint['label']
                 table.cell(i, 1)._tc.set('gridSpan', str(2))
                 table.cell(i, 1).text = constraint['filename']
@@ -266,11 +266,17 @@ class PPTCreator(object):
             # Constraints table
             constraints = context['constraints']
             name_width = max([len('Constraint')] + [len(x['label']) for x in constraints]) + 3
-            value_width = max([len('Value')] + [len(x['value']) for x in filter(lambda c: c['label'] != 'Shapefile', constraints)]) + 3
-            range_width = max([len('Range (+/-)')] + [len(x['range']) for x in filter(lambda c: c['label'] != 'Shapefile', constraints)])
+            value_width = max(
+                [len('Value')] +
+                [len(x['value']) for x in [c for c in constraints if c['type'] != 'shapefile']]
+            ) + 3
+            range_width = max(
+                [len('Range (+/-)')] +
+                [len(x['range']) for x in [c for c in constraints if c['type'] != 'shapefile']]
+            ) + 3
 
             # Ensure we have room for shapefile name, if there is one
-            shape_constraint = list(filter(lambda c: c['label'] == 'Shapefile', constraints))
+            shape_constraint = [c for c in constraints if c['type'] == 'shapefile']
             if shape_constraint:
                 filename_width = len(shape_constraint[0]['filename'])
                 if filename_width > value_width + range_width:
@@ -288,7 +294,7 @@ class PPTCreator(object):
             ]
 
             for constraint in constraints:
-                if constraint['label'] == 'Shapefile':
+                if constraint['type'] == 'shapefile':
                     lines += [
                         ((''.join([
                             constraint['label'].ljust(name_width),

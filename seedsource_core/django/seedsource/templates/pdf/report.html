@@ -246,7 +246,7 @@
                 </thead>
                 <tbody>
                     {% for constraint in constraints %}
-                        {% if constraint.label == 'Shapefile' %}
+                        {% if constraint.type == 'shapefile' %}
                             <tr>
                                 <td>{{ constraint.label }}</td>
                                 <td colspan=2>{{ constraint.filename|safe }}</td>

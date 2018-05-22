@@ -26,7 +26,9 @@ class ShapefileUpload extends React.Component {
         }
 
 
-        if (files.reduce((total, file) => {return total + file.size}, 0) > 2100000) {
+        if (files.length === 0) {
+            return this.setState({isLoading: false})
+        } else if (files.reduce((total, file) => {return total + file.size}, 0) > 2100000) {
             this.setState({isLoading: false})
             return this.props.sendError('Error', 'Cannot process shapefiles larger than 2MB')
         }

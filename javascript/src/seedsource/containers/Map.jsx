@@ -467,7 +467,7 @@ class Map extends React.Component {
         if (geojson.features && geojson.features.length) {
             this.shapefile = L.geoJSON(geojson, { style: { "fill": false }})
             this.map.addLayer(this.shapefile)
-            this.map.flyToBounds(this.shapefile.getBounds())
+            this.map.fitBounds(this.shapefile.getBounds())
         } else {
             this.shapefile = null
         }

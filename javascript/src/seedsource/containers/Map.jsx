@@ -50,6 +50,8 @@ class Map extends React.Component {
         this.boundaryName = null
         this.popup = null
         this.mapIsMoving = false
+        this.shapefile = null
+        this.geojson = null
     }
 
     // Initial map setup
@@ -454,6 +456,23 @@ class Map extends React.Component {
         }
     }
 
+    updateShapefileLayer(geojson) {
+        if (geojson === this.geojson) {
+            return
+        }
+        this.geojson = geojson
+        if (this.shapefile) {
+            this.map.removeLayer(this.shapefile)
+        }
+        if (geojson.features && geojson.features.length) {
+            this.shapefile = L.geoJSON(geojson, { style: { "fill": false }})
+            this.map.addLayer(this.shapefile)
+            this.map.fitBounds(this.shapefile.getBounds())
+        } else {
+            this.shapefile = null
+        }
+    }
+
     updatePopup(popup, unit) {
         let { point, elevation } = popup
 
@@ -568,7 +587,7 @@ class Map extends React.Component {
         if (this.map !== null) {
             let {
                 activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
-                zone, geometry, center, region
+                zone, geometry, center, region, geojson
             } = this.props
             let {serviceId} = job
 
@@ -582,6 +601,7 @@ class Map extends React.Component {
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
+            this.updateShapefileLayer(geojson)
 
             // Time overlay
             if (activeVariable !== null) {
@@ -612,14 +632,15 @@ class Map extends React.Component {
 const mapStateToProps = state => {
     let { runConfiguration, activeVariable, map, job, legends, popup, lastRun } = state
     let { opacity, showResults, center } = map
-    let { objective, point, climate, unit, method, zones, region, regionMethod } = runConfiguration
+    let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
     let { geometry } = zones
     let zone = zones.selected
     let resultRegion = lastRun ? lastRun.region : null
+    let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
 
     return {
         activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
-        zone, center, region, regionMethod, resultRegion
+        zone, center, region, regionMethod, resultRegion, geojson
     }
 }
 

@@ -6,6 +6,7 @@ import PhotoperiodConstraint from 'seedsource/containers/PhotoperiodConstraint'
 import LatitudeConstraint from 'seedsource/containers/LatitudeConstraint'
 import LongitudeConstraint from 'seedsource/containers/LongitudeConstraint'
 import DistanceConstraint from 'seedsource/containers/DistanceConstraint'
+import ShapefileConstraint from 'seedsource/containers/ShapefileConstraint'
 
 const constraintOptions = [
     {
@@ -27,6 +28,10 @@ const constraintOptions = [
     {
         type: 'distance',
         label: 'Distance'
+    },
+    {
+        type: 'shapefile',
+        label: 'Shapefile'
     }
 ]
 
@@ -35,7 +40,8 @@ const constraintMap = {
     photoperiod: PhotoperiodConstraint,
     latitude: LatitudeConstraint,
     longitude: LongitudeConstraint,
-    distance: DistanceConstraint
+    distance: DistanceConstraint,
+    shapefile: ShapefileConstraint
 }
 
 const ConstraintStep = ({ number, constraints, onChange }) => {

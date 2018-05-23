@@ -1,6 +1,7 @@
 import asyncio
 import math
 import sys
+from asyncio import ensure_future
 from datetime import datetime
 
 import aiohttp
@@ -78,6 +79,13 @@ class Report(object):
                 'rcp85': 'RCP8.5'
             }[climate['model']]
 
+    def get_constraint_geometry(self):
+        for constraint in self.configuration['constraints']:
+            name, values = constraint['type'], constraint['values']
+            if name == 'shapefile':
+                return values['geoJSON']
+        return None
+
     def get_context_variables(self):
         variables = []
         is_imperial = self.configuration['unit'] == 'imperial'
@@ -106,11 +114,19 @@ class Report(object):
             name, values = constraint['type'], constraint['values']
             config = CONSTRAINT_CONFIG[name]
 
-            constraints.append({
-                'label': config.label,
-                'value': config.format_value(self.configuration, is_imperial),
-                'range': config.format_range(values, is_imperial)
-            })
+            if name == 'shapefile':
+                constraints.append({
+                    'type': name,
+                    'label': config.label,
+                    'filename': values['filename']
+                })
+            else:
+                constraints.append({
+                    'type': name,
+                    'label': config.label,
+                    'value': config.format_value(self.configuration, is_imperial),
+                    'range': config.format_range(values, is_imperial)
+                })
 
         return constraints
 
@@ -147,7 +163,7 @@ class Report(object):
 
         map_image, map_bbox = MapImage(
             IMAGE_SIZE, (point['x'], point['y']), self.zoom, self.tile_layers, self.configuration.get('region'),
-            zone_id, self.opacity
+            zone_id, self.opacity, constraint_geometry=self.get_constraint_geometry()
         ).get_image()
         to_world = image_to_world(map_bbox, map_image.size)
         map_bbox = map_bbox.project(Proj(init='epsg:4326'), edge_points=0)
@@ -167,7 +183,7 @@ class Report(object):
         scale_bar_y = map_image.size[1] - 15
         scale_bar_start = transform(mercator, wgs84, *to_world(scale_bar_x, scale_bar_y))
         scale_bar_end = transform(mercator, wgs84, *to_world(scale_bar_x + 96, scale_bar_y))
-        scale = '{} mi'.format(round(vincenty(scale_bar_start, scale_bar_end).miles, 1))
+        scale = '{} mi'.format(round(vincenty(reversed(scale_bar_start), reversed(scale_bar_end)).miles, 1))
 
         legend = RESULTS_RENDERER.get_legend()[0]
 
@@ -221,7 +237,7 @@ class Report(object):
 
 
 class MapImage(object):
-    def __init__(self, size, point, zoom, tile_layers, region, zone_id, opacity):
+    def __init__(self, size, point, zoom, tile_layers, region, zone_id, opacity, constraint_geometry=None):
         self._configure_event_loop()
 
         self.num_tiles = [math.ceil(size[x] / TILE_SIZE[x]) + 1 for x in (0, 1)]
@@ -265,6 +281,7 @@ class MapImage(object):
         self.region = region
         self.zone_id = zone_id
         self.opacity = opacity
+        self.constraint_geometry = constraint_geometry
 
     def _configure_event_loop(self):
         if sys.platform == 'win32':
@@ -273,6 +290,8 @@ class MapImage(object):
             asyncio.set_event_loop(asyncio.SelectorEventLoop())
 
     def get_layer_images(self):
+        layer_images = [Image.new('RGBA', self.image_size) for _ in self.tile_layers]
+
         async def fetch_tile(client, layer_url, tile, im):
             headers = {}
 
@@ -288,22 +307,23 @@ class MapImage(object):
                 tile_im = Image.open(BytesIO(await r.read()))
                 im.paste(tile_im, ((tile.x - self.ul_tile.x) * 256, (tile.y - self.ul_tile.y) * 256))
 
-        layer_images = [Image.new('RGBA', self.image_size) for _ in self.tile_layers]
+        async def fetch_tiles():
+            async with aiohttp.ClientSession() as client:
+                futures = []
 
-        with aiohttp.ClientSession() as client:
-            requests = []
+                for i in range(self.num_tiles[0] * self.num_tiles[1]):
+                    tile = mercantile.Tile(
+                        x=self.ul_tile.x + i % self.num_tiles[0],
+                        y=self.ul_tile.y + i // self.num_tiles[0],
+                        z=self.zoom
+                    )
 
-            for i in range(self.num_tiles[0] * self.num_tiles[1]):
-                tile = mercantile.Tile(
-                    x=self.ul_tile.x + i % self.num_tiles[0],
-                    y=self.ul_tile.y + i // self.num_tiles[0],
-                    z=self.zoom
-                )
+                    for j, layer_url in enumerate(self.tile_layers):
+                        futures.append(ensure_future(fetch_tile(client, layer_url, tile, layer_images[j])))
 
-                for j, layer_url in enumerate(self.tile_layers):
-                    requests.append(fetch_tile(client, layer_url, tile, layer_images[j]))
+                    await asyncio.wait(futures, return_when=asyncio.ALL_COMPLETED)
 
-            asyncio.get_event_loop().run_until_complete(asyncio.gather(*requests))
+        asyncio.get_event_loop().run_until_complete(fetch_tiles())
 
         return layer_images
 
@@ -334,6 +354,19 @@ class MapImage(object):
 
         for geometry in region.polygons.coords:
             self.draw_geometry(im, geometry[0], (0, 0, 102), 1)
+
+    def draw_constraint_geometry(self, im):
+        if self.constraint_geometry:
+            for feature in self.constraint_geometry['features']:
+                geometry = feature['geometry']
+                if geometry['type'] == 'MultiPolygon':
+                    polygons = geometry['coordinates']
+                elif geometry['type'] == 'Polygon':
+                    polygons = [geometry['coordinates']]
+                else:
+                    continue
+                for poly in polygons:
+                    self.draw_geometry(im, poly[0], (49, 136, 255), 2)
 
     def get_marker_image(self):
         marker = Image.open(os.path.join(get_images_dir(), 'marker-icon.png'))
@@ -367,6 +400,7 @@ class MapImage(object):
 
         self.draw_zone_geometry(im)
         self.draw_region_geometry(im)
+        self.draw_constraint_geometry(im)
 
         marker_im = self.get_marker_image()
         im.paste(marker_im, (0, 0), marker_im)

@@ -110,7 +110,7 @@ def format_latitude_value(config, is_imperial):
 
 
 def format_latitude_range(values, is_imperial):
-    return '{range:.2f} &deg;N'.format(**values)
+    return '{range:.2f} &deg;'.format(**values)
 
 
 def format_longitude_value(config, is_imperial):
@@ -118,7 +118,7 @@ def format_longitude_value(config, is_imperial):
 
 
 def format_longitude_range(values, is_imperial):
-    return '{range:.2f} &deg;E'.format(**values)
+    return '{range:.2f} &deg;'.format(**values)
 
 
 def format_distance_range(values, is_imperial):
@@ -130,5 +130,6 @@ CONSTRAINT_CONFIG = {
     'photoperiod': Constraint('Photoperiod', format_photoperiod_value, format_photoperiod_range),
     'latitude': Constraint('Latitutde', format_latitude_value, format_latitude_range),
     'longitude': Constraint('Longitude', format_longitude_value, format_longitude_range),
-    'distance': Constraint('Distance', format_photoperiod_value, format_distance_range)
+    'distance': Constraint('Distance', format_photoperiod_value, format_distance_range),
+    'shapefile': Constraint('Shapefile', None, None)
 }

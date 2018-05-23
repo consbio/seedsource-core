@@ -320,13 +320,14 @@ class DistanceConstraint(Constraint):
             [shape], out_shape=self.data.shape, fill=1, transform=coords.affine, all_touched=True, default_value=0,
             dtype=numpy.uint8
         )
+    
 
 class GeometryConstraint(Constraint): 
     def get_mask(self, geoJSON=None):
         features = geoJSON['features']
-        shapes = shape(features[0]['geometry'])
+        geometries = [f['geometry'] for f in features]
         coords = SpatialCoordinateVariables.from_bbox(self.data.extent, *reversed(self.data.shape))
         return rasterize(
-            shapes, out_shape=self.data.shape, fill=1, transform=coords.affine, all_touched=True, default_value=0,
+            geometries, out_shape=self.data.shape, fill=1, transform=coords.affine, all_touched=True, default_value=0,
             dtype=numpy.uint8 
         )

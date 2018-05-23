@@ -32,11 +32,6 @@
             font-weight: bold;
         }
 
-        .scale-bar {
-            display: inline-block;
-            margin-right: 5px;
-        }
-
         .map-table {
             width: 682px;
             border-spacing: 0px;
@@ -246,11 +241,18 @@
                 </thead>
                 <tbody>
                     {% for constraint in constraints %}
-                        <tr>
-                            <td>{{ constraint.label }}</td>
-                            <td>{{ constraint.value|safe }}</td>
-                            <td>{{ constraint.range|safe }}</td>
-                        </tr>
+                        {% if constraint.type == 'shapefile' %}
+                            <tr>
+                                <td>{{ constraint.label }}</td>
+                                <td colspan=2>{{ constraint.filename|safe }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td>{{ constraint.label }}</td>
+                                <td>{{ constraint.value|safe }}</td>
+                                <td>{{ constraint.range|safe }}</td>
+                            </tr>
+                        {% endif %}
                     {% endfor %}
                 </tbody>
             </table>

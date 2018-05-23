@@ -36,6 +36,7 @@ class ShapefileUpload extends React.Component {
         let zipFile = files.find(file => file.name.match(/\.zip/i))
         let shpFile = files.find(file => file.name.match(/\.shp/i))
         let prjFile = files.find(file => file.name.match(/\.prj/i))
+        let dbfFile = files.find(file => file.name.match(/\.dbf/i))
 
         if (zipFile) {
             const reader = new FileReader()
@@ -76,11 +77,9 @@ class ShapefileUpload extends React.Component {
                         reject(e)
                     }
                     reader.onload = (e) => {
-                        resolve({
-                            prj: e.target.result
-                        })
+                        resolve({ prj: e.target.result })
                     }
-                    reader.readAsArrayBuffer(prjFile)
+                    reader.readAsText(prjFile)
                 } else {
                     resolve({
                         prj: null,
@@ -94,7 +93,7 @@ class ShapefileUpload extends React.Component {
                     let parsedShp = shp.parseShp(shpResult.shp, prjResult.prj)
                     let geojson = shp.combine([parsedShp, []])
                     this.setState({isLoading: false})
-                    if (results[1].warning) {
+                    if (prjResult.warning) {
                         this.props.sendError('Warning', prjResult.warning)
                     }
                     this.props.onFileUpload(this.props.index, geojson, shpResult.name)

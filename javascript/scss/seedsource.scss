@@ -1,7 +1,4 @@
-@import "~bulma/sass/utilities/initial-variables";
-
-$primary: $blue;
-
+@import "variables";
 @import '~bulma/bulma';
 @import '~leaflet/dist/leaflet.css';
 @import '~leaflet-basemaps/L.Control.Basemaps';

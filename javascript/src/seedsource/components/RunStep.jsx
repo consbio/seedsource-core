@@ -2,63 +2,81 @@ import React  from 'react'
 import PropTypes from 'prop-types'
 import ConfigurationStep from 'seedsource/containers/ConfigurationStep'
 import SaveModal from 'seedsource/containers/SaveModal'
+import ModalCard from 'seedsource/components/ModalCard'
 import Dropdown from 'seedsource/components/Dropdown'
 import { reports } from '../../config'
+import { Component } from 'react'
+import Map from 'seedsource/containers/Map'
 
-const RunStep = props => {
-    let {
-        number, configuration, canRun, canSave, isLoggedIn, reportIsFetching, onRun, onSave, onExport, onExportTIF
-    } = props
+class RunStep extends Component {
+    constructor(props) {
+        super(props)
+        this.state = {previewModal: false}
+    }
 
-    return (
-        <ConfigurationStep title="Map your Results" number={number} name="run" active={false}>
-            <div>
-                <h4></h4>
-                <button
-                    className="button is-primary is-large is-fullwidth"
-                    disabled={!canRun}
-                    onClick={e => {
-                        onRun(configuration)
-                    }}
-                >
-                    Run Tool
-                </button>
-            </div>
-            <div className="margin-top-10">
+    render() {
+        let {
+            number, configuration, canRun, canSave, isLoggedIn, reportIsFetching, onRun, onSave, onExport, onExportTIF
+        } = this.props
+
+        return (
+            <ConfigurationStep title="Map your Results" number={number} name="run" active={false}>
                 <div>
+                    <h4></h4>
                     <button
-                        className="button is-pulled-left"
-                        disabled={!canSave}
+                        className="button is-primary is-large is-fullwidth"
+                        disabled={!canRun}
                         onClick={e => {
-                            e.preventDefault()
-                            onSave(isLoggedIn)
+                            onRun(configuration)
                         }}
                     >
-                        <span className="icon12 icon-save" aria-hidden="true"></span> Save Last Run
+                        Run Tool
                     </button>
-                    <Dropdown
-                        className="is-pulled-right is-right is-hidden-mobile"
-                        up={true}
-                        title="Export As..."
-                        disabled={!canSave || reportIsFetching}
-                    >
-                        {reports.map(r => (
-                            <a key={r.name} className="dropdown-item" onClick={e => {
-                                e.preventDefault()
-                                onExport(r.name)
-                            }}>{r.label}</a>
-                        ))}
-                        <a className="dropdown-item" onClick={e => {
-                            e.preventDefault()
-                            onExportTIF()
-                        }}>GeoTIFF</a>
-                    </Dropdown>
                 </div>
-                <div className="is-clearfix"></div>
-            </div>
-            <SaveModal />
-        </ConfigurationStep>
-    )
+                <div className="margin-top-10">
+                    <div>
+                        <button
+                            className="button is-pulled-left"
+                            disabled={!canSave}
+                            onClick={e => {
+                                e.preventDefault()
+                                onSave(isLoggedIn)
+                            }}
+                        >
+                            <span className="icon12 icon-save" aria-hidden="true"></span> Save Last Run
+                        </button>
+                        <Dropdown
+                            className="is-pulled-right is-right is-hidden-mobile"
+                            up={true}
+                            title="Export As..."
+                            disabled={!canSave || reportIsFetching}
+                        >
+                            {reports.map(r => (
+                                <a key={r.name} className="dropdown-item" onClick={e => {
+                                    e.preventDefault()
+                                    this.setState({previewModal: true})
+                                    // onExport(r.name)
+                                }}>{r.label}</a>
+                            ))}
+                            <a className="dropdown-item" onClick={e => {
+                                e.preventDefault()
+                                onExportTIF()
+                            }}>GeoTIFF</a>
+                        </Dropdown>
+                        <ModalCard active={this.state.previewModal}
+                                   onHide={() => {this.setState({previewModal: false})}}
+                                   title='print preview'>
+                            <div style={{'width': 645, 'height': 430}}>
+                                <Map />
+                            </div>
+                        </ModalCard>
+                    </div>
+                    <div className="is-clearfix"></div>
+                </div>
+                <SaveModal/>
+            </ConfigurationStep>
+        )
+    }
 }
 
 RunStep.propTypes = {

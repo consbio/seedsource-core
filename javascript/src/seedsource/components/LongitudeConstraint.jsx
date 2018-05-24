@@ -6,7 +6,7 @@ import EditableLabel from "seedsource/components/EditableLabel";
 const LongitudeConstraint = ({ index, value, range, onRangeChange }) => (
     <Constraint index={index} value={value} unit="&deg;E" title="Longitude">
         <EditableLabel value={range} onChange={range => onRangeChange(index, range)}>
-            <span>&nbsp;&deg;E</span>
+            <span>&nbsp;&deg;</span>
         </EditableLabel>
     </Constraint>
 )

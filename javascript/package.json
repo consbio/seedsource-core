@@ -1,0 +1,34 @@
+{
+  "name": "seedsource-core",
+  "version": "1.0.0",
+  "description": "seedsource-core",
+  "author": "Conservation Biology Institute",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/consbio/seedsource-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/consbio/seedsource-core/issues"
+  },
+  "homepage": "https://github.com/consbio/seedsource-core",
+  "dependencies": {
+    "bulma": "^0.6.2",
+    "isomorphic-fetch": "^2.2.1",
+    "leaflet": "^1.3.1",
+    "leaflet-basemaps": "^0.3.1",
+    "leaflet-geonames": "^0.4.4",
+    "leaflet-omnivore": "^0.3.4",
+    "leaflet-range": "^0.1.5",
+    "leaflet-zoombox": "^0.5.1",
+    "lethargy": "^1.0.4",
+    "prop-types": "^15.6.1",
+    "react": "^16.3.2",
+    "react-dom": "^16.3.2",
+    "react-redux": "^5.0.7",
+    "react-tooltip": "^3.5.1",
+    "redux": "^4.0.0",
+    "redux-thunk": "^2.2.0",
+    "uuid": "^3.2.1"
+  }
+}

@@ -15,7 +15,7 @@ setup(
         'trefoil',
         'django<2',
         'djangorestframework',
-        'gdal',
+        'gdal==2.2.*',
         'geopy',
         'mercantile',
         'ncdjango==0.5.1',

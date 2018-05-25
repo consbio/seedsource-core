@@ -66,8 +66,8 @@ class RunStep extends Component {
                         <ModalCard active={this.state.previewModal}
                                    onHide={() => {this.setState({previewModal: false})}}
                                    title='print preview'>
-                            <div style={{'width': 645, 'height': 430}}>
-                                <Map />
+                            <div className='map preview-map' >
+                                <Map simple={true} />
                             </div>
                         </ModalCard>
                     </div>

@@ -505,3 +505,8 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
     display: none;
   }
 }
+
+.preview-map {
+  width: calc(#{$modal-content-width} - 2 * #{$modal-card-body-padding});
+  height: calc((2/3) * (#{$modal-content-width} - 2 * #{$modal-card-body-padding}));
+}

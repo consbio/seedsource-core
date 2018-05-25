@@ -49,7 +49,7 @@ class RunStep extends Component {
                             className="is-pulled-right is-right is-hidden-mobile"
                             up={true}
                             title="Export As..."
-                            disabled={!canSave || reportIsFetching}
+                            // disabled={!canSave || reportIsFetching}
                         >
                             {reports.map(r => (
                                 <a key={r.name} className="dropdown-item" onClick={e => {
@@ -63,13 +63,13 @@ class RunStep extends Component {
                                 onExportTIF()
                             }}>GeoTIFF</a>
                         </Dropdown>
-                        <ModalCard active={this.state.previewModal}
+                        {this.state.previewModal ? <ModalCard active={true}
                                    onHide={() => {this.setState({previewModal: false})}}
                                    title='print preview'>
                             <div className='map preview-map' >
                                 <Map simple={true} />
                             </div>
-                        </ModalCard>
+                        </ModalCard> : null}
                     </div>
                     <div className="is-clearfix"></div>
                 </div>

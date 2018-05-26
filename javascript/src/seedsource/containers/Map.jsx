@@ -347,24 +347,23 @@ class Map extends React.Component {
     }
 
     updateOpacity(opacity, serviceId, variable) {
-        if (this.simple){
-            return
-        }
-        if (serviceId !== null || variable !== null) {
-            if (this.opacityControl === null) {
-                this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
-                this.map.addControl(this.opacityControl)
+        if (! this.simple) {
+            if (serviceId !== null || variable !== null) {
+                if (this.opacityControl === null) {
+                    this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
+                    this.map.addControl(this.opacityControl)
 
-                this.opacityControl.on('input', e => {
-                    this.props.onOpacityChange(e.value / 100)
-                })
+                    this.opacityControl.on('input', e => {
+                        this.props.onOpacityChange(e.value / 100)
+                    })
+                }
+
+                this.opacityControl.setValue(Math.round(opacity * 100))
             }
-
-            this.opacityControl.setValue(Math.round(opacity * 100))
-        }
-        else if (this.opacityControl !== null) {
-            this.map.removeControl(this.opacityControl)
-            this.opacityControl = null
+            else if (this.opacityControl !== null) {
+                this.map.removeControl(this.opacityControl)
+                this.opacityControl = null
+            }
         }
 
         if (this.variableLayer !== null && this.variableLayer.options.opacity !== opacity) {

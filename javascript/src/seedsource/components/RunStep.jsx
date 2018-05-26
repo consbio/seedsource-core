@@ -22,6 +22,10 @@ class RunStep extends Component {
         let {
             number, configuration, canRun, canSave, isLoggedIn, reportIsFetching, onRun, onSave, onExport, onExportTIF
         } = this.props
+        let button = <div className="tabs is-toggle">
+                        <ul><ReportButton name={this.state.exportType}>Export</ReportButton></ul>
+                    </div>
+
 
         return (
             <ConfigurationStep title="Map your Results" number={number} name="run" active={false}>
@@ -71,10 +75,10 @@ class RunStep extends Component {
                         </Dropdown>
                         {this.state.previewModal ? <ModalCard active={true}
                                    onHide={() => {this.setState({previewModal: false})}}
-                                   title='Report Preview'>
+                                   title='Report Preview'
+                                   footer={button}>
                             <div className='map preview-map' >
                                 <Map simple={true} />
-                                <ReportButton name={this.state.exportType}>Export</ReportButton>
                             </div>
                         </ModalCard> : null}
                     </div>

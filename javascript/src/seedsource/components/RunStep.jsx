@@ -7,11 +7,15 @@ import Dropdown from 'seedsource/components/Dropdown'
 import { reports } from '../../config'
 import { Component } from 'react'
 import Map from 'seedsource/containers/Map'
+import ReportButton from 'seedsource/containers/ReportButton'
 
 class RunStep extends Component {
     constructor(props) {
         super(props)
-        this.state = {previewModal: false}
+        this.state = {
+            previewModal: false,
+            exportType: null
+        }
     }
 
     render() {
@@ -54,8 +58,10 @@ class RunStep extends Component {
                             {reports.map(r => (
                                 <a key={r.name} className="dropdown-item" onClick={e => {
                                     e.preventDefault()
-                                    this.setState({previewModal: true})
-                                    // onExport(r.name)
+                                    this.setState({
+                                        previewModal: true,
+                                        exportType: r.name
+                                    })
                                 }}>{r.label}</a>
                             ))}
                             <a className="dropdown-item" onClick={e => {
@@ -65,9 +71,10 @@ class RunStep extends Component {
                         </Dropdown>
                         {this.state.previewModal ? <ModalCard active={true}
                                    onHide={() => {this.setState({previewModal: false})}}
-                                   title='print preview'>
+                                   title='Report Preview'>
                             <div className='map preview-map' >
                                 <Map simple={true} />
+                                <ReportButton name={this.state.exportType}>Export</ReportButton>
                             </div>
                         </ModalCard> : null}
                     </div>

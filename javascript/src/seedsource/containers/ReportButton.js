@@ -1,6 +1,7 @@
 import { connect } from 'react-redux'
 import GroupedButton from 'seedsource/components/GroupedButton'
 import { createReport } from "../../actions/report";
+import PropTypes from 'prop-types'
 
 const mapStateToProps = (state, { name }) => {
     return {
@@ -14,6 +15,10 @@ const mapDispatchToProps = (dispatch, { name }) => {
             dispatch(createReport(name))
         }
     }
+}
+
+GroupedButton.propTypes = {
+    name: PropTypes.string.isRequired
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(GroupedButton)

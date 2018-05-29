@@ -193,7 +193,9 @@ class Map extends React.Component {
                     opacity: 0
                 }
             })
-        )
+        ).on('ready', () => {
+            this.updateAll()
+        })
         this.map.addLayer(this.regionsBoundaries)
     }
 
@@ -347,7 +349,7 @@ class Map extends React.Component {
     }
 
     updateOpacity(opacity, serviceId, variable) {
-        if (! this.simple) {
+        if (!this.simple) {
             if (serviceId !== null || variable !== null) {
                 if (this.opacityControl === null) {
                     this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
@@ -595,8 +597,11 @@ class Map extends React.Component {
     }
 
     updateMapCenter(center) {
-        let mapCenter = this.map.getCenter()
+        if (this.mapIsMoving) {
+            return
+        }
 
+        let mapCenter = this.map.getCenter()
         if (!isClose(center[0], mapCenter.lat) || !isClose(center[1], mapCenter.lng)) {
             this.map.setView(center)
         }
@@ -610,28 +615,34 @@ class Map extends React.Component {
         }
     }
 
+    updateAll() {
+        let {
+            activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
+            zone, geometry, center, zoom, region, geojson
+        } = this.props
+        let { serviceId } = job
+
+        this.updatePointMarker(point)
+        this.updateVariableLayer(activeVariable, objective, climate, region)
+        this.updateResultsLayer(serviceId, showResults)
+        this.updateBoundaryLayer(region)
+        this.updateOpacity(opacity, serviceId, activeVariable)
+        this.updateVisibilityButton(serviceId, showResults)
+        this.updateLegends(legends, activeVariable, serviceId, unit)
+        this.updateZoneLayer(method, zone, geometry)
+        this.updatePopup(popup, unit)
+        this.updateMapCenter(center)
+        this.updateMapZoom(zoom)
+        this.updateShapefileLayer(geojson)
+    }
+
     render() {
         let timeOverlay = null
 
         if (this.map !== null) {
-            let {
-                activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
-                zone, geometry, center, zoom, region, geojson
-            } = this.props
-            let {serviceId} = job
+            this.updateAll()
 
-            this.updatePointMarker(point)
-            this.updateVariableLayer(activeVariable, objective, climate, region)
-            this.updateResultsLayer(serviceId, showResults)
-            this.updateBoundaryLayer(region)
-            this.updateOpacity(opacity, serviceId, activeVariable)
-            this.updateVisibilityButton(serviceId, showResults)
-            this.updateLegends(legends, activeVariable, serviceId, unit)
-            this.updateZoneLayer(method, zone, geometry)
-            this.updatePopup(popup, unit)
-            this.updateMapCenter(center)
-            this.updateMapZoom(zoom)
-            this.updateShapefileLayer(geojson)
+            let { activeVariable } = this.props
 
             // Time overlay
             if (activeVariable !== null) {

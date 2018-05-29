@@ -507,6 +507,17 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 }
 
 .preview-map {
-  width: calc(#{$modal-content-width} - 2 * #{$modal-card-body-padding});
-  height: calc((2/3) * (#{$modal-content-width} - 2 * #{$modal-card-body-padding}));
+  width: $modal-content-width;
+  height: calc((2/3) * #{$modal-content-width});
+  margin: -20px;
+}
+
+.report-button {
+  height: 30px;
+}
+
+.report-button > li {
+  position: absolute;
+  right: 0;
+  margin: 0px 30px;
 }

@@ -22,8 +22,12 @@ class RunStep extends Component {
         let {
             number, configuration, canRun, canSave, isLoggedIn, reportIsFetching, onRun, onSave, onExport, onExportTIF
         } = this.props
-        let button = <div className="tabs is-toggle">
-                        <ul><ReportButton name={this.state.exportType}>Export</ReportButton></ul>
+        let button = <div onClick={() => this.setState({previewModal: false})} className="tabs is-toggle">
+                        <ul className="report-button">
+                            <ReportButton name={this.state.exportType}
+                                >Export
+                            </ReportButton>
+                        </ul>
                     </div>
 
 
@@ -73,7 +77,8 @@ class RunStep extends Component {
                                 onExportTIF()
                             }}>GeoTIFF</a>
                         </Dropdown>
-                        {this.state.previewModal ? <ModalCard active={true}
+                        {this.state.previewModal ? <ModalCard
+                                   active={true}
                                    onHide={() => {this.setState({previewModal: false})}}
                                    title='Report Preview'
                                    footer={button}>
@@ -99,7 +104,6 @@ RunStep.propTypes = {
     reportIsFetching: PropTypes.bool.isRequired,
     onRun: PropTypes.func.isRequired,
     onSave: PropTypes.func.isRequired,
-    onExport: PropTypes.func.isRequired,
     onExportTIF: PropTypes.func.isRequired
 }
 

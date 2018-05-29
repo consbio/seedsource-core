@@ -32,5 +32,5 @@ export const getCookies = () => {
 }
 
 export const isClose = (a, b) => {
-    return Math.abs(a - b) <= Math.max(1e-9 * Math.max(Math.abs(a), Math.abs(b)), 0.0)
+    return Math.abs(a - b) <= Math.max(1e-3 * Math.max(Math.abs(a), Math.abs(b)), 0.0)
 }

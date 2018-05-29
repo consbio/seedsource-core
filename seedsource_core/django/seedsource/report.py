@@ -61,9 +61,10 @@ RESULTS_RENDERER = StretchedRenderer([
 
 
 class Report(object):
-    def __init__(self, configuration, zoom, tile_layers, opacity):
+    def __init__(self, configuration, zoom, center, tile_layers, opacity):
         self.configuration = configuration
         self.zoom = zoom
+        self.center = center
         self.tile_layers = tile_layers
         self.opacity = opacity
 
@@ -162,7 +163,7 @@ class Report(object):
         wgs84 = Proj(init='epsg:4326')
 
         map_image, map_bbox = MapImage(
-            IMAGE_SIZE, (point['x'], point['y']), self.zoom, self.tile_layers, self.configuration.get('region'),
+            IMAGE_SIZE, (point['x'], point['y']), self.zoom, self.center, self.tile_layers, self.configuration.get('region'),
             zone_id, self.opacity, constraint_geometry=self.get_constraint_geometry()
         ).get_image()
         to_world = image_to_world(map_bbox, map_image.size)
@@ -237,11 +238,11 @@ class Report(object):
 
 
 class MapImage(object):
-    def __init__(self, size, point, zoom, tile_layers, region, zone_id, opacity, constraint_geometry=None):
+    def __init__(self, size, point, zoom, center, tile_layers, region, zone_id, opacity, constraint_geometry=None):
         self._configure_event_loop()
 
         self.num_tiles = [math.ceil(size[x] / TILE_SIZE[x]) + 1 for x in (0, 1)]
-        center_tile = mercantile.tile(point[0], point[1], zoom)
+        center_tile = mercantile.tile(center[1], center[0], zoom)
 
         mercator = Proj(init='epsg:3857')
         wgs84 = Proj(init='epsg:4326')
@@ -249,7 +250,7 @@ class MapImage(object):
         center_tile_bbox = BBox(mercantile.bounds(*center_tile), projection=wgs84).project(mercator, edge_points=0)
         center_to_image = world_to_image(center_tile_bbox, TILE_SIZE)
         center_to_world = image_to_world(center_tile_bbox, TILE_SIZE)
-        center_point_px = center_to_image(*mercantile.xy(*point))
+        center_point_px = center_to_image(*mercantile.xy(center[1], center[0]))
 
         self.ul_tile = mercantile.tile(
             *transform(mercator, wgs84, *center_to_world(
@@ -273,10 +274,12 @@ class MapImage(object):
         self.to_world = image_to_world(self.image_bbox, self.image_size)
 
         self.point_px = [round(x) for x in self.to_image(*mercantile.xy(*point))]
+        self.center_point_px = self.to_image(*mercantile.xy(center[1], center[0]))
 
         self.target_size = size
         self.point = point
         self.zoom = zoom
+        self.center = center
         self.tile_layers = tile_layers
         self.region = region
         self.zone_id = zone_id
@@ -385,7 +388,7 @@ class MapImage(object):
         return im
 
     def crop_image(self, im):
-        im_ul = (self.point_px[0] - self.target_size[0] // 2, self.point_px[1] - self.target_size[1] // 2)
+        im_ul = (self.center_point_px[0] - self.target_size[0] // 2, self.center_point_px[1] - self.target_size[1] // 2)
         box = (*im_ul, im_ul[0] + self.target_size[0], im_ul[1] + self.target_size[1])
 
         return im.crop(box), BBox(

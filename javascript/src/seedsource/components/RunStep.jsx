@@ -61,7 +61,7 @@ class RunStep extends Component {
                             className="is-pulled-right is-right is-hidden-mobile"
                             up={true}
                             title="Export As..."
-                            // disabled={!canSave || reportIsFetching}
+                            disabled={!canSave || reportIsFetching}
                         >
                             {reports.map(r => (
                                 <a key={r.name} className="dropdown-item" onClick={e => {

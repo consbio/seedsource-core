@@ -7,7 +7,6 @@ import Dropdown from 'seedsource/components/Dropdown'
 import { reports } from '../../config'
 import { Component } from 'react'
 import Map from 'seedsource/containers/Map'
-import ReportButton from 'seedsource/containers/ReportButton'
 
 class RunStep extends Component {
     constructor(props) {
@@ -22,13 +21,15 @@ class RunStep extends Component {
         let {
             number, configuration, canRun, canSave, isLoggedIn, reportIsFetching, onRun, onSave, onExport, onExportTIF
         } = this.props
-        let button = <div onClick={() => this.setState({previewModal: false})} className="tabs is-toggle">
-                        <ul className="report-button">
-                            <ReportButton name={this.state.exportType}
-                                >Export
-                            </ReportButton>
-                        </ul>
-                    </div>
+        let exportButton =  <button
+                                onClick={() => {
+                                    this.setState({previewModal: false})
+                                    onExport()
+                                }}
+                                className="button is-primary is-large"
+                             >
+                                Export
+                             </button>
 
 
         return (
@@ -78,10 +79,11 @@ class RunStep extends Component {
                             }}>GeoTIFF</a>
                         </Dropdown>
                         {this.state.previewModal ? <ModalCard
+                                   className="report-preview"
                                    active={true}
                                    onHide={() => {this.setState({previewModal: false})}}
                                    title='Report Preview'
-                                   footer={button}>
+                                   footer={exportButton}>
                             <div className='map preview-map' >
                                 <Map simple={true} />
                             </div>

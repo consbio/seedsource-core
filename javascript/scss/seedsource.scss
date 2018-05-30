@@ -512,12 +512,6 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   margin: -20px;
 }
 
-.report-button {
-  height: 30px;
-}
-
-.report-button > li {
-  position: absolute;
-  right: 0;
-  margin: 0px 30px;
+.report-preview .modal-card-foot {
+  justify-content: flex-end;
 }

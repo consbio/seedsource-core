@@ -58,7 +58,7 @@ class Map extends React.Component {
     // Initial map setup
     componentDidMount() {
         let lethargy = new Lethargy(7, 10, 0.05)  // Help minimize jumpy zoom with Apple mice and trackpads
-        L.Map.ScrollWheelZoom.prototype._onWheelScroll = function (e) {
+        L.Map.ScrollWheelZoom.prototype._onWheelScroll = e => {
             L.DomEvent.stop(e)
 
             if (lethargy.check(e) === false) {
@@ -84,7 +84,7 @@ class Map extends React.Component {
 
         this.map.on('moveend', event => {
             this.mapIsMoving = false
-            setTimeout(function () {
+            setTimeout(function() {
                 if (!this.mapIsMoving) {
                     this.props.onMapMove(this.map.getCenter())
                 }
@@ -135,18 +135,16 @@ class Map extends React.Component {
                     maxZoom: 13,
                     subdomains: ['server', 'services']
                 }),
-                L.tileLayer(
-                    '//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-                        maxZoom: 16,
-                        subdomains: ['server', 'services']
-                    }),
-                L.tileLayer(
-                    '//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-                        maxZoom: 16,
-                        subdomains: ['server', 'services']
-                    })
+                L.tileLayer('//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+                    maxZoom: 16,
+                    subdomains: ['server', 'services']
+                }),
+                L.tileLayer('//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+                    maxZoom: 16,
+                    subdomains: ['server', 'services']
+                })
             ],
             tileX: 0,
             tileY: 0,

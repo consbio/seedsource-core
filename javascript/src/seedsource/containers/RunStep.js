@@ -3,7 +3,7 @@ import RunStep from 'seedsource/components/RunStep'
 import { setError } from '../../actions/error'
 import { runJob } from '../../actions/job'
 import { showSaveModal } from '../../actions/saves'
-import { runTIFJob } from '../../actions/report'
+import { createReport, runTIFJob } from '../../actions/report'
 
 const configurationCanRun = ({point, variables, constraints}) =>  {
     if (point === null || point.x === null || point.y === null) {
@@ -57,6 +57,10 @@ const mapDispatchToProps = dispatch => {
             }
 
             dispatch(showSaveModal())
+        },
+
+        onExport: (name) => {
+            dispatch(createReport(name))
         },
 
         onExportTIF: () => {

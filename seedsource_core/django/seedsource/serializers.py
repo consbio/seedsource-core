@@ -72,8 +72,7 @@ class GenerateReportSerializer(serializers.Serializer):
     configuration = serializers.JSONField()
     tile_layers = serializers.JSONField()
     zoom = serializers.IntegerField()
-    center = serializers.ListField(
-        child=serializers.FloatField())
+    center = serializers.ListField(child=serializers.FloatField())
     opacity = serializers.FloatField()
 
 

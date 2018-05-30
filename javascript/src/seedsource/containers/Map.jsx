@@ -195,6 +195,12 @@ class Map extends React.Component {
             this.updateAll()
         })
         this.map.addLayer(this.regionsBoundaries)
+
+        if (this.simple) {
+            if (this.props.zoom && this.props.center) {
+                this.map.setView(this.props.center, this.props.zoom)
+            }
+        }
     }
 
     componentWillUnmount() {

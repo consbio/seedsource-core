@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import About from 'seedsource/components/About'
 import RunConfiguration from 'seedsource/containers/RunConfiguration'
 import SavedRuns from 'seedsource/containers/SavedRuns'
+import Layers from 'seedsource/containers/Layers'
 
 const Sidebar = ({ activeTab, onSelect }) => (
     <div className="sidebar-inner">
@@ -13,6 +14,9 @@ const Sidebar = ({ activeTab, onSelect }) => (
                     </a></li>
                 <li className={activeTab === 'tool' ? 'is-active' : activeTab === 'map' ? 'is-active-tablet' : null}>
                     <a onClick={() => onSelect('tool')}>Tool</a>
+                </li>
+                <li className={activeTab === 'layers' ? 'is-active' : null}>
+                    <a onClick={() => onSelect('layers')}>Layers</a>
                 </li>
                 <li className={activeTab === 'saves' ? 'is-active' : null}>
                     <a onClick={() => onSelect('saves')}>Saved Runs</a>
@@ -29,6 +33,9 @@ const Sidebar = ({ activeTab, onSelect }) => (
             'tab-content ' + (activeTab === 'map' ? 'is-hidden-mobile' : activeTab !== 'tool' ? 'is-hidden' : '')
         }>
             <RunConfiguration />
+        </div>
+        <div className={'tab-content' + (activeTab !== 'layers' ? 'is-hidden' : '')}>
+            <Layers />
         </div>
         <div className={'tab-content ' + (activeTab !== 'saves' ? 'is-hidden' : '')}>
             <SavedRuns />

@@ -3,7 +3,8 @@ import React from 'react'
 class Layers extends React.Component {
 
     render() {
-        let {activeVariable, lastRun} = this.props
+        let { names, activeVariable, onToggle } = this.props
+
         return (
             <div>
                 <ul>
@@ -22,6 +23,17 @@ class Layers extends React.Component {
                     <li>Washington</li>
                     <br/>
                     <li><b>Variables</b></li>
+                    {names.forEach(name => {
+                        return <li><input
+                                    type="checbox"
+                                    name={name}
+                                    value={name}
+                                    onChange={() => {onToggle()}}
+                                    checked={ activeVariable.name === name ? "true" : "false" }
+                                />
+                                    {name}
+                                </li>
+                    })}
                 </ul>
             </div>
         )

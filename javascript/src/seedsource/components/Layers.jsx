@@ -1,9 +1,8 @@
 import React from 'react'
 
 class Layers extends React.Component {
-
     render() {
-        let { names, activeVariable, onToggle } = this.props
+        let { names, activeVariables, onToggle } = this.props
 
         return (
             <div>
@@ -23,13 +22,13 @@ class Layers extends React.Component {
                     <li>Washington</li>
                     <br/>
                     <li><b>Variables</b></li>
-                    {names.forEach(name => {
+                    {names.map(name => {
                         return <li><input
-                                    type="checbox"
+                                    type="checkbox"
                                     name={name}
                                     value={name}
-                                    onChange={() => {onToggle()}}
-                                    checked={ activeVariable.name === name ? "true" : "false" }
+                                    onChange={() => {onToggle(name)}}
+                                    checked={ activeVariables.includes(name) ? true : false }
                                 />
                                     {name}
                                 </li>

@@ -14,7 +14,7 @@ import 'leaflet-zoombox/L.Control.ZoomBox'
 import 'leaflet-range/L.Control.Range'
 
 import * as io from '../../io'
-import { variables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
+import { variables as allVariables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
 import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
@@ -381,7 +381,7 @@ class Map extends React.Component {
         }
     }
 
-    updateLegends(legends, activeVariable, serviceId, unit) {
+    updateLegends(legends, activeVariables, serviceId, unit) {
         let mapLegends = []
 
         if (serviceId !== null && legends.results.legend !== null) {
@@ -392,30 +392,32 @@ class Map extends React.Component {
             })
         }
 
-        if (activeVariable !== null && legends.variable.legend !== null) {
-            let variable = variables.find(item => item.name === activeVariable)
-            let { units, multiplier } = variable
-            let legend = legends.variable.legend.map(item => {
-                let value = parseFloat(item.label)
+        if ((activeVariables.length > 0) && legends.variable.legend !== null) {
+            activeVariables.forEach(activeVariable => {
+                let variable = allVariables.find(item => item.name === activeVariable)
+                let { units, multiplier } = variable
+                let legend = legends.variable.legend.map(item => {
+                    let value = parseFloat(item.label)
 
-                if (!isNaN(value)) {
-                    value /= multiplier
+                    if (!isNaN(value)) {
+                        value /= multiplier
 
-                    if (units !== null && unit == 'imperial') {
-                        value = units.imperial.convert(value)
+                        if (units !== null && unit == 'imperial') {
+                            value = units.imperial.convert(value)
+                        }
+
+                        value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
+
+                        return Object.assign({}, item, {label: value})
                     }
 
-                    value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
+                    return item
+                })
 
-                    return Object.assign({}, item, {label: value})
-                }
-
-                return item
-            })
-
-            mapLegends.push({
-                label: activeVariable,
-                elements: legend
+                mapLegends.push({
+                    label: activeVariable,
+                    elements: legend
+                })
             })
         }
 
@@ -538,7 +540,7 @@ class Map extends React.Component {
             }
 
             let valueRows = popup.values.map(item => {
-                let variableConfig = variables.find(variable => variable.name === item.name)
+                let variableConfig = allVariables.find(variable => variable.name === item.name)
                 let { multiplier, units } = variableConfig
                 let value = 'N/A'
                 let unitLabel = units.metric.label
@@ -586,25 +588,25 @@ class Map extends React.Component {
 
         if (this.map !== null) {
             let {
-                activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
+                activeVariables, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
                 zone, geometry, center, region, geojson
             } = this.props
             let {serviceId} = job
 
             this.updatePointMarker(point)
-            this.updateVariableLayer(activeVariable, objective, climate, region)
+            this.updateVariableLayer(activeVariables, objective, climate, region)
             this.updateResultsLayer(serviceId, showResults)
             this.updateBoundaryLayer(region)
-            this.updateOpacity(opacity, serviceId, activeVariable)
+            this.updateOpacity(opacity, serviceId, activeVariables)
             this.updateVisibilityButton(serviceId, showResults)
-            this.updateLegends(legends, activeVariable, serviceId, unit)
+            this.updateLegends(legends, activeVariables, serviceId, unit)
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateShapefileLayer(geojson)
 
             // Time overlay
-            if (activeVariable !== null) {
+            if (activeVariables !== null) {
                 let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
                 let { time, model } = selectedClimate
                 let labelKey = time
@@ -630,7 +632,7 @@ class Map extends React.Component {
 }
 
 const mapStateToProps = state => {
-    let { runConfiguration, activeVariable, map, job, legends, popup, lastRun } = state
+    let { runConfiguration, activeVariables, map, job, legends, popup, lastRun } = state
     let { opacity, showResults, center } = map
     let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
     let { geometry } = zones
@@ -639,7 +641,7 @@ const mapStateToProps = state => {
     let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
 
     return {
-        activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
+        activeVariables, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
         zone, center, region, regionMethod, resultRegion, geojson
     }
 }

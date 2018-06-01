@@ -3,7 +3,7 @@ import auth from './auth'
 import runConfiguration, { lastRun, activeStep, reportIsFetching } from './runConfiguration'
 import report from './report'
 import tabs from './tabs'
-import { activeVariable } from './variables'
+import { activeVariables } from './variables'
 import map from './map'
 import job from './job'
 import saves from './saves'
@@ -14,7 +14,7 @@ import popup from './popup'
 export default combineReducers({
     auth,
     activeTab: tabs,
-    activeVariable,
+    activeVariables,
     activeStep,
     runConfiguration,
     lastRun,

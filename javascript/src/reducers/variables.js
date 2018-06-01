@@ -1,4 +1,4 @@
-import { variables } from '../config'
+import { variables as allVariables } from '../config'
 import {
     ADD_VARIABLE, REMOVE_VARIABLE, MODIFY_VARIABLE, RESET_TRANSFER, REQUEST_VALUE, RECEIVE_VALUE, SELECT_METHOD,
     REQUEST_TRANSFER, RECEIVE_TRANSFER, TOGGLE_VARIABLE
@@ -30,7 +30,7 @@ export default (state = [], action) => {
 
     switch(action.type) {
         case ADD_VARIABLE:
-            variable = variables.find((item) => item.name === action.variable)
+            variable = allVariables.find((item) => item.name === action.variable)
 
             let { name } = variable
 
@@ -114,16 +114,22 @@ export default (state = [], action) => {
     }
 }
 
-export const activeVariable = (state = null, action) => {
+export const activeVariables = (state = [], action) => {
     switch(action.type) {
         case TOGGLE_VARIABLE:
-            return state === action.variable ? null : action.variable
+            if (state.length < 1) {
+                return [ action.variable ]
+            } else if (state.includes(action.variable)) {
+                return state.filter(element => element !== action.variable)
+            } else {
+                return [ action.variable, ...state ]
+            }
 
         case REMOVE_VARIABLE:
-            return action.variable === state ? null : state
+            return state.includes(action.variable) ? state.filter(element => element !== action.variable) : state
 
         case FINISH_JOB:
-            return null
+            return []
 
         default:
             return state

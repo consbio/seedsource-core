@@ -4,15 +4,15 @@ import {toggleVariable} from "../../actions/variables";
 
 
 const mapStateToProps = state => {
-    let { activeVariable, lastRun, runConfiguration } = state
+    let { activeVariables, lastRun, runConfiguration } = state
     let { variables } = runConfiguration
     let names = variables.map(item => item.name)
-    return { activeVariable, lastRun, names }
+    return { activeVariables, lastRun, names }
 }
 
-const mapDispatchToProps = (dispatch, { name, index }) => {
+const mapDispatchToProps = (dispatch) => {
     return {
-        onToggle: () => {
+        onToggle: (name) => {
             dispatch(toggleVariable(name))
         }
     }

@@ -1,13 +1,13 @@
 import { connect } from 'react-redux'
 import { modifyVariable, resetTransfer, toggleVariable, removeVariable } from '../../actions/variables'
 import Variable from 'seedsource/components/Variable'
-import { variables } from '../../config'
+import { variables as allVariables } from '../../config'
 
 const mapStateToProps = (state, { variable }) => {
-    let { activeVariable, runConfiguration } = state
-    let active = activeVariable === variable.name
+    let { activeVariables, runConfiguration } = state
+    let active = activeVariables.includes(variable.name)
     let { objective, unit, method, center } = runConfiguration
-    let variableConfig = variables.find(item => item.name === variable.name)
+    let variableConfig = allVariables.find(item => item.name === variable.name)
     let { name, value, zoneCenter, transfer, avgTransfer, transferIsModified } = variable
     let { label, multiplier, units } = variableConfig
 
@@ -92,7 +92,7 @@ const mapDispatchToProps = (dispatch, { variable, index }) => {
                     }
                 }
 
-                let variableConfig = variables.find(item => item.name === variable.name)
+                let variableConfig = allVariables.find(item => item.name === variable.name)
 
                 dispatch(modifyVariable(variable.name, value * variableConfig.multiplier))
             }

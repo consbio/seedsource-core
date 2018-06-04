@@ -2,7 +2,7 @@ import React from 'react'
 
 class Layers extends React.Component {
     render() {
-        let { names, activeVariables, onToggleVariable, onToggleVisibility, showResults } = this.props
+        let { names, activeVariables, onToggleVariable, onToggleVisibility, showResults, lastRun } = this.props
         let variableLayers = names.map(name => {
                                                     return <li key={name}><input
                                                                 type="checkbox"
@@ -20,7 +20,7 @@ class Layers extends React.Component {
                     <li><b>Results</b></li>
                     <li><input type="checkbox"
                                onChange={() => onToggleVisibility()}
-                               checked={showResults ? true : false}
+                               checked={(showResults && lastRun) ? true : false}
                         />
                         Last Run
                     </li>

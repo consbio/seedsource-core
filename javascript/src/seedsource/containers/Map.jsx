@@ -344,8 +344,8 @@ class Map extends React.Component {
         }
     }
 
-    updateOpacity(opacity, serviceId, variable) {
-        if (serviceId !== null || variable !== null) {
+    updateOpacity(opacity, serviceId, activeVariables) {
+        if (serviceId !== null || activeVariables.length) {
             if (this.opacityControl === null) {
                 this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
                 this.map.addControl(this.opacityControl)
@@ -403,7 +403,7 @@ class Map extends React.Component {
             })
         }
 
-        if ((activeVariables.length > 0) && legends.variable.legend !== null) {
+        if (activeVariables.length && (legends.variable.legend !== null)) {
             activeVariables.forEach(activeVariable => {
                 let variable = allVariables.find(item => item.name === activeVariable)
                 let { units, multiplier } = variable
@@ -617,7 +617,7 @@ class Map extends React.Component {
             this.updateShapefileLayer(geojson)
 
             // Time overlay
-            if (activeVariables !== null) {
+            if (activeVariables.length) {
                 let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
                 let { time, model } = selectedClimate
                 let labelKey = time

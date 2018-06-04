@@ -1,19 +1,24 @@
 import { connect } from 'react-redux'
 import Layers from 'seedsource/components/Layers'
-import {toggleVariable} from "../../actions/variables";
+import {toggleVariable} from '../../actions/variables';
+import {toggleVisibility} from '../../actions/map'
 
 
 const mapStateToProps = state => {
-    let { activeVariables, lastRun, runConfiguration } = state
+    let { activeVariables, runConfiguration, map } = state
+    let { showResults } = map
     let { variables } = runConfiguration
     let names = variables.map(item => item.name)
-    return { activeVariables, lastRun, names }
+    return { activeVariables, names, showResults }
 }
 
 const mapDispatchToProps = (dispatch) => {
     return {
-        onToggle: (name) => {
+        onToggleVariable: (name) => {
             dispatch(toggleVariable(name))
+        },
+        onToggleVisibility: () => {
+            dispatch(toggleVisibility())
         }
     }
 }

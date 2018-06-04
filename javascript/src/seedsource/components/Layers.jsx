@@ -3,6 +3,16 @@ import React from 'react'
 class Layers extends React.Component {
     render() {
         let { names, activeVariables, onToggle } = this.props
+        let variableLayers = names.map(name => {
+                                                    return <li key={name}><input
+                                                                type="checkbox"
+                                                                value={name}
+                                                                onChange={() => onToggle(name)}
+                                                                checked={activeVariables.includes(name) ? true : false}
+                                                            />
+                                                                {name}
+                                                            </li>
+                                                })
 
         return (
             <div>
@@ -22,17 +32,7 @@ class Layers extends React.Component {
                     <li>Washington</li>
                     <br/>
                     <li><b>Variables</b></li>
-                    {names.map(name => {
-                        return <li><input
-                                    type="checkbox"
-                                    name={name}
-                                    value={name}
-                                    onChange={() => {onToggle(name)}}
-                                    checked={ activeVariables.includes(name) ? true : false }
-                                />
-                                    {name}
-                                </li>
-                    })}
+                    { variableLayers }
                 </ul>
             </div>
         )

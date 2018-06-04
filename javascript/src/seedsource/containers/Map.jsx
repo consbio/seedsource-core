@@ -40,7 +40,7 @@ class Map extends React.Component {
         this.showPreview = false
         this.resultRegion = props.resultRegion
         this.pointMarker = null
-        this.variableLayer = null
+        this.variableLayers = []
         this.legend = null
         this.resultsLayer = null
         this.zoneLayer = null
@@ -219,20 +219,20 @@ class Map extends React.Component {
         }
     }
 
-    updateVariableLayer(variable, objective, climate, region) {
-        if (variable !== null) {
-            let layerUrl = '/tiles/' + getServiceName(variable, objective, climate, region) + '/{z}/{x}/{y}.png'
-
-            if (this.variableLayer === null) {
-                this.variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
-            }
-            else if(layerUrl !== this.variableLayer._url) {
-                this.variableLayer.setUrl(layerUrl)
-            }
-        }
-        else if (this.variableLayer !== null) {
-            this.map.removeLayer(this.variableLayer)
-            this.variableLayer = null
+    updateVariableLayers(activeVariables, objective, climate, region) {
+        let [previousLayerCount, curentLayerCount] = [this.variableLayers.length, activeVariables.length]
+        if (previousLayerCount === curentLayerCount) {
+            return
+        } else if (previousLayerCount < curentLayerCount) {
+            let layerUrl = '/tiles/' + getServiceName(activeVariables[0], objective, climate, region) + '/{z}/{x}/{y}.png'
+            let variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
+            this.variableLayers.unshift(variableLayer)
+        } else {
+            this.map.removeLayer(this.variableLayers.shift())
+            activeVariables.forEach((variable, index) => {
+                let layerUrl = '/tiles/' + getServiceName(variable, objective, climate, region) + '/{z}/{x}/{y}.png'
+                this.variableLayers[index].setUrl(layerUrl)
+            })
         }
     }
 
@@ -351,8 +351,8 @@ class Map extends React.Component {
             this.opacityControl = null
         }
 
-        if (this.variableLayer !== null && this.variableLayer.options.opacity !== opacity) {
-            this.variableLayer.setOpacity(opacity)
+        if (this.variableLayers.length) {
+            this.variableLayers.forEach(layer => layer.setOpacity(opacity))
         }
 
         if (this.resultsLayer !== null && this.resultsLayer.options.opacity !== opacity) {
@@ -594,7 +594,7 @@ class Map extends React.Component {
             let {serviceId} = job
 
             this.updatePointMarker(point)
-            this.updateVariableLayer(activeVariables, objective, climate, region)
+            this.updateVariableLayers(activeVariables, objective, climate, region)
             this.updateResultsLayer(serviceId, showResults)
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity, serviceId, activeVariables)

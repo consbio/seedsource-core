@@ -224,18 +224,26 @@ class Map extends React.Component {
         if (previousLayerCount === curentLayerCount) {
             return
         }
-        // put activeVariables in order of variable list:
-        activeVariables = this.props.variableNames.filter(variable => activeVariables.includes(variable))
-        if (previousLayerCount < curentLayerCount) {
-            let layerUrl = '/tiles/' + getServiceName(activeVariables[0], objective, climate, region) + '/{z}/{x}/{y}.png'
-            let variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
-            this.variableLayers.unshift(variableLayer)
-        } else {
-            this.map.removeLayer(this.variableLayers.shift())
-            activeVariables.forEach((variable, index) => {
+
+        let rewriteUrls = () => {
+            activeVariables.reverse().forEach((variable, index) => {
                 let layerUrl = '/tiles/' + getServiceName(variable, objective, climate, region) + '/{z}/{x}/{y}.png'
                 this.variableLayers[index].setUrl(layerUrl)
             })
+        }
+
+        // put activeVariables in order of variable list:
+        activeVariables = this.props.variableNames.filter(variable => activeVariables.includes(variable))
+
+
+        if (previousLayerCount < curentLayerCount) {
+            let layerUrl = '/tiles/' + getServiceName(activeVariables[0], objective, climate, region) + '/{z}/{x}/{y}.png'
+            let variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
+            this.variableLayers.push(variableLayer)
+            rewriteUrls()
+        } else {
+            this.map.removeLayer(this.variableLayers.shift())
+            rewriteUrls()
         }
     }
 

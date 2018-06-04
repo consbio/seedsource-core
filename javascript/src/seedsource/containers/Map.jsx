@@ -223,7 +223,10 @@ class Map extends React.Component {
         let [previousLayerCount, curentLayerCount] = [this.variableLayers.length, activeVariables.length]
         if (previousLayerCount === curentLayerCount) {
             return
-        } else if (previousLayerCount < curentLayerCount) {
+        }
+        // put activeVariables in order of variable list:
+        activeVariables = this.props.variableNames.filter(variable => activeVariables.includes(variable))
+        if (previousLayerCount < curentLayerCount) {
             let layerUrl = '/tiles/' + getServiceName(activeVariables[0], objective, climate, region) + '/{z}/{x}/{y}.png'
             let variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
             this.variableLayers.unshift(variableLayer)
@@ -634,7 +637,8 @@ class Map extends React.Component {
 const mapStateToProps = state => {
     let { runConfiguration, activeVariables, map, job, legends, popup, lastRun } = state
     let { opacity, showResults, center } = map
-    let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
+    let { objective, point, climate, unit, method, zones, region, regionMethod, constraints, variables } = runConfiguration
+    let variableNames = variables.map(item => item.name)
     let { geometry } = zones
     let zone = zones.selected
     let resultRegion = lastRun ? lastRun.region : null
@@ -642,7 +646,7 @@ const mapStateToProps = state => {
 
     return {
         activeVariables, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
-        zone, center, region, regionMethod, resultRegion, geojson
+        zone, center, region, regionMethod, resultRegion, geojson, variableNames
     }
 }
 

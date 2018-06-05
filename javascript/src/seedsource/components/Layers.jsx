@@ -26,7 +26,7 @@ class Layers extends React.Component {
             <div>
                 <ul>
                     <li><b>All Layers</b></li>
-                    <li>{layersList}</li>
+                    { layersList }
                     <br/>
                     <li><b>Results</b></li>
                     <li><input type="checkbox"

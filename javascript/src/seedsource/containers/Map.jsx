@@ -594,6 +594,11 @@ class Map extends React.Component {
         }
     }
 
+    updateLayers(activeVariables, objective, climate, region, serviceId, showResults) {
+        this.updateVariableLayers(activeVariables, objective, climate, region)
+        this.updateResultsLayer(serviceId, showResults)
+    }
+
     render() {
         let timeOverlay = null
 
@@ -605,8 +610,7 @@ class Map extends React.Component {
             let {serviceId} = job
 
             this.updatePointMarker(point)
-            this.updateVariableLayers(activeVariables, objective, climate, region)
-            this.updateResultsLayer(serviceId, showResults)
+            this.updateLayers(activeVariables, objective, climate, region, serviceId, showResults)
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity, serviceId, activeVariables)
             this.updateVisibilityButton(serviceId, showResults)

@@ -24,7 +24,7 @@ class RunStep extends Component {
         let exportButton =  <button
                                 onClick={() => {
                                     this.setState({previewModal: false})
-                                    onExport()
+                                    onExport(this.state.exportType)
                                 }}
                                 className="button is-primary is-large"
                              >
@@ -82,7 +82,7 @@ class RunStep extends Component {
                                    className="report-preview"
                                    active={true}
                                    onHide={() => {this.setState({previewModal: false})}}
-                                   title='Report Preview'
+                                   title='Position the map for export:'
                                    footer={exportButton}>
                             <div className='map preview-map' >
                                 <Map simple={true} />

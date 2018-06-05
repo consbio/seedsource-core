@@ -58,7 +58,7 @@ class Map extends React.Component {
     // Initial map setup
     componentDidMount() {
         let lethargy = new Lethargy(7, 10, 0.05)  // Help minimize jumpy zoom with Apple mice and trackpads
-        L.Map.ScrollWheelZoom.prototype._onWheelScroll = e => {
+        L.Map.ScrollWheelZoom.prototype._onWheelScroll = function(e) {
             L.DomEvent.stop(e)
 
             if (lethargy.check(e) === false) {

@@ -5,11 +5,9 @@ import {toggleVisibility} from '../../actions/map'
 
 
 const mapStateToProps = state => {
-    let { activeVariables, runConfiguration, map, lastRun, layers } = state
-    let { showResults } = map
-    let { variables } = runConfiguration
-    let names = variables.map(item => item.name)
-    return { activeVariables, names, showResults, lastRun, layers }
+    let { layers } = state
+
+    return { layers }
 }
 
 const mapDispatchToProps = (dispatch) => {

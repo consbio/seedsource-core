@@ -61,7 +61,7 @@ class EditableLabel extends React.Component {
     }
 }
 
-EditableLabel.PropTypes = {
+EditableLabel.propTypes = {
     value: PropTypes.number,
     onChange: PropTypes.func.isRequied
 }

@@ -20,7 +20,6 @@ import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { getServiceName } from '../../utils'
 import '../../leaflet-controls'
-import {updateVariableUrls} from "../../actions/layers";
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -53,10 +52,6 @@ class Map extends React.Component {
         this.mapIsMoving = false
         this.shapefile = null
         this.geojson = null
-        this.objective = null
-        this.climate = null
-        this.region = null
-        this.activeVariables = []
         this.displayedRasterLayers = []
     }
 
@@ -225,6 +220,36 @@ class Map extends React.Component {
         }
     }
 
+    generateUrl(layer) {
+        let name = layer.name
+        let serviceId = this.props.job.serviceId
+        let objective = this.props.objective
+        let climate = this.props.climate
+        let region = this.props.region
+        let generateModelTime = (objective, climate) => {
+            let serviceName = ''
+            let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
+            let {time, model} = selectedClimate
+
+            if (time === '1961_1990' || time === '1981_2010') {
+                serviceName += time
+            }
+            else {
+                serviceName += model + '_' + time
+            }
+            return serviceName
+        }
+        let modelTime = generateModelTime(objective, climate)
+        let varsObj = { serviceId, region, modelTime, name }
+        let newrl = layer.urlTemplate
+
+        for (let key in varsObj) {
+            newrl = newrl.replace(`{${key}}`, varsObj[key])
+        }
+
+        return newrl
+    }
+
     updateRasterLayers(layers) {
         let [previousLayerCount, currentLayerCount] = [this.displayedRasterLayers.length, layers.length]
         if (currentLayerCount === 0 && previousLayerCount === 0) {
@@ -233,12 +258,12 @@ class Map extends React.Component {
 
         let rewriteLeafletRasters = () => {
             layers.forEach((layer, index) => {
-                this.displayedRasterLayers[index].setUrl(layer.url).setOpacity(layer.opacity)
+                this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setOpacity(layer.opacity)
             })
         }
 
         if (previousLayerCount < currentLayerCount) {
-            let newRasterLayer = L.tileLayer(layers[0].url, {zIndex: 1, opacity: 1}).addTo(this.map)
+            let newRasterLayer = L.tileLayer("garbage", {zIndex: 1, opacity: 1}).addTo(this.map)
             this.displayedRasterLayers.push(newRasterLayer)
         } else if (previousLayerCount > currentLayerCount) {
             this.map.removeLayer(this.displayedRasterLayers.pop())
@@ -247,38 +272,9 @@ class Map extends React.Component {
         rewriteLeafletRasters()
     }
 
-    updateVariableLayers(activeVariables, objective, climate, region) {
-        let [previousLayerCount, curentLayerCount] = [this.variableLayers.length, activeVariables.length]
-        if (previousLayerCount === curentLayerCount) {
-            return
-        }
-
-        let rewriteUrls = () => {
-            activeVariables.reverse().forEach((variable, index) => {
-                let layerUrl = '/tiles/' + getServiceName(variable, objective, climate, region) + '/{z}/{x}/{y}.png'
-                this.variableLayers[index].setUrl(layerUrl)
-            })
-        }
-
-        // put activeVariables in order of variable list:
-        activeVariables = this.props.variableNames.filter(variable => activeVariables.includes(variable))
-
-
-        if (previousLayerCount < curentLayerCount) {
-            let layerUrl = '/tiles/' + getServiceName(activeVariables[0], objective, climate, region) + '/{z}/{x}/{y}.png'
-            let variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
-            this.variableLayers.push(variableLayer)
-            rewriteUrls()
-        } else {
-            this.map.removeLayer(this.variableLayers.shift())
-            rewriteUrls()
-        }
-    }
-
     updateResultsLayer(serviceId, showResults) {
         if (serviceId !== null && showResults) {
             let layerUrl = '/tiles/' + serviceId + '/{z}/{x}/{y}.png'
-
             if (this.resultsLayer === null) {
                 this.resultsLayer = L.tileLayer(layerUrl, {zIndex: 2, opacity: 1}).addTo(this.map)
             }
@@ -623,23 +619,9 @@ class Map extends React.Component {
     }
 
     updateLayers(layers) {
-        // TODO: remove `&& (layer.category === "variable")` once you have updated other categories of raster layers (ex: resultsLayer)
-        let rasterLayers = layers.filter(layer => (layer.type === "raster") && (layer.displayed === true) && (layer.category === "variable"))
+        let rasterLayers = layers.filter(layer => (layer.type === "raster") && (layer.displayed === true))
 
         this.updateRasterLayers(rasterLayers)
-    }
-
-    updateLayersPrecheck (activeVariables, objective, climate, region) {
-        // Check that variable layer urls are current:
-        if ((JSON.stringify(this.activeVariables) !== JSON.stringify(activeVariables)) || (this.objective !== objective) || (this.climate !== climate) || (this.region !== region)) {
-            this.activeVariables = activeVariables
-            this.objective = objective
-            this.climate = climate
-            this.region = region
-            this.props.onUpdateVariableUrls(activeVariables, objective, climate, region)
-        } else {
-            this.updateLayers(this.props.layers)
-        }
     }
 
     render() {
@@ -648,12 +630,12 @@ class Map extends React.Component {
         if (this.map !== null) {
             let {
                 activeVariables, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
-                zone, geometry, center, region, geojson
+                zone, geometry, center, region, geojson, layers
             } = this.props
             let {serviceId} = job
 
             this.updateResultsLayer(serviceId, showResults)
-            this.updateLayersPrecheck(activeVariables, objective, climate, region)
+            this.updateLayers(layers)
             this.updatePointMarker(point)
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity, serviceId, activeVariables)
@@ -739,10 +721,6 @@ const mapDispatchToProps = dispatch => {
 
         onMapMove: center => {
             dispatch(setMapCenter([center.lat, center.lng]))
-        },
-
-        onUpdateVariableUrls: (activeVariables, objective, climate, region) => {
-            dispatch(updateVariableUrls(activeVariables, objective, climate, region))
         }
     }
 }

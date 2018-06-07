@@ -34,7 +34,7 @@ const Sidebar = ({ activeTab, onSelect }) => (
         }>
             <RunConfiguration />
         </div>
-        <div className={'tab-content' + (activeTab !== 'layers' ? 'is-hidden' : '')}>
+        <div className={'tab-content ' + (activeTab !== 'layers' ? 'is-hidden' : '')}>
             <Layers />
         </div>
         <div className={'tab-content ' + (activeTab !== 'saves' ? 'is-hidden' : '')}>

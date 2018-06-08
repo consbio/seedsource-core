@@ -251,23 +251,22 @@ class Map extends React.Component {
 
     updateRasterLayers(layers) {
         let [previousLayerCount, currentLayerCount] = [this.displayedRasterLayers.length, layers.length]
-        if (currentLayerCount === 0 && previousLayerCount === 0) {
+        if (currentLayerCount === previousLayerCount) {
             return
         }
 
         let rewriteLeafletRasters = () => {
             layers.forEach((layer, index) => {
-                this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setOpacity(layer.opacity).setZIndex(layer.zIndex)
+                this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setZIndex(layer.zIndex)
             })
         }
 
         if (previousLayerCount < currentLayerCount) {
-            let newRasterLayer = L.tileLayer("garbage", {zIndex: 1, opacity: 1}).addTo(this.map)
+            let newRasterLayer = L.tileLayer("broken", {zIndex: 1, opacity: 1}).addTo(this.map)
             this.displayedRasterLayers.push(newRasterLayer)
         } else if (previousLayerCount > currentLayerCount) {
             this.map.removeLayer(this.displayedRasterLayers.pop())
         }
-        // updates even when count is equal because opacity may have changed
         rewriteLeafletRasters()
     }
 
@@ -349,8 +348,9 @@ class Map extends React.Component {
         }
     }
 
-    updateOpacity(opacity, serviceId, activeVariables) {
-        if (serviceId !== null || activeVariables.length) {
+    updateOpacity(opacity) {
+        //TODO: add other displayed layers as they become available
+        if (this.displayedRasterLayers.length) {
             if (this.opacityControl === null) {
                 this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
                 this.map.addControl(this.opacityControl)
@@ -367,14 +367,9 @@ class Map extends React.Component {
             this.opacityControl = null
         }
 
-        if (this.variableLayers.length) {
-            this.variableLayers.forEach(layer => layer.setOpacity(opacity))
+        if (this.displayedRasterLayers.length) {
+            this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
         }
-
-        // TODO: this.resultsLayer was removed with updateResultsLayer. Address whatever is happening below:
-        // if (this.resultsLayer !== null && this.resultsLayer.options.opacity !== opacity) {
-        //     this.resultsLayer.setOpacity(opacity)
-        // }
     }
 
     updateVisibilityButton(serviceId, showResults) {
@@ -619,7 +614,7 @@ class Map extends React.Component {
             this.updateLayers(layers)
             this.updatePointMarker(point)
             this.updateBoundaryLayer(region)
-            this.updateOpacity(opacity, serviceId, activeVariables)
+            this.updateOpacity(opacity)
             this.updateVisibilityButton(serviceId, showResults)
             this.updateLegends(legends, activeVariables, serviceId, unit)
             this.updateZoneLayer(method, zone, geometry)

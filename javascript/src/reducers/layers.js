@@ -1,6 +1,6 @@
 import {morph} from '../utils'
 import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
-import {SET_MAP_OPACITY, TOGGLE_VISIBILITY} from "../actions/map"
+import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
 import {TOGGLE_LAYER} from '../actions/layers'
 
@@ -9,7 +9,6 @@ const defaultLayer = {
     name: null,
     type: null,
     urlTemplate: null,
-    opacity: 1,
     zIndex: 1,
     displayed: false
 }
@@ -17,8 +16,6 @@ const defaultLayer = {
 export default (state = [], action) => {
         let index = null
         switch(action.type) {
-            case SET_MAP_OPACITY:
-                return state.map(layer => morph(layer, {opacity: action.opacity}))
             case TOGGLE_VISIBILITY:
                 if (state.filter(layer => layer.displayed === true).length === state.length) {
                     return state.map(layer => morph(layer, {displayed: true}))
@@ -46,7 +43,6 @@ export default (state = [], action) => {
                                     name: "Last Run",
                                     type: "raster",
                                     urlTemplate: "/tiles/{serviceId}/{z}/{x}/{y}.png",
-                                    opacity: 1,
                                     zIndex: 2,
                                     displayed: true
                                 },

@@ -7,7 +7,6 @@ import { SET_LATITUDE, SET_LONGITUDE, SET_POINT } from '../actions/point'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
 import { SELECT_CLIMATE_YEAR, SELECT_CLIMATE_MODEL } from '../actions/climate'
 import { SELECT_ZONE } from '../actions/zones'
-import { FINISH_JOB } from '../actions/job'
 import { morph } from '../utils'
 
 
@@ -118,9 +117,6 @@ export const activeVariables = (state = [], action) => {
     switch(action.type) {
         case REMOVE_VARIABLE:
             return state.includes(action.variable) ? state.filter(element => element !== action.variable) : state
-
-        case FINISH_JOB:
-            return []
 
         default:
             return state

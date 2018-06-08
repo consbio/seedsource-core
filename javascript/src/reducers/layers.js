@@ -17,10 +17,10 @@ export default (state = [], action) => {
         let index = null
         switch(action.type) {
             case TOGGLE_VISIBILITY:
-                if (state.filter(layer => layer.displayed === true).length === state.length) {
-                    return state.map(layer => morph(layer, {displayed: true}))
-                } else {
+                if (state.filter(layer => layer.displayed === true).length) {
                     return state.map(layer => morph(layer, {displayed: false}))
+                } else {
+                    return state.map(layer => morph(layer, {displayed: true}))
                 }
             case ADD_VARIABLE:
                 return [...state, morph(defaultLayer, {

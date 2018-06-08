@@ -18,7 +18,6 @@ import { variables as allVariables, timeLabels, regions, regionsBoundariesUrl } 
 import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
-import { getServiceName } from '../../utils'
 import '../../leaflet-controls'
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
@@ -250,22 +249,30 @@ class Map extends React.Component {
     }
 
     updateRasterLayers(layers) {
-        let [previousLayerCount, currentLayerCount] = [this.displayedRasterLayers.length, layers.length]
-        if (currentLayerCount === previousLayerCount) {
+        let numLayersToAdd = layers.length - this.displayedRasterLayers.length
+        if (numLayersToAdd === 0) {
             return
         }
 
         let rewriteLeafletRasters = () => {
-            layers.forEach((layer, index) => {
-                this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setZIndex(layer.zIndex)
-            })
+            if (layers.length) {
+                layers.forEach((layer, index) => {
+                    this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setZIndex(layer.zIndex)
+                })
+            }
         }
 
-        if (previousLayerCount < currentLayerCount) {
-            let newRasterLayer = L.tileLayer("broken", {zIndex: 1, opacity: 1}).addTo(this.map)
-            this.displayedRasterLayers.push(newRasterLayer)
-        } else if (previousLayerCount > currentLayerCount) {
-            this.map.removeLayer(this.displayedRasterLayers.pop())
+        if (numLayersToAdd > 0) {
+            while (numLayersToAdd > 0) {
+                let newRasterLayer = L.tileLayer("broken", {zIndex: 1, opacity: 1}).addTo(this.map)
+                this.displayedRasterLayers.push(newRasterLayer)
+                numLayersToAdd --
+            }
+        } else {
+            while (numLayersToAdd < 0) {
+                this.map.removeLayer(this.displayedRasterLayers.pop())
+                numLayersToAdd ++
+            }
         }
         rewriteLeafletRasters()
     }
@@ -372,9 +379,10 @@ class Map extends React.Component {
         }
     }
 
-    updateVisibilityButton(serviceId, showResults) {
+    updateVisibilityButton(serviceId) {
         if (serviceId !== null) {
-            let icon = showResults ? 'eye-closed' : 'eye';
+            //TODO: add other displayed layers as they become available
+            let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {
                 this.visibilityButton = L.control.button({'icon': icon})
@@ -606,7 +614,7 @@ class Map extends React.Component {
 
         if (this.map !== null) {
             let {
-                activeVariables, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
+                activeVariables, objective, point, climate, opacity, job, legends, popup, unit, method,
                 zone, geometry, center, region, geojson, layers
             } = this.props
             let {serviceId} = job
@@ -615,7 +623,7 @@ class Map extends React.Component {
             this.updatePointMarker(point)
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity)
-            this.updateVisibilityButton(serviceId, showResults)
+            this.updateVisibilityButton(serviceId)
             this.updateLegends(legends, activeVariables, serviceId, unit)
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
@@ -650,7 +658,7 @@ class Map extends React.Component {
 
 const mapStateToProps = state => {
     let { runConfiguration, activeVariables, map, job, legends, popup, lastRun, layers } = state
-    let { opacity, showResults, center } = map
+    let { opacity, center } = map
     let { objective, point, climate, unit, method, zones, region, regionMethod, constraints, variables } = runConfiguration
     let variableNames = variables.map(item => item.name)
     let { geometry } = zones
@@ -659,7 +667,7 @@ const mapStateToProps = state => {
     let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
 
     return {
-        activeVariables, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
+        activeVariables, objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
         zone, center, region, regionMethod, resultRegion, geojson, variableNames, layers
     }
 }

@@ -42,7 +42,6 @@ class Map extends React.Component {
         this.pointMarker = null
         this.variableLayers = []
         this.legend = null
-        this.resultsLayer = null
         this.zoneLayer = null
         this.currentZone = null
         this.opacityControl = null
@@ -258,7 +257,7 @@ class Map extends React.Component {
 
         let rewriteLeafletRasters = () => {
             layers.forEach((layer, index) => {
-                this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setOpacity(layer.opacity)
+                this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setOpacity(layer.opacity).setZIndex(layer.zIndex)
             })
         }
 
@@ -270,24 +269,6 @@ class Map extends React.Component {
         }
         // updates even when count is equal because opacity may have changed
         rewriteLeafletRasters()
-    }
-
-    updateResultsLayer(serviceId, showResults) {
-        if (serviceId !== null && showResults) {
-            let layerUrl = '/tiles/' + serviceId + '/{z}/{x}/{y}.png'
-            if (this.resultsLayer === null) {
-                this.resultsLayer = L.tileLayer(layerUrl, {zIndex: 2, opacity: 1}).addTo(this.map)
-            }
-            else if (layerUrl !== this.resultsLayer._url) {
-                this.resultsLayer.setUrl(layerUrl)
-            }
-
-            this.addBoundaryToMap(this.resultRegion, '#006600', false)
-        }
-        else if (this.resultsLayer !== null) {
-            this.map.removeLayer(this.resultsLayer)
-            this.resultsLayer = null
-        }
     }
 
     addBoundaryToMap(region, color, showFill = true) {
@@ -390,9 +371,10 @@ class Map extends React.Component {
             this.variableLayers.forEach(layer => layer.setOpacity(opacity))
         }
 
-        if (this.resultsLayer !== null && this.resultsLayer.options.opacity !== opacity) {
-            this.resultsLayer.setOpacity(opacity)
-        }
+        // TODO: this.resultsLayer was removed with updateResultsLayer. Address whatever is happening below:
+        // if (this.resultsLayer !== null && this.resultsLayer.options.opacity !== opacity) {
+        //     this.resultsLayer.setOpacity(opacity)
+        // }
     }
 
     updateVisibilityButton(serviceId, showResults) {
@@ -634,7 +616,6 @@ class Map extends React.Component {
             } = this.props
             let {serviceId} = job
 
-            this.updateResultsLayer(serviceId, showResults)
             this.updateLayers(layers)
             this.updatePointMarker(point)
             this.updateBoundaryLayer(region)

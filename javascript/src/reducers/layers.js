@@ -9,6 +9,7 @@ const defaultLayer = {
     type: null,
     urlTemplate: null,
     opacity: 1,
+    zIndex: 1,
     displayed: false
 }
 
@@ -44,7 +45,8 @@ export default (state = [], action) => {
                                     name: "Last Run",
                                     type: "raster",
                                     urlTemplate: "/tiles/{serviceId}/{z}/{x}/{y}.png",
-                                    opacity: 2,
+                                    opacity: 1,
+                                    zIndex: 2,
                                     displayed: true
                                 },
                                 ...state

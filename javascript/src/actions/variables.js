@@ -6,7 +6,6 @@ export const ADD_VARIABLE = 'ADD_VARIABLE'
 export const REMOVE_VARIABLE = 'REMOVE_VARIABLE'
 export const MODIFY_VARIABLE = 'MODIFY_VARIABLE'
 export const RESET_TRANSFER = 'RESET_TRANSFER'
-export const TOGGLE_VARIABLE = 'TOGGLE_VARIABLE'
 export const RECEIVE_VALUE = 'RECEIVE_VALUE'
 export const REQUEST_VALUE = 'REQUEST_VALUE'
 export const RECEIVE_TRANSFER = 'RECEIVE_TRANSFER'
@@ -66,13 +65,6 @@ export const modifyVariable = (variable, transfer) => {
 export const resetTransfer = variable => {
     return {
         type: RESET_TRANSFER,
-        variable
-    }
-}
-
-export const toggleVariable = variable => {
-    return {
-        type: TOGGLE_VARIABLE,
         variable
     }
 }

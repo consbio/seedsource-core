@@ -1,7 +1,6 @@
 import { connect } from 'react-redux'
 import Layers from 'seedsource/components/Layers'
-import {toggleVariable} from '../../actions/variables';
-import {toggleVisibility} from '../../actions/map'
+import {toggleLayer} from '../../actions/layers';
 
 
 const mapStateToProps = state => {
@@ -12,11 +11,8 @@ const mapStateToProps = state => {
 
 const mapDispatchToProps = (dispatch) => {
     return {
-        onToggleVariable: (name) => {
-            dispatch(toggleVariable(name))
-        },
-        onToggleVisibility: () => {
-            dispatch(toggleVisibility())
+        onToggleLayer: (name) => {
+            dispatch(toggleLayer(name))
         }
     }
 }

@@ -1,5 +1,6 @@
 import { connect } from 'react-redux'
-import { modifyVariable, resetTransfer, toggleVariable, removeVariable } from '../../actions/variables'
+import { modifyVariable, resetTransfer, removeVariable } from '../../actions/variables'
+import { toggleLayer } from '../../actions/layers'
 import Variable from 'seedsource/components/Variable'
 import { variables as allVariables } from '../../config'
 
@@ -103,7 +104,7 @@ const mapDispatchToProps = (dispatch, { variable, index }) => {
         },
 
         onToggle: () => {
-            dispatch(toggleVariable(variable.name))
+            dispatch(toggleLayer(variable.name))
         },
 
         onRemove: () => {

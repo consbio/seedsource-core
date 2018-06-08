@@ -1,7 +1,8 @@
-import {getServiceName, morph} from '../utils'
-import {ADD_VARIABLE, REMOVE_VARIABLE, TOGGLE_VARIABLE} from "../actions/variables";
-import {SET_MAP_OPACITY, TOGGLE_VISIBILITY} from "../actions/map";
-import {FINISH_JOB} from "../actions/job";
+import {morph} from '../utils'
+import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
+import {SET_MAP_OPACITY, TOGGLE_VISIBILITY} from "../actions/map"
+import {FINISH_JOB} from "../actions/job"
+import {TOGGLE_LAYER} from '../actions/layers'
 
 
 const defaultLayer = {
@@ -32,8 +33,8 @@ export default (state = [], action) => {
             case REMOVE_VARIABLE:
                 index = state.findIndex(layer => layer.name === action.variable)
                 return state.slice(0, index).concat(state.slice(index+1))
-            case TOGGLE_VARIABLE:
-                index = state.findIndex(layer => layer.name === action.variable)
+            case TOGGLE_LAYER:
+                index = state.findIndex(layer => layer.name === action.name)
                 return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
             case FINISH_JOB:
                 let lastRun = state.find(layer => layer.name === "Last Run")

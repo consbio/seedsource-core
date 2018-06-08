@@ -1,7 +1,7 @@
 import { variables as allVariables } from '../config'
 import {
     ADD_VARIABLE, REMOVE_VARIABLE, MODIFY_VARIABLE, RESET_TRANSFER, REQUEST_VALUE, RECEIVE_VALUE, SELECT_METHOD,
-    REQUEST_TRANSFER, RECEIVE_TRANSFER, TOGGLE_VARIABLE
+    REQUEST_TRANSFER, RECEIVE_TRANSFER
 } from '../actions/variables'
 import { SET_LATITUDE, SET_LONGITUDE, SET_POINT } from '../actions/point'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
@@ -116,15 +116,6 @@ export default (state = [], action) => {
 
 export const activeVariables = (state = [], action) => {
     switch(action.type) {
-        case TOGGLE_VARIABLE:
-            if (state.length < 1) {
-                return [ action.variable ]
-            } else if (state.includes(action.variable)) {
-                return state.filter(element => element !== action.variable)
-            } else {
-                return [ action.variable, ...state ]
-            }
-
         case REMOVE_VARIABLE:
             return state.includes(action.variable) ? state.filter(element => element !== action.variable) : state
 

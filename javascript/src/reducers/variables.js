@@ -3,6 +3,7 @@ import {
     ADD_VARIABLE, REMOVE_VARIABLE, MODIFY_VARIABLE, RESET_TRANSFER, REQUEST_VALUE, RECEIVE_VALUE, SELECT_METHOD,
     REQUEST_TRANSFER, RECEIVE_TRANSFER
 } from '../actions/variables'
+import { TOGGLE_LAYER } from "../actions/layers"
 import { SET_LATITUDE, SET_LONGITUDE, SET_POINT } from '../actions/point'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
 import { SELECT_CLIMATE_YEAR, SELECT_CLIMATE_MODEL } from '../actions/climate'
@@ -115,6 +116,15 @@ export default (state = [], action) => {
 
 export const activeVariables = (state = [], action) => {
     switch(action.type) {
+        case TOGGLE_LAYER:
+            console.log(action.name)
+            if (state.length < 1) {
+                return [ action.name ]
+            } else if (state.includes(action.name)) {
+                return state.filter(element => element !== action.name)
+            } else {
+                return [ action.name, ...state ]
+            }
         case REMOVE_VARIABLE:
             return state.includes(action.variable) ? state.filter(element => element !== action.variable) : state
 

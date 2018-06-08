@@ -39,7 +39,6 @@ class Map extends React.Component {
         this.showPreview = false
         this.resultRegion = props.resultRegion
         this.pointMarker = null
-        this.variableLayers = []
         this.legend = null
         this.zoneLayer = null
         this.currentZone = null
@@ -379,9 +378,9 @@ class Map extends React.Component {
         }
     }
 
-    updateVisibilityButton(serviceId) {
-        if (serviceId !== null) {
-            //TODO: add other displayed layers as they become available
+    updateVisibilityButton(layersCount) {
+        if (layersCount) {
+            //TODO: account for other displayed layers as they become available
             let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {
@@ -623,7 +622,7 @@ class Map extends React.Component {
             this.updatePointMarker(point)
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity)
-            this.updateVisibilityButton(serviceId)
+            this.updateVisibilityButton(layers.length)
             this.updateLegends(legends, activeVariables, serviceId, unit)
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)

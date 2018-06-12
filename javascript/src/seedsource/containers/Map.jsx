@@ -376,7 +376,7 @@ class Map extends React.Component {
         }
     }
 
-    updateLegends(legends, layers, activeVariables, unit) {
+    updateLegends(legends, layers, unit) {
         let mapLegends = legends.legends.map(legend => {
             let variable = allVariables.find(item => item.name === legend.layerName)
             if (variable) {
@@ -590,7 +590,7 @@ class Map extends React.Component {
 
         if (this.map !== null) {
             let {
-                activeVariables, objective, point, climate, opacity, job, legends, popup, unit, method,
+                objective, point, climate, opacity, legends, popup, unit, method,
                 zone, geometry, center, region, geojson, layers
             } = this.props
 
@@ -599,14 +599,14 @@ class Map extends React.Component {
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity)
             this.updateVisibilityButton(layers.length)
-            this.updateLegends(legends, layers, activeVariables, unit)
+            this.updateLegends(legends, layers, unit)
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateShapefileLayer(geojson)
 
             // Time overlay
-            if (activeVariables.length) {
+            if (layers.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}" && layer.displayed === true)) {
                 let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
                 let { time, model } = selectedClimate
                 let labelKey = time
@@ -632,7 +632,7 @@ class Map extends React.Component {
 }
 
 const mapStateToProps = state => {
-    let { runConfiguration, activeVariables, map, job, legends, popup, lastRun, layers } = state
+    let { runConfiguration, map, job, legends, popup, lastRun, layers } = state
     let { opacity, center } = map
     let { objective, point, climate, unit, method, zones, region, regionMethod, constraints, variables } = runConfiguration
     let variableNames = variables.map(item => item.name)
@@ -642,7 +642,7 @@ const mapStateToProps = state => {
     let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
 
     return {
-        activeVariables, objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
+        objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
         zone, center, region, regionMethod, resultRegion, geojson, variableNames, layers
     }
 }

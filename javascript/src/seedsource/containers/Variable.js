@@ -5,8 +5,8 @@ import Variable from 'seedsource/components/Variable'
 import { variables as allVariables } from '../../config'
 
 const mapStateToProps = (state, { variable }) => {
-    let { activeVariables, runConfiguration } = state
-    let active = activeVariables.includes(variable.name)
+    let { layers, runConfiguration } = state
+    let active = !!layers.find(layer => layer.name === variable.name && layer.displayed === true)
     let { objective, unit, method, center } = runConfiguration
     let variableConfig = allVariables.find(item => item.name === variable.name)
     let { name, value, zoneCenter, transfer, avgTransfer, transferIsModified } = variable

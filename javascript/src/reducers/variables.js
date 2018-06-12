@@ -113,21 +113,3 @@ export default (state = [], action) => {
             return state
     }
 }
-
-export const activeVariables = (state = [], action) => {
-    switch(action.type) {
-        case TOGGLE_LAYER:
-            if (state.length < 1) {
-                return [ action.name ]
-            } else if (state.includes(action.name)) {
-                return state.filter(element => element !== action.name)
-            } else {
-                return [ action.name, ...state ]
-            }
-        case REMOVE_VARIABLE:
-            return state.includes(action.variable) ? state.filter(element => element !== action.variable) : state
-
-        default:
-            return state
-    }
-}

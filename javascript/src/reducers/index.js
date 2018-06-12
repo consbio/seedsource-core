@@ -3,7 +3,6 @@ import auth from './auth'
 import runConfiguration, { lastRun, activeStep, reportIsFetching } from './runConfiguration'
 import report from './report'
 import tabs from './tabs'
-import { activeVariables } from './variables'
 import map from './map'
 import job from './job'
 import saves from './saves'
@@ -15,7 +14,6 @@ import layers from './layers'
 export default combineReducers({
     auth,
     activeTab: tabs,
-    activeVariables,
     activeStep,
     runConfiguration,
     lastRun,

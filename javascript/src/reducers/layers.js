@@ -26,7 +26,7 @@ export default (state = [], action) => {
                 return [...state, morph(defaultLayer, {
                     name: action.variable,
                     type: "raster",
-                    urlTemplate: "/tiles/{region}_{modelTime}Y_{name}/{z}/{x}/{y}.png"})]
+                    urlTemplate: "{region}_{modelTime}Y_{name}"})]
             case REMOVE_VARIABLE:
                 index = state.findIndex(layer => layer.name === action.variable)
                 return state.slice(0, index).concat(state.slice(index+1))
@@ -42,7 +42,7 @@ export default (state = [], action) => {
                                 {
                                     name: "Last Run",
                                     type: "raster",
-                                    urlTemplate: "/tiles/{serviceId}/{z}/{x}/{y}.png",
+                                    urlTemplate: "{serviceId}",
                                     zIndex: 2,
                                     displayed: true
                                 },

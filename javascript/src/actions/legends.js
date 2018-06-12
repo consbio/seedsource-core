@@ -1,24 +1,23 @@
-export const RECEIVE_VARIABLE_LEGEND = 'RECEIVE_VARIABLE_LEGEND'
-export const REQUEST_VARIABLE_LEGEND = 'REQUEST_VARIABLE_LEGEND'
-export const RECEIVE_RESULTS_LEGEND = 'RECEIVE_RESULTS_LEGEND'
-export const REQUEST_RESULTS_LEGEND = 'REQUEST_RESULTS_LEGEND'
+export const REQUEST_LAYERS_LEGEND = 'REQUEST_LAYERS_LEGEND'
+export const RECEIVE_LAYERS_LEGEND = 'RECEIVE_LAYERS_LEGEND'
+export const RESET_LEGENDS = 'RESET_LEGENDS'
 
-export const receiveVariableLegend = json => {
+
+export const resetLegends = () => {
     return {
-        type: RECEIVE_VARIABLE_LEGEND,
-        legend: json.layers[0].legend
+        type: RESET_LEGENDS
     }
 }
 
-export const requestVariableLegend = () => {
+export const requestLayersLegend = () => {
     return {
-        type: REQUEST_VARIABLE_LEGEND
+        type: REQUEST_LAYERS_LEGEND
     }
 }
 
-export const receiveResultsLegend = json => {
+export const receiveLayersLegend = json => {
     return {
-        type: RECEIVE_RESULTS_LEGEND,
+        type: RECEIVE_LAYERS_LEGEND,
         legend: json.layers[0].legend.map(element => {
             switch (element.label) {
                 case '0':
@@ -31,12 +30,7 @@ export const receiveResultsLegend = json => {
             }
 
             return element
-        })
-    }
-}
-
-export const requestResultsLegend = () => {
-    return {
-        type: REQUEST_RESULTS_LEGEND
+        }),
+        layerName: json.layers[0].layerName
     }
 }

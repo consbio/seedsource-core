@@ -117,7 +117,6 @@ export default (state = [], action) => {
 export const activeVariables = (state = [], action) => {
     switch(action.type) {
         case TOGGLE_LAYER:
-            console.log(action.name)
             if (state.length < 1) {
                 return [ action.name ]
             } else if (state.includes(action.name)) {

@@ -14,6 +14,7 @@ import 'leaflet-zoombox/L.Control.ZoomBox'
 import 'leaflet-range/L.Control.Range'
 
 import * as io from '../../io'
+import { getLayerUrl } from '../../utils'
 import { variables as allVariables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
 import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
@@ -217,36 +218,6 @@ class Map extends React.Component {
         }
     }
 
-    generateUrl(layer) {
-        let name = layer.name
-        let serviceId = this.props.job.serviceId
-        let objective = this.props.objective
-        let climate = this.props.climate
-        let region = this.props.region
-        let generateModelTime = (objective, climate) => {
-            let serviceName = ''
-            let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
-            let {time, model} = selectedClimate
-
-            if (time === '1961_1990' || time === '1981_2010') {
-                serviceName += time
-            }
-            else {
-                serviceName += model + '_' + time
-            }
-            return serviceName
-        }
-        let modelTime = generateModelTime(objective, climate)
-        let varsObj = { serviceId, region, modelTime, name }
-        let newrl = layer.urlTemplate
-
-        for (let key in varsObj) {
-            newrl = newrl.replace(`{${key}}`, varsObj[key])
-        }
-
-        return newrl
-    }
-
     updateRasterLayers(layers) {
         let numLayersToAdd = layers.length - this.displayedRasterLayers.length
         if (numLayersToAdd === 0) {
@@ -255,15 +226,20 @@ class Map extends React.Component {
 
         let rewriteLeafletRasters = () => {
             if (layers.length) {
+                let { objective, climate, region } = this.props
+                let { serviceId } = this.props.job
+                let url
                 layers.forEach((layer, index) => {
-                    this.displayedRasterLayers[index].setUrl(this.generateUrl(layer)).setZIndex(layer.zIndex)
+                    url = getLayerUrl(layer, serviceId, objective, climate, region)
+                    this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
+                        .setZIndex(layer.zIndex)
                 })
             }
         }
 
         if (numLayersToAdd > 0) {
             while (numLayersToAdd > 0) {
-                let newRasterLayer = L.tileLayer("broken", {zIndex: 1, opacity: 1}).addTo(this.map)
+                let newRasterLayer = L.tileLayer("placeHolder", {zIndex: 1, opacity: 1}).addTo(this.map)
                 this.displayedRasterLayers.push(newRasterLayer)
                 numLayersToAdd --
             }
@@ -328,7 +304,7 @@ class Map extends React.Component {
     }
 
     updateBoundaryLayer(region) {
-        if(this.props.regionMethod === 'custom') {
+        if (this.props.regionMethod === 'custom') {
             this.cancelBoundaryPreview()
         }
 
@@ -340,10 +316,6 @@ class Map extends React.Component {
 
             let regionObj = regions.find(r => r.name === region)
             this.addBoundaryToMap(regionObj.name, '#000066', false)
-
-            if (this.resultRegion) {
-                this.addBoundaryToMap(this.resultRegion, '#006600', false)
-            }
         } else if (region === null) {
             this.boundaryName = null
             this.removeBoundaryFromMap()
@@ -351,6 +323,10 @@ class Map extends React.Component {
             if (this.showPreview && this.clickedRegion) {
                 this.addBoundaryToMap(this.clickedRegion, '#aaa')
             }
+        }
+
+        if (this.resultRegion) {
+            this.addBoundaryToMap(this.resultRegion, '#006600', false)
         }
     }
 
@@ -400,53 +376,75 @@ class Map extends React.Component {
         }
     }
 
-    updateLegends(legends, activeVariables, serviceId, unit) {
-        let mapLegends = []
+    updateLegends(legends, layers, activeVariables, unit) {
+        let mapLegends = legends.legends.map(legend => {
+            return {
+                label: legend.layerName,
+                elements: legend.legend
+            }
+        })
+        let legendOrder = layers.filter(layer => layer.displayed === true).map(layer => {
+            return layer.name
+        })
+        let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
+            || (el.label === "data" && name ==="Last Run"))).filter(el => typeof el == 'object')
 
-        if (serviceId !== null && legends.results.legend !== null) {
-            mapLegends.push({
-                label: 'Match',
-                className: 'results',
-                elements: legends.results.legend
-            })
-        }
+        //TODO: borrow logic for handling unit conversions from below:
+        // let resultsLayer = layers.find(layer => layer.urlTemplate.includes("{serviceId}"))
+        //
+        // if (resultsLayer) {
+        //     mapLegends.push({
+        //         label: 'Match',
+        //         className: 'results',
+        //         elements: legends.results.legend
+        //     })
+        // }
 
-        if (activeVariables.length && (legends.variable.legend !== null)) {
-            activeVariables.forEach(activeVariable => {
-                let variable = allVariables.find(item => item.name === activeVariable)
-                let { units, multiplier } = variable
-                let legend = legends.variable.legend.map(item => {
-                    let value = parseFloat(item.label)
 
-                    if (!isNaN(value)) {
-                        value /= multiplier
+        // if (serviceId !== null && legends.results.legend !== null) {
+        //     mapLegends.push({
+        //         label: 'Match',
+        //         className: 'results',
+        //         elements: legends.results.legend
+        //     })
+        // }
+        //
+        // if (activeVariables.length && (legends.variable.legend !== null)) {
+        //     activeVariables.forEach(activeVariable => {
+        //         let variable = allVariables.find(item => item.name === activeVariable)
+        //         let { units, multiplier } = variable
+        //         let legend = legends.variable.legend.map(item => {
+        //             let value = parseFloat(item.label)
+        //
+        //             if (!isNaN(value)) {
+        //                 value /= multiplier
+        //
+        //                 if (units !== null && unit == 'imperial') {
+        //                     value = units.imperial.convert(value)
+        //                 }
+        //
+        //                 value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
+        //
+        //                 return Object.assign({}, item, {label: value})
+        //             }
+        //
+        //             return item
+        //         })
+        //
+        //         mapLegends.push({
+        //             label: activeVariable,
+        //             elements: legend
+        //         })
+        //     })
+        // }
 
-                        if (units !== null && unit == 'imperial') {
-                            value = units.imperial.convert(value)
-                        }
-
-                        value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
-
-                        return Object.assign({}, item, {label: value})
-                    }
-
-                    return item
-                })
-
-                mapLegends.push({
-                    label: activeVariable,
-                    elements: legend
-                })
-            })
-        }
-
-        if (mapLegends.length) {
+        if (orderedMapLegends.length) {
             if (this.legend === null) {
-                this.legend = L.control.legend({legends: mapLegends})
+                this.legend = L.control.legend({legends: orderedMapLegends})
                 this.map.addControl(this.legend)
             }
-            else if (JSON.stringify(mapLegends) !== JSON.stringify(this.legend.options.legends)) {
-                this.legend.setLegends(mapLegends)
+            else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
+                this.legend.setLegends(orderedMapLegends)
             }
         }
         else if (this.legend !== null) {
@@ -623,7 +621,7 @@ class Map extends React.Component {
             this.updateBoundaryLayer(region)
             this.updateOpacity(opacity)
             this.updateVisibilityButton(layers.length)
-            this.updateLegends(legends, activeVariables, serviceId, unit)
+            this.updateLegends(legends, layers, activeVariables, unit)
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)

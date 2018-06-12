@@ -378,65 +378,44 @@ class Map extends React.Component {
 
     updateLegends(legends, layers, activeVariables, unit) {
         let mapLegends = legends.legends.map(legend => {
-            return {
-                label: legend.layerName,
-                elements: legend.legend
+            let variable = allVariables.find(item => item.name === legend.layerName)
+            if (variable) {
+                let { units, multiplier } = variable
+                let newLegend = legend.legend.map(item => {
+                    let value = parseFloat(item.label)
+
+                    if (!isNaN(value)) {
+                        value /= multiplier
+
+                        if (units !== null && unit == 'imperial') {
+                            value = units.imperial.convert(value)
+                        }
+
+                        value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
+
+                        return Object.assign({}, item, {label: value})
+                    }
+                    return item
+                })
+
+                return {
+                    label: legend.layerName,
+                    elements: newLegend
+                }
+
+            } else {
+                return {
+                    label: legend.layerName,
+                    elements: legend.legend
+                }
             }
         })
+
         let legendOrder = layers.filter(layer => layer.displayed === true).map(layer => {
             return layer.name
         })
         let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
             || (el.label === "data" && name ==="Last Run"))).filter(el => typeof el == 'object')
-
-        //TODO: borrow logic for handling unit conversions from below:
-        // let resultsLayer = layers.find(layer => layer.urlTemplate.includes("{serviceId}"))
-        //
-        // if (resultsLayer) {
-        //     mapLegends.push({
-        //         label: 'Match',
-        //         className: 'results',
-        //         elements: legends.results.legend
-        //     })
-        // }
-
-
-        // if (serviceId !== null && legends.results.legend !== null) {
-        //     mapLegends.push({
-        //         label: 'Match',
-        //         className: 'results',
-        //         elements: legends.results.legend
-        //     })
-        // }
-        //
-        // if (activeVariables.length && (legends.variable.legend !== null)) {
-        //     activeVariables.forEach(activeVariable => {
-        //         let variable = allVariables.find(item => item.name === activeVariable)
-        //         let { units, multiplier } = variable
-        //         let legend = legends.variable.legend.map(item => {
-        //             let value = parseFloat(item.label)
-        //
-        //             if (!isNaN(value)) {
-        //                 value /= multiplier
-        //
-        //                 if (units !== null && unit == 'imperial') {
-        //                     value = units.imperial.convert(value)
-        //                 }
-        //
-        //                 value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
-        //
-        //                 return Object.assign({}, item, {label: value})
-        //             }
-        //
-        //             return item
-        //         })
-        //
-        //         mapLegends.push({
-        //             label: activeVariable,
-        //             elements: legend
-        //         })
-        //     })
-        // }
 
         if (orderedMapLegends.length) {
             if (this.legend === null) {

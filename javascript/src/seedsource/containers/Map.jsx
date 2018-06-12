@@ -614,7 +614,6 @@ class Map extends React.Component {
                 activeVariables, objective, point, climate, opacity, job, legends, popup, unit, method,
                 zone, geometry, center, region, geojson, layers
             } = this.props
-            let {serviceId} = job
 
             this.updateLayers(layers)
             this.updatePointMarker(point)

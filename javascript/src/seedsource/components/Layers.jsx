@@ -12,11 +12,12 @@ class Layers extends React.Component {
                                                     value={layer.name}
                                                     onChange={() => onToggleLayer(layer.name)}
                                                     checked={layer.displayed}
+                                                    disabled={(layer.urlTemplate === "seedZone") ? true : false}
                                                 />
                                                 {layer.name}
                                             </p>
                                 })
-        let [resultsLayer, seedZoneLayers, variableLayers] = ["{serviceId}", "fail", "{region}_{modelTime}"]
+        let [resultsLayer, seedZoneLayers, variableLayers] = ["{serviceId}", "seedZone", "{region}_{modelTime}"]
             .map(layer => layerList(layer))
 
         return (

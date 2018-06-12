@@ -3,6 +3,7 @@ import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
 import {TOGGLE_LAYER} from '../actions/layers'
+import {RECEIVE_ZONES, RECEIVE_GEOMETRY} from "../actions/zones";
 
 
 const defaultLayer = {
@@ -16,23 +17,39 @@ const defaultLayer = {
 export default (state = [], action) => {
         let index = null
         switch(action.type) {
+            case RECEIVE_ZONES:
+                let newState = state.filter(layer => layer.urlTemplate !== "seedZone")
+                if (action.zones[0]) {
+                    newState.push(morph(defaultLayer, {name: action.zones[0].name, type: "vector", urlTemplate: "seedZone"}))
+                }
+                return newState
+            case RECEIVE_GEOMETRY:
+                if (action.geometry) {
+                    index = state.findIndex(layer => layer.urlTemplate === "seedZone")
+                    return state.slice(0, index).concat([morph(state[index], {displayed: true}), ...state.slice(index+1)])
+                }
+
             case TOGGLE_VISIBILITY:
                 if (state.filter(layer => layer.displayed === true).length) {
                     return state.map(layer => morph(layer, {displayed: false}))
                 } else {
                     return state.map(layer => morph(layer, {displayed: true}))
                 }
+
             case ADD_VARIABLE:
                 return [...state, morph(defaultLayer, {
                     name: action.variable,
                     type: "raster",
                     urlTemplate: "{region}_{modelTime}Y_{name}"})]
+
             case REMOVE_VARIABLE:
                 index = state.findIndex(layer => layer.name === action.variable)
                 return state.slice(0, index).concat(state.slice(index+1))
+
             case TOGGLE_LAYER:
                 index = state.findIndex(layer => layer.name === action.name)
                 return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
+
             case FINISH_JOB:
                 let lastRun = state.find(layer => layer.name === "Last Run")
                 if (lastRun) {
@@ -49,6 +66,7 @@ export default (state = [], action) => {
                                 ...state
                             ]
                 }
+
             default:
                 return state
         }

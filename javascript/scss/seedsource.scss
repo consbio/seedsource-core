@@ -513,3 +513,13 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   margin: 10px 0px;
   font-size: 1.25rem;
 }
+
+.preview-map {
+  width: $modal-content-width;
+  height: calc((2/3) * #{$modal-content-width});
+  margin: -20px;
+}
+
+.report-preview .modal-card-foot {
+  justify-content: flex-end;
+}

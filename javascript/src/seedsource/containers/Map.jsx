@@ -630,7 +630,7 @@ class Map extends React.Component {
         if (this.map !== null) {
             let {
                 objective, point, climate, opacity, legends, popup, unit, method,
-                zone, geometry, center, region, geojson, layers
+                zone, geometry, center, region, geojson, layers, zoom
             } = this.props
 
             this.updateLayers(layers)

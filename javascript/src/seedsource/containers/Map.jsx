@@ -176,8 +176,7 @@ class Map extends React.Component {
                 this.props.onPopupLocation(e.latlng.lat, e.latlng.lng)
             })
         }
-
-
+        
         this.map.on('zoomend', () => {
             this.props.onZoomChange(this.map.getZoom())
         })
@@ -191,9 +190,8 @@ class Map extends React.Component {
                     opacity: 0
                 }
             })
-        ).on('ready', () => {
-            this.updateAll()
-        })
+        )
+
         this.map.addLayer(this.regionsBoundaries)
 
         if (this.simple) {

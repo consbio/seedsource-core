@@ -502,3 +502,13 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
     display: none;
   }
 }
+
+.preview-map {
+  width: $modal-content-width;
+  height: calc((2/3) * #{$modal-content-width});
+  margin: -20px;
+}
+
+.report-preview .modal-card-foot {
+  justify-content: flex-end;
+}

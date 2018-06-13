@@ -31,7 +31,7 @@ export const failReport = () => {
 export const createReport = name => {
     return (dispatch, getState) => {
         let { lastRun, job, map } = getState()
-        let { basemap, zoom, opacity } = map
+        let { basemap, zoom, center, opacity } = map
 
         let resultsLayer = '/tiles/' + job.serviceId + '/{z}/{x}/{y}.png'
 
@@ -39,6 +39,7 @@ export const createReport = name => {
             configuration: dumpConfiguration(lastRun),
             tile_layers: [basemap, resultsLayer],
             zoom,
+            center,
             opacity
         }
 

@@ -18,7 +18,7 @@ import { variables, timeLabels, regions, regionsBoundariesUrl } from '../../conf
 import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
-import { getServiceName } from '../../utils'
+import { getServiceName, isClose } from '../../utils'
 import '../../leaflet-controls'
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
@@ -52,6 +52,7 @@ class Map extends React.Component {
         this.mapIsMoving = false
         this.shapefile = null
         this.geojson = null
+        this.simple = props.simple || false
     }
 
     // Initial map setup
@@ -100,19 +101,22 @@ class Map extends React.Component {
             position: 'topright'
         }))
 
-        let geonamesControl = L.control.geonames({
-            geonamesURL: 'https://secure.geonames.org/searchJSON',
-            position: 'topright',
-            username: 'seedsource',
-            showMarker: false,
-            showPopup: false
-        })
-        geonamesControl.on('select', ({ geoname }) => {
-            let latlng = {lat: parseFloat(geoname.lat), lng: parseFloat(geoname.lng)}
-            this.map.setView(latlng);
-            this.map.fire('click', {latlng})
-        })
-        this.map.addControl(geonamesControl)
+        if (!this.simple) {
+
+            let geonamesControl = L.control.geonames({
+                geonamesURL: 'https://secure.geonames.org/searchJSON',
+                position: 'topright',
+                username: 'seedsource',
+                showMarker: false,
+                showPopup: false
+            })
+            geonamesControl.on('select', ({geoname}) => {
+                let latlng = {lat: parseFloat(geoname.lat), lng: parseFloat(geoname.lng)}
+                this.map.setView(latlng);
+                this.map.fire('click', {latlng})
+            })
+            this.map.addControl(geonamesControl)
+        }
 
         let basemapControl = L.control.basemaps({
             basemaps: [
@@ -127,18 +131,16 @@ class Map extends React.Component {
                     subdomains: ['server', 'services']
                 }),
                 L.tileLayer('//{s}.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
-	                attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS',
-	                maxZoom: 13,
+                    attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS',
+                    maxZoom: 13,
                     subdomains: ['server', 'services']
                 }),
-                L.tileLayer(
-                    '//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                L.tileLayer('//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                     attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
                     maxZoom: 16,
                     subdomains: ['server', 'services']
                 }),
-                L.tileLayer(
-                    '//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                L.tileLayer('//{s}.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                     attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
                     maxZoom: 16,
                     subdomains: ['server', 'services']
@@ -150,22 +152,31 @@ class Map extends React.Component {
             position: 'bottomleft'
         })
         this.map.addControl(basemapControl)
+        if (this.simple) {
+            basemapControl.remove()
+        }
 
         this.map.on('baselayerchange', layer => {
             this.props.onBasemapChange(layer._url)
         })
 
-        this.map.on('popupclose', () => { this.props.onPopupClose() })
+        if (!this.simple) {
 
-        this.map.on('click', e => {
-            if (!e.latlng) {
-                return
-            }
+            this.map.on('popupclose', () => {
+                this.props.onPopupClose()
+            })
 
-            this.updateBoundaryPreview(e.latlng)
+            this.map.on('click', e => {
+                if (!e.latlng) {
+                    return
+                }
 
-            this.props.onPopupLocation(e.latlng.lat, e.latlng.lng)
-        })
+                this.updateBoundaryPreview(e.latlng)
+
+                this.props.onPopupLocation(e.latlng.lat, e.latlng.lng)
+            })
+        }
+
 
         this.map.on('zoomend', () => {
             this.props.onZoomChange(this.map.getZoom())
@@ -180,8 +191,16 @@ class Map extends React.Component {
                     opacity: 0
                 }
             })
-        )
+        ).on('ready', () => {
+            this.updateAll()
+        })
         this.map.addLayer(this.regionsBoundaries)
+
+        if (this.simple) {
+            if (this.props.zoom && this.props.center) {
+                this.map.setView(this.props.center, this.props.zoom)
+            }
+        }
     }
 
     componentWillUnmount() {
@@ -334,21 +353,23 @@ class Map extends React.Component {
     }
 
     updateOpacity(opacity, serviceId, variable) {
-        if (serviceId !== null || variable !== null) {
-            if (this.opacityControl === null) {
-                this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
-                this.map.addControl(this.opacityControl)
+        if (!this.simple) {
+            if (serviceId !== null || variable !== null) {
+                if (this.opacityControl === null) {
+                    this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
+                    this.map.addControl(this.opacityControl)
 
-                this.opacityControl.on('input', e => {
-                    this.props.onOpacityChange(e.value / 100)
-                })
+                    this.opacityControl.on('input', e => {
+                        this.props.onOpacityChange(e.value / 100)
+                    })
+                }
+
+                this.opacityControl.setValue(Math.round(opacity * 100))
             }
-
-            this.opacityControl.setValue(Math.round(opacity * 100))
-        }
-        else if (this.opacityControl !== null) {
-            this.map.removeControl(this.opacityControl)
-            this.opacityControl = null
+            else if (this.opacityControl !== null) {
+                this.map.removeControl(this.opacityControl)
+                this.opacityControl = null
+            }
         }
 
         if (this.variableLayer !== null && this.variableLayer.options.opacity !== opacity) {
@@ -361,6 +382,9 @@ class Map extends React.Component {
     }
 
     updateVisibilityButton(serviceId, showResults) {
+        if (this.simple){
+            return
+        }
         if (serviceId !== null) {
             let icon = showResults ? 'eye-closed' : 'eye';
 
@@ -382,6 +406,9 @@ class Map extends React.Component {
     }
 
     updateLegends(legends, activeVariable, serviceId, unit) {
+        if (this.simple){
+            return
+        }
         let mapLegends = []
 
         if (serviceId !== null && legends.results.legend !== null) {
@@ -574,34 +601,52 @@ class Map extends React.Component {
     }
 
     updateMapCenter(center) {
-        let mapCenter = this.map.getCenter()
+        if (this.mapIsMoving) {
+            return
+        }
 
-        if (center[0] != mapCenter.lat || center[1] != mapCenter.lng) {
+        let mapCenter = this.map.getCenter()
+        if (!isClose(center[0], mapCenter.lat) || !isClose(center[1], mapCenter.lng)) {
             this.map.setView(center)
         }
+    }
+
+    updateMapZoom(zoomLevel) {
+        let mapZoomLevel = this.map.getZoom()
+
+        if (zoomLevel != mapZoomLevel) {
+            this.map.setZoom(zoomLevel)
+        }
+    }
+
+    updateAll() {
+        let {
+            activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
+            zone, geometry, center, zoom, region, geojson
+        } = this.props
+        let { serviceId } = job
+
+        this.updatePointMarker(point)
+        this.updateVariableLayer(activeVariable, objective, climate, region)
+        this.updateResultsLayer(serviceId, showResults)
+        this.updateBoundaryLayer(region)
+        this.updateOpacity(opacity, serviceId, activeVariable)
+        this.updateVisibilityButton(serviceId, showResults)
+        this.updateLegends(legends, activeVariable, serviceId, unit)
+        this.updateZoneLayer(method, zone, geometry)
+        this.updatePopup(popup, unit)
+        this.updateMapCenter(center)
+        this.updateMapZoom(zoom)
+        this.updateShapefileLayer(geojson)
     }
 
     render() {
         let timeOverlay = null
 
         if (this.map !== null) {
-            let {
-                activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
-                zone, geometry, center, region, geojson
-            } = this.props
-            let {serviceId} = job
+            this.updateAll()
 
-            this.updatePointMarker(point)
-            this.updateVariableLayer(activeVariable, objective, climate, region)
-            this.updateResultsLayer(serviceId, showResults)
-            this.updateBoundaryLayer(region)
-            this.updateOpacity(opacity, serviceId, activeVariable)
-            this.updateVisibilityButton(serviceId, showResults)
-            this.updateLegends(legends, activeVariable, serviceId, unit)
-            this.updateZoneLayer(method, zone, geometry)
-            this.updatePopup(popup, unit)
-            this.updateMapCenter(center)
-            this.updateShapefileLayer(geojson)
+            let { activeVariable } = this.props
 
             // Time overlay
             if (activeVariable !== null) {
@@ -631,7 +676,7 @@ class Map extends React.Component {
 
 const mapStateToProps = state => {
     let { runConfiguration, activeVariable, map, job, legends, popup, lastRun } = state
-    let { opacity, showResults, center } = map
+    let { opacity, showResults, center, zoom } = map
     let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
     let { geometry } = zones
     let zone = zones.selected
@@ -640,7 +685,7 @@ const mapStateToProps = state => {
 
     return {
         activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
-        zone, center, region, regionMethod, resultRegion, geojson
+        zone, center, zoom, region, regionMethod, resultRegion, geojson
     }
 }
 

@@ -7,36 +7,38 @@ import os
 class Command(BaseCommand):
     help = 'Facilitates converting of vector data into vector tiles.'
 
-    def _create_folder(self, directory):
-        try:
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-        except OSError:
-            print('Error: Creating directory. ' + directory)
-
-    def _write_out_yellow(self, output):
+    def _write_out(self, output):
         self.stdout.write('\033[0;33m' + output + '\033[0m')
 
     def handle(self, *args, **options):
-        self._create_folder("seedzones")
-
+        errors = []
         for sz in SeedZone.objects.all():
-            FormattedName = sz.name.replace(" ", "_").replace("(", "[").replace(")", "]").replace("/", "-")
+            formatted_name = sz.name\
+                .replace(" ", "_")\
+                .replace("(", "[")\
+                .replace(")", "]")\
+                .replace("/", "-")\
+                .replace("&", "and")\
+                .lower()
 
-            self._write_out_yellow("loading " + FormattedName)
+            self._write_out("loading " + formatted_name)
             with open("geojson", "w") as f:
                 f.write(sz.polygon.json)
 
-            self._write_out_yellow("processing..")
+            self._write_out("processing..")
             process = subprocess.Popen(''.join([
-                "tippecanoe -o seedzones/",
-                FormattedName,
-                ".mbtiles -f -zg --drop-densest-as-needed geojson"
+                "cd .. && tippecanoe -o tiles/seedzones/",
+                formatted_name,
+                ".mbtiles -f -zg --drop-densest-as-needed source/geojson"
                 ]), shell=True)
-            ExitCode = process.wait()
-            if ExitCode == 0:
+            exit_code = process.wait()
+            if exit_code == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
             else:
+                errors.append(formatted_name)
                 self.stdout.write(self.style.ERROR("Error\n"))
 
-        self._write_out_yellow("done")
+        self._write_out("Done\n")
+        if errors:
+            self._write_out("There were errors with the following:\n")
+            self.stdout.write(self.style.ERROR("\n".join(errors)))

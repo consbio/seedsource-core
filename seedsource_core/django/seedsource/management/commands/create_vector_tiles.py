@@ -2,6 +2,7 @@ from django.core.management import BaseCommand
 from seedsource_core.django.seedsource.models import SeedZone
 import subprocess
 import os
+from django.conf import settings
 
 
 class Command(BaseCommand):
@@ -10,35 +11,52 @@ class Command(BaseCommand):
     def _write_out(self, output):
         self.stdout.write('\033[0;33m' + output + '\033[0m')
 
-    def handle(self, *args, **options):
-        errors = []
-        for sz in SeedZone.objects.all():
-            formatted_name = sz.name\
-                .replace(" ", "_")\
-                .replace("(", "[")\
-                .replace(")", "]")\
-                .replace("/", "-")\
-                .replace("&", "and")\
-                .lower()
+    def _create_folder(self, directory):
+        try:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+        except OSError:
+            print('Error: Creating directory. ' + directory)
 
-            self._write_out("loading " + formatted_name)
-            with open("geojson", "w") as f:
+    def handle(self, *args, **options):
+        tiles_dir = settings.BASE_DIR + "/tiles"
+        errors = []
+
+        self._create_folder(tiles_dir + "/temp")
+        self._create_folder(tiles_dir + "/seedzones")
+
+        for sz in SeedZone.objects.all():
+            name = sz.name.replace("/", "-")
+
+            self._write_out("loading " + name)
+
+            with open(tiles_dir + "/temp/geojson", "w") as f:
                 f.write(sz.polygon.json)
 
             self._write_out("processing..")
-            process = subprocess.Popen(''.join([
-                "cd .. && tippecanoe -o tiles/seedzones/",
-                formatted_name,
-                ".mbtiles -f -zg --drop-densest-as-needed source/geojson"
-                ]), shell=True)
+
+            process = subprocess.Popen([
+                    'tippecanoe',
+                    '-o',
+                    f'seedzones/{name}.mbtiles',
+                    '-f',
+                    '-zg',
+                    '--drop-densest-as-needed',
+                    'temp/geojson'],
+                cwd=tiles_dir)
+
             exit_code = process.wait()
+
             if exit_code == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
             else:
-                errors.append(formatted_name)
+                errors.append(name)
                 self.stdout.write(self.style.ERROR("Error\n"))
 
         self._write_out("Done\n")
         if errors:
             self._write_out("There were errors with the following:\n")
             self.stdout.write(self.style.ERROR("\n".join(errors)))
+
+        os.remove(tiles_dir + "/temp/geojson")
+        os.rmdir(tiles_dir + "/temp")

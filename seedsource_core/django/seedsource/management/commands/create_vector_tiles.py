@@ -7,14 +7,14 @@ import os
 class Command(BaseCommand):
     help = 'Facilitates converting of vector data into vector tiles.'
 
-    def _create_folder(directory):
+    def _create_folder(self, directory):
         try:
             if not os.path.exists(directory):
                 os.makedirs(directory)
         except OSError:
             print('Error: Creating directory. ' + directory)
 
-    def _write_out_yellow(output):
+    def _write_out_yellow(self, output):
         self.stdout.write('\033[0;33m' + output + '\033[0m')
 
     def handle(self, *args, **options):

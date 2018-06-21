@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
             self._write_out("processing..")
 
-            process = subprocess.Popen([
+            process = subprocess.run([
                     'tippecanoe',
                     '-o',
                     f'seedzones/{name}.mbtiles',
@@ -45,18 +45,16 @@ class Command(BaseCommand):
                     'temp/geojson'],
                 cwd=tiles_dir)
 
-            exit_code = process.wait()
-
-            if exit_code == 0:
+            if process.returncode == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
             else:
                 errors.append(name)
                 self.stdout.write(self.style.ERROR("Error\n"))
 
+        self._write_out("Cleaning up temp files..\n")
+        os.remove(tiles_dir + "/temp/geojson")
+        os.rmdir(tiles_dir + "/temp")
         self._write_out("Done\n")
         if errors:
             self._write_out("There were errors with the following:\n")
             self.stdout.write(self.style.ERROR("\n".join(errors)))
-
-        os.remove(tiles_dir + "/temp/geojson")
-        os.rmdir(tiles_dir + "/temp")

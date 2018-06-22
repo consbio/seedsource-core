@@ -4,7 +4,7 @@ import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
 import {TOGGLE_LAYER} from '../actions/layers'
 import {RECEIVE_ZONES, RECEIVE_GEOMETRY} from "../actions/zones";
-
+import config from '../../../../javascript/src/seedsource/config'
 
 const defaultLayer = {
     name: null,
@@ -14,7 +14,9 @@ const defaultLayer = {
     displayed: false
 }
 
-export default (state = [], action) => {
+const defaultState = config.seedzones.sort((a,b) => a.name.localeCompare(b.name))
+
+export default (state = defaultState, action) => {
         let index = null
         switch(action.type) {
             case RECEIVE_ZONES:

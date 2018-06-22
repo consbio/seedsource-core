@@ -21,6 +21,7 @@ import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
+import 'leaflet.vectorgrid/dist/Leaflet.VectorGrid.js'
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -52,6 +53,7 @@ class Map extends React.Component {
         this.shapefile = null
         this.geojson = null
         this.displayedRasterLayers = []
+        this.displayedVectorLayers = []
         this.simple = props.simple || false
     }
 
@@ -616,10 +618,49 @@ class Map extends React.Component {
         }
     }
 
+    updateVectorLayers(layers) {
+        let numLayersToAdd = layers.length - this.displayedVectorLayers.length
+        if (numLayersToAdd === 0) {
+            return
+        }
+
+        let rewriteLeafletVectors = () => {
+            if (layers.length) {
+                let url
+                layers.forEach((layer, index) => {
+                    console.log(layer.name.replace("/", "-"))
+                    let varsObj = { formattedName: layer.name.replace("/", "-").toLowerCase() }
+                    let url = layer.urlTemplate
+                    for (let key in varsObj) {
+                        url = url.replace(`{${key}}`, varsObj[key])
+                    }
+                    this.displayedVectorLayers[index].setUrl(url)
+                        .setZIndex(layer.zIndex)
+                })
+            }
+        }
+
+        if (numLayersToAdd > 0) {
+            while (numLayersToAdd > 0) {
+                let newVectorLayer = L.vectorGrid.protobuf("placeHolder", {zIndex: 1, opacity: 1}).addTo(this.map)
+                this.displayedVectorLayers.push(newVectorLayer)
+                numLayersToAdd --
+            }
+        } else {
+            while (numLayersToAdd < 0) {
+                this.map.removeLayer(this.displayedVectorLayers.pop())
+                numLayersToAdd ++
+            }
+        }
+        rewriteLeafletVectors()
+    }
+
     updateLayers(layers) {
         let rasterLayers = layers.filter(layer => (layer.type === "raster") && (layer.displayed === true))
+        let vectorLayers = layers.filter(layer => (layer.type === "vector") && (layer.displayed === true))
 
         this.updateRasterLayers(rasterLayers)
+        this.updateVectorLayers(vectorLayers)
     }
 
     render() {

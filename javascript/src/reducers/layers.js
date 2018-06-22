@@ -2,7 +2,7 @@ import {morph} from '../utils'
 import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
-import {TOGGLE_LAYER} from '../actions/layers'
+import {TOGGLE_LAYER, TOGGLE_VECTOR_LAYER} from '../actions/layers'
 import {RECEIVE_ZONES, RECEIVE_GEOMETRY} from "../actions/zones";
 import config from '../../../../javascript/src/seedsource/config'
 
@@ -50,6 +50,10 @@ export default (state = defaultState, action) => {
 
             case TOGGLE_LAYER:
                 index = state.findIndex(layer => layer.name === action.name)
+                return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
+
+            case TOGGLE_VECTOR_LAYER:
+                index = state.findIndex(layer => layer.urlTemplate.includes(action.url))
                 return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
 
             case FINISH_JOB:

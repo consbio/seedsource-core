@@ -3,6 +3,7 @@ import {
     requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry
 } from '../actions/zones'
 import { urlEncode } from '../io'
+import { toggleVectorLayer } from '../actions/layers'
 
 const zoneSelect = ({ runConfiguration }) => {
     let { point, method, species } = runConfiguration
@@ -52,6 +53,7 @@ export default store => {
     resync(store, zoneGeometrySelect, ({zone, hasGeometry}, io, dispatch) => {
         if (zone !== null && !hasGeometry) {
             dispatch(requestGeometry())
+            dispatch(toggleVectorLayer(url))
 
             let url = '/sst/seedzones/' + store.getState().runConfiguration.zones.selected + '/geometry/'
 

@@ -17,7 +17,7 @@ class Layers extends React.Component {
                                                 {layer.name}
                                             </p>
                                 })
-        let [resultsLayer, seedZoneLayers, variableLayers] = ["{serviceId}", "{formattedName}", "{region}_{modelTime}"]
+        let [resultsLayer, seedZoneLayers, variableLayers] = ["{serviceId}", "tiles", "{region}_{modelTime}"]
             .map(layer => layerList(layer))
 
         // TODO: make seedzone div and others a dropdown style folder

@@ -53,7 +53,7 @@ export default store => {
     resync(store, zoneGeometrySelect, ({zone, hasGeometry}, io, dispatch) => {
         if (zone !== null && !hasGeometry) {
             dispatch(requestGeometry())
-            dispatch(toggleVectorLayer(url))
+            dispatch(toggleVectorLayer(store.getState().runConfiguration.zones.selected))
 
             let url = '/sst/seedzones/' + store.getState().runConfiguration.zones.selected + '/geometry/'
 

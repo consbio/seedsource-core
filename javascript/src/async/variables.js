@@ -3,6 +3,7 @@ import { requestTransfer, receiveTransfer, requestValue, receiveValue } from '..
 import { requestPopupValue, receivePopupValue } from '../actions/popup'
 import { urlEncode } from '../io'
 import { getServiceName, morph } from '../utils'
+import config from '../../../../javascript/src/seedsource/config'
 
 const transferSelect = ({ runConfiguration }) => {
     let { method, point, zones, climate, variables } = runConfiguration
@@ -118,7 +119,7 @@ export default store => {
         variables.forEach(item => {
             dispatch(requestTransfer(item.name))
 
-            let url = '/sst/transfer-limits/?' + urlEncode({
+            let url = config.apiRoot + 'transfer-limits/?' + urlEncode({
                     point: point.x + ',' + point.y,
                     variable: item.name,
                     zone__zone_uid: zone,

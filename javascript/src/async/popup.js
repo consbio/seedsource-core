@@ -4,6 +4,7 @@ import {
     receivePopupElevation, requestPopupValue, receivePopupValue, requestPopupRegion, receivePopupRegion
 } from '../actions/popup'
 import { fetchValues } from '../async/variables'
+import config from '../../../../javascript/src/seedsource/config'
 
 const popupSelect = ({ popup }) => {
     let { point } = popup
@@ -17,7 +18,7 @@ export default store => resync(store, popupSelect, (state, io, dispatch, previou
     if (pointIsValid) {
 
         // Update popup regions
-        let regionUrl = '/sst/regions/?' + urlEncode({
+        let regionUrl = config.apiRoot + 'regions/?' + urlEncode({
                 point: point.x + ',' + point.y
             })
 

@@ -22,6 +22,7 @@ import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
 import 'leaflet.vectorgrid/dist/Leaflet.VectorGrid.js'
+import projConfig from '../../../../../javascript/src/seedsource/config'
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -292,9 +293,10 @@ class Map extends React.Component {
         this.cancelBoundaryPreview()
 
         if (this.props.regionMethod === 'auto') {
-            let regionUrl = '/sst/regions/?' + io.urlEncode({
+            let regionUrl = projConfig.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
+            console.log(regionUrl)
 
             this.showPreview = true
 

@@ -33,6 +33,12 @@ class Command(BaseCommand):
 
             self._write_out("loading " + name)
 
+            check = [element['name'] for element in outputIndex if element['name'] == name]
+            if check:
+                self._write_out("repeat name, appending zone_uid to name: " + uid)
+                name = f'{name}({uid})'
+                self._write_out("loading " + name)
+
             with open(tiles_dir + "/temp/geojson", "w") as f:
                 f.write(sz.polygon.json)
 
@@ -57,7 +63,7 @@ class Command(BaseCommand):
                 errors.append(name)
                 self.stdout.write(self.style.ERROR("Error\n"))
 
-        self._write_out("Cleaning up temp files..\n")
+        self._write_out("Cleaning up temp files..")
         os.remove(tiles_dir + "/temp/geojson")
         os.rmdir(tiles_dir + "/temp")
 
@@ -70,7 +76,7 @@ class Command(BaseCommand):
                 f.write(",\n")
             f.write("]")
 
-        self._write_out("Done\nAn index of successful outputs can be found in the tiles folder in your project directory.")
+        self._write_out("Done\n\nAn index of successful outputs can be found in the tiles folder in your project directory.")
 
         if errors:
             self._write_out("There were errors with the following:\n")

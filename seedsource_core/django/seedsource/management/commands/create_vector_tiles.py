@@ -51,7 +51,6 @@ class Command(BaseCommand):
                     '-f',
                     f'--name={name}',
                     f'--layer={uid}',
-                    '-zg',
                     '--drop-densest-as-needed',
                     'temp/geojson'],
                 cwd=tiles_dir)

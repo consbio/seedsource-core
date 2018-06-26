@@ -14,12 +14,22 @@ class Layers extends React.Component {
 
     render() {
         let { onToggleLayer, layers } = this.props
-        let layerList = (urlSegment) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
+        let layerList = (urlSegment, sort=false) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
             .sort((a,b) => {
-                if (a.displayed === true && b.displayed === false) {
-                    return -1
-                } else if (a.displayed === false && b.displayed === true) {
-                    return 1
+                if (sort) {
+                    let x = a.name.toLowerCase()
+                    let y = b.name.toLowerCase()
+                    if (a.displayed === true && b.displayed === false) {
+                        return -1
+                    } else if (a.displayed === false && b.displayed === true) {
+                        return 1
+                    } else if (x < y) {
+                        return -1
+                    } else if (x > y) {
+                        return 1
+                    } else {
+                        return 0
+                    }
                 } else {
                     return 0
                 }
@@ -35,8 +45,10 @@ class Layers extends React.Component {
                                         </li>
             })
 
-        let [resultsLayer, seedZoneLayers, variableLayers] = ["{serviceId}", "tiles", "{region}_{modelTime}"]
+        let [resultsLayer, variableLayers] = ["{serviceId}", "{region}_{modelTime}"]
             .map(layer => layerList(layer))
+
+        let seedZoneLayers = layerList("tiles", true)
 
         return (
             <div className={"layers-tab"}>

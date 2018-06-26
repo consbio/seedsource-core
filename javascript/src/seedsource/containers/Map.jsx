@@ -296,7 +296,6 @@ class Map extends React.Component {
             let regionUrl = projConfig.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
-            console.log(regionUrl)
 
             this.showPreview = true
 
@@ -622,21 +621,14 @@ class Map extends React.Component {
 
     updateVectorLayers(layers) {
         let numLayersToAdd = layers.length - this.displayedVectorLayers.length
-        if (numLayersToAdd === 0) {
+        if (this.displayedVectorLayers.map(layer => layer._url).toString() === layers.map(layer => layer.urlTemplate).toString()) {
             return
         }
 
         let rewriteLeafletVectors = () => {
             if (layers.length) {
-                let url
                 layers.forEach((layer, index) => {
-                    console.log(layer.name.replace("/", "-"))
-                    let varsObj = { formattedName: layer.name.replace("/", "-").toLowerCase() }
-                    let url = layer.urlTemplate
-                    for (let key in varsObj) {
-                        url = url.replace(`{${key}}`, varsObj[key])
-                    }
-                    this.displayedVectorLayers[index].setUrl(url)
+                    this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
                         .setZIndex(layer.zIndex)
                 })
             }
@@ -644,7 +636,7 @@ class Map extends React.Component {
 
         if (numLayersToAdd > 0) {
             while (numLayersToAdd > 0) {
-                let newVectorLayer = L.vectorGrid.protobuf("placeHolder", {zIndex: 1, opacity: 1}).addTo(this.map)
+                let newVectorLayer = L.vectorGrid.protobuf("http://localhost:3333/services/seedzones/ca_91/tiles/{z}/{x}/{y}.png", {zIndex: 1, opacity: 1}).addTo(this.map)
                 this.displayedVectorLayers.push(newVectorLayer)
                 numLayersToAdd --
             }
@@ -660,7 +652,6 @@ class Map extends React.Component {
     updateLayers(layers) {
         let rasterLayers = layers.filter(layer => (layer.type === "raster") && (layer.displayed === true))
         let vectorLayers = layers.filter(layer => (layer.type === "vector") && (layer.displayed === true))
-
         this.updateRasterLayers(rasterLayers)
         this.updateVectorLayers(vectorLayers)
     }
@@ -680,7 +671,7 @@ class Map extends React.Component {
             this.updateOpacity(opacity)
             this.updateVisibilityButton(layers.length)
             this.updateLegends(legends, layers, unit)
-            this.updateZoneLayer(method, zone, geometry)
+            // this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateMapZoom(zoom)

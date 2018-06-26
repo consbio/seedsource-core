@@ -4,7 +4,7 @@ import {
 } from '../actions/zones'
 import { urlEncode } from '../io'
 import config from '../../../../javascript/src/seedsource/config'
-import { toggleVectorLayer } from '../actions/layers'
+
 
 const zoneSelect = ({ runConfiguration }) => {
     let { point, method, species } = runConfiguration
@@ -54,7 +54,6 @@ export default store => {
     resync(store, zoneGeometrySelect, ({zone, hasGeometry}, io, dispatch) => {
         if (zone !== null && !hasGeometry) {
             dispatch(requestGeometry())
-            dispatch(toggleVectorLayer(store.getState().runConfiguration.zones.selected))
 
             let url = config.apiRoot + 'seedzones/?' + store.getState().runConfiguration.zones.selected + '/geometry/'
 

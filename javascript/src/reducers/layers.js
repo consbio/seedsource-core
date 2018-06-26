@@ -2,8 +2,8 @@ import {morph} from '../utils'
 import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
-import {TOGGLE_LAYER, TOGGLE_VECTOR_LAYER} from '../actions/layers'
-import {RECEIVE_ZONES, RECEIVE_GEOMETRY} from "../actions/zones";
+import {TOGGLE_LAYER} from '../actions/layers'
+import {RECEIVE_ZONES} from "../actions/zones";
 import config from '../../../../javascript/src/seedsource/config'
 
 const defaultLayer = {
@@ -20,15 +20,19 @@ export default (state = defaultState, action) => {
         let index = null
         switch(action.type) {
             case RECEIVE_ZONES:
-                let newState = state.filter(layer => layer.urlTemplate !== "seedZone")
-                if (action.zones[0]) {
-                    newState.push(morph(defaultLayer, {name: action.zones[0].name, type: "vector", urlTemplate: "seedZone"}))
-                }
-                return newState
-            case RECEIVE_GEOMETRY:
-                if (action.geometry) {
-                    index = state.findIndex(layer => layer.urlTemplate === "seedZone")
-                    return state.slice(0, index).concat([morph(state[index], {displayed: true}), ...state.slice(index+1)])
+                if (action.zones[0] && action.zones[0].zone_uid) {
+                    let zone_uid = action.zones[0].zone_uid
+                    return state.map(layer => {
+                        if (layer.urlTemplate.includes(zone_uid)) {
+                            return morph(layer, {displayed: true})
+                        } else if (layer.urlTemplate.includes("seedzones")) {
+                            return morph(layer, {displayed: false})
+                        } else {
+                            return layer
+                        }
+                    })
+                } else {
+                    return state
                 }
 
             case TOGGLE_VISIBILITY:
@@ -50,10 +54,6 @@ export default (state = defaultState, action) => {
 
             case TOGGLE_LAYER:
                 index = state.findIndex(layer => layer.name === action.name)
-                return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
-
-            case TOGGLE_VECTOR_LAYER:
-                index = state.findIndex(layer => layer.urlTemplate.includes(action.url))
                 return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
 
             case FINISH_JOB:

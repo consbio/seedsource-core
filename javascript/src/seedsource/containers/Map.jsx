@@ -256,16 +256,13 @@ class Map extends React.Component {
         }
 
         if (numLayersToAdd > 0) {
-            while (numLayersToAdd > 0) {
-                let newRasterLayer = L.tileLayer("placeHolder", {zIndex: 1, opacity: 1}).addTo(this.map)
-                this.displayedRasterLayers.push(newRasterLayer)
-                numLayersToAdd --
-            }
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+            ))
         } else {
-            while (numLayersToAdd < 0) {
-                this.map.removeLayer(this.displayedRasterLayers.pop())
-                numLayersToAdd ++
-            }
+            this.displayedRasterLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
         }
         rewriteLeafletRasters()
     }
@@ -350,7 +347,6 @@ class Map extends React.Component {
 
     updateOpacity(opacity) {
         if (!this.simple) {
-            //TODO: add other displayed layers as they become available
             if (this.displayedRasterLayers.length) {
                 if (this.opacityControl === null) {
                     this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
@@ -369,9 +365,7 @@ class Map extends React.Component {
             }
         }
 
-        if (this.displayedRasterLayers.length) {
-            this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
-        }
+        this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
     }
 
     updateVisibilityButton(layersCount) {
@@ -379,7 +373,6 @@ class Map extends React.Component {
             return
         }
         if (layersCount) {
-            //TODO: account for other displayed layers as they become available
             let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {

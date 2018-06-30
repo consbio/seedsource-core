@@ -4,8 +4,6 @@ import os
 from statistics import mean
 
 import numpy
-from trefoil.geometry.bbox import BBox
-from trefoil.netcdf.variable import SpatialCoordinateVariables
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
 from django.core.management import BaseCommand
@@ -14,8 +12,9 @@ from ncdjango.models import Service
 from netCDF4 import Dataset
 from pyproj import Proj
 from rasterio.features import rasterize
-
 from seedsource_core.django.seedsource.models import SeedZone, TransferLimit, Region
+from trefoil.geometry.bbox import BBox
+from trefoil.netcdf.variable import SpatialCoordinateVariables
 
 VARIABLES = (
     'MAT', 'MWMT', 'MCMT', 'TD', 'MAP', 'MSP', 'AHM', 'SHM', 'DD_0', 'DD5', 'FFP', 'PAS', 'EMT', 'EXT', 'Eref', 'CMD'
@@ -177,7 +176,6 @@ class Command(BaseCommand):
         with transaction.atomic():
             TransferLimit.objects.filter(zone__source__istartswith=query_zone_name).delete()
 
-            last_zone_set = None
             last_region = None
 
             for time_period in ('1961_1990', '1981_2010'):
@@ -186,43 +184,75 @@ class Command(BaseCommand):
 
                     for zone in zones:
                         print(zone.name)
-                        if zone.source != last_zone_set:
-                            last_zone_set = zone.source
-                            region = Region.objects.filter(
-                                polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
-                            ).first()
+                        region = Region.objects.filter(
+                            polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
+                        ).first()
 
-                            if region != last_region:
-                                last_region = region
+                        if region is None:
+                            raise Exception('Could not find region for seed zone ' + zone.name)
 
-                                print('Loading region {}'.format(region.name))
+                        if region != last_region:
+                            last_region = region
 
-                                elevation_service = Service.objects.get(name='{}_dem'.format(region.name))
-                                dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, elevation_service.data_path)
+                            print('Loading region {}'.format(region.name))
 
-                                with Dataset(dataset_path) as ds:
-                                    coords = SpatialCoordinateVariables.from_dataset(
-                                        ds, x_name='lon', y_name='lat', projection=Proj(elevation_service.projection)
-                                    )
-                                    elevation = ds.variables['elevation'][:]
+                            elevation_service = Service.objects.get(name='{}_dem'.format(region.name))
+                            elevation_variable = elevation_service.variable_set.first()
+                            dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, elevation_service.data_path)
 
-                                variable_service = Service.objects.get(
-                                    name='{}_{}Y_{}'.format(region.name, time_period, variable)
+                            with Dataset(dataset_path) as ds:
+                                coords = SpatialCoordinateVariables.from_dataset(
+                                    ds, x_name=elevation_variable.x_dimension,
+                                    y_name=elevation_variable.y_dimension,
+                                    projection=Proj(elevation_service.projection)
                                 )
-                                dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
-                                with Dataset(dataset_path) as ds:
-                                    data = ds.variables[variable][:]
+                                elevation = ds.variables[elevation_variable.variable][:]
 
-                        clipped_elevation, clipped_data, clipped_coords = self._get_subsets(
-                            elevation, data, coords, BBox(zone.polygon.extent)
-                        )
+                            variable_service = Service.objects.get(
+                                name='{}_{}Y_{}'.format(region.name, time_period, variable)
+                            )
+                            dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
+                            with Dataset(dataset_path) as ds:
+                                data = ds.variables[variable][:]
 
-                        zone_mask = rasterize(
-                            ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
-                            transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8')
-                        )
+                        bbox = BBox(zone.polygon.extent)
+                        try:
+                            clipped_elevation, clipped_data, clipped_coords = self._get_subsets(
+                                elevation, data, coords, bbox
+                            )
+
+                            zone_mask = rasterize(
+                                ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
+                                transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8')
+                            )
+
+                            # If all data are masked out, re-rasterize with `all-touched=True`
+                            if (zone_mask == 0).all():
+                                zone_mask = rasterize(
+                                    ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
+                                    transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8'),
+                                    all_touched=True
+                                )
+                        except (AssertionError, IndexError):  # trefoil throws exceptions for 1-cell slices
+                            x_start, x_end = coords.x.indices_for_range(bbox.xmin, bbox.xmax)
+                            if x_start == x_end:
+                                x_end += 1
+
+                            y_start, y_end = coords.y.indices_for_range(bbox.ymin, bbox.ymax)
+                            if y_start == y_end:
+                                y_end += 1
+
+                            clipped_elevation = elevation[y_start:y_end, x_start:x_end]
+                            clipped_data = elevation[y_start:y_end, x_start:x_end]
+
+                            zone_mask = numpy.ones(clipped_elevation.shape)
 
                         masked_dem = numpy.ma.masked_where(zone_mask == 0, clipped_elevation)
+
+                        # If all data are masked out at this point, skip this zone (it's probably in the ocean)
+                        if masked_dem.mask.all():
+                            continue
+
                         min_elevation = max(math.floor(numpy.nanmin(masked_dem) / 0.3048), 0)
                         max_elevation = math.ceil(numpy.nanmax(masked_dem) / 0.3048)
                         bands = list(get_bands_fn(zone.bands_fn)(zone.zone_id, min_elevation, max_elevation))

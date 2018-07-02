@@ -14,31 +14,28 @@ class Command(BaseCommand):
     def _write_out(self, output):
         self.stdout.write('\033[0;33m' + output + '\033[0m')
 
-    def _create_folder(self, directory):
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
     def handle(self, *args, **options):
         tiles_dir = os.path.join(settings.BASE_DIR, "tiles")
+        seedzone_dir = os.path.join(tiles_dir, "seedzones")
         outputIndex = []
         errors = []
         sources = SeedZone.objects.values_list('source').distinct()
 
-        self._create_folder(os.path.join(tiles_dir, "seedzones"))
+        if not os.path.exists(seedzone_dir):
+            os.makedirs(seedzone_dir)
 
         for source in sources:
-            source = str(source).strip("'(,)'")
-            zones = SeedZone.objects.filter(source=source)
-            source = source.replace("/", "-").lower()
+            zones = SeedZone.objects.filter(source=source[0])
+            source = source[0].replace("/", "-").lower()
             tmp_dir = mkdtemp()
 
-            self._write_out(f'Loading seedzones of source "{source}" ...')
-            geojson = {
-                'type': 'FeatureCollection',
-                'features': [json.loads(sz.polygon.geojson) for sz in zones]
-            }
-
             try:
+                self._write_out(f'Loading seedzones of source "{source}" ...')
+                geojson = {
+                    'type': 'FeatureCollection',
+                    'features': [json.loads(sz.polygon.geojson) for sz in zones]
+                }
+
                 with open(os.path.join(tmp_dir, 'zones.json'), "w") as f:
                     f.write(json.dumps(geojson))
 

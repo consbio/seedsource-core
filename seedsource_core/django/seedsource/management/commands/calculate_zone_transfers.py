@@ -189,7 +189,8 @@ class Command(BaseCommand):
                         ).first()
 
                         if region is None:
-                            raise Exception('Could not find region for seed zone ' + zone.name)
+                            print('Could not find region for seed zone ' + zone.name)
+                            continue
 
                         if region != last_region:
                             last_region = region

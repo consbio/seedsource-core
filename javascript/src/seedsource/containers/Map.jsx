@@ -21,6 +21,8 @@ import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
+import config from '../../../../../javascript/src/seedsource/config'
+
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -286,7 +288,7 @@ class Map extends React.Component {
         this.cancelBoundaryPreview()
 
         if (this.props.regionMethod === 'auto') {
-            let regionUrl = '/sst/regions/?' + io.urlEncode({
+            let regionUrl = config.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
 

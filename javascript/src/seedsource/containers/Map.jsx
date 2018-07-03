@@ -229,8 +229,7 @@ class Map extends React.Component {
             else {
                 this.pointMarker.setLatLng([point.y, point.x])
             }
-        }
-        else if (this.pointMarker !== null) {
+        } else if (this.pointMarker !== null) {
             this.map.removeLayer(this.pointMarker)
             this.pointMarker = null
         }
@@ -356,10 +355,8 @@ class Map extends React.Component {
                         this.props.onOpacityChange(e.value / 100)
                     })
                 }
-
                 this.opacityControl.setValue(Math.round(opacity * 100))
-            }
-            else if (this.opacityControl !== null) {
+            } else if (this.opacityControl !== null) {
                 this.map.removeControl(this.opacityControl)
                 this.opacityControl = null
             }
@@ -372,6 +369,7 @@ class Map extends React.Component {
         if (this.simple){
             return
         }
+
         if (layersCount) {
             let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
@@ -381,12 +379,10 @@ class Map extends React.Component {
                     this.props.onToggleVisibility()
                 })
                 this.map.addControl(this.visibilityButton)
-            }
-            else if (this.visibilityButton.options.icon !== icon) {
+            } else if (this.visibilityButton.options.icon !== icon) {
                 this.visibilityButton.setIcon(icon)
             }
-        }
-        else if (this.visibilityButton !== null) {
+        } else if (this.visibilityButton !== null) {
             this.map.removeControl(this.visibilityButton)
             this.visibilityButton = null
         }
@@ -396,6 +392,7 @@ class Map extends React.Component {
         if (this.simple){
             return
         }
+
         let mapLegends = legends.legends.map(legend => {
             let variable = allVariables.find(item => item.name === legend.layerName)
             if (variable) {
@@ -424,7 +421,7 @@ class Map extends React.Component {
 
             } else {
                 return {
-                    label: legend.layerName,
+                    label: "Match",
                     elements: legend.legend
                 }
             }
@@ -433,19 +430,18 @@ class Map extends React.Component {
         let legendOrder = layers.filter(layer => layer.displayed === true).map(layer => {
             return layer.name
         })
+
         let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
-            || (el.label === "data" && name ==="Last Run"))).filter(el => typeof el == 'object')
+            || (el.label === "Match" && name ==="Last Run"))).filter(el => typeof el == 'object')
 
         if (orderedMapLegends.length) {
             if (this.legend === null) {
                 this.legend = L.control.legend({legends: orderedMapLegends})
                 this.map.addControl(this.legend)
-            }
-            else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
+            } else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
                 this.legend.setLegends(orderedMapLegends)
             }
-        }
-        else if (this.legend !== null) {
+        } else if (this.legend !== null) {
             this.map.removeControl(this.legend)
             this.legend = null
         }
@@ -465,8 +461,7 @@ class Map extends React.Component {
             }
 
             this.currentZone = zone
-        }
-        else if (this.zoneLayer !== null) {
+        } else if (this.zoneLayer !== null) {
             this.map.removeLayer(this.zoneLayer)
             this.zoneLayer = null
             this.currentZone = null
@@ -582,8 +577,7 @@ class Map extends React.Component {
             if (values !== this.popup.values.innerHTML) {
                 this.popup.values.innerHTML = values
             }
-        }
-        else if (this.popup) {
+        } else if (this.popup) {
             this.cancelBoundaryPreview()
             this.map.closePopup(this.popup.popup)
             this.popup = null

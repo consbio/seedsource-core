@@ -3,7 +3,7 @@ import {
     requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry
 } from '../actions/zones'
 import { urlEncode } from '../io'
-import { toggleVectorLayer } from '../actions/layers'
+import config from '../../../../javascript/src/seedsource/config'
 
 const zoneSelect = ({ runConfiguration }) => {
     let { point, method, species } = runConfiguration

@@ -2,6 +2,7 @@ import resync from '../resync'
 import { setElevation } from '../actions/point'
 import { setRegion, requestRegions, receiveRegions } from '../actions/region'
 import { urlEncode } from '../io'
+import config from '../../../../javascript/src/seedsource/config'
 
 const pointSelect = ({ runConfiguration }) => {
     let { point } = runConfiguration
@@ -22,7 +23,7 @@ export default store => {
 
             dispatch(setElevation(null))
             dispatch(requestRegions())
-            let regionUrl = '/sst/regions/?' + urlEncode({
+            let regionUrl = config.apiRoot + 'regions/?' + urlEncode({
                 point: point.x + ',' + point.y
             })
 

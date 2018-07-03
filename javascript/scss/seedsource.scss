@@ -16,6 +16,7 @@
   }
 }
 
+$image-path: '../../seedsource-core/javascript/images';
 $header-height: 52px;
 $family-strong: "Arial Black", "Arial Bold", Gadget, sans-serif;
 $tab-header-height: 58px;
@@ -40,7 +41,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 @each $icon in $icons {
   @each $size in $icon-sizes {
     .icon-#{$icon}-#{$size} {
-      background: url('/images/icon-#{$icon}.svg') no-repeat center center;
+      background: url('#{$image-path}/icon-#{$icon}.svg') no-repeat center center;
       width: #{$size}px;
       height: #{$size}px;
       display: inline-block;
@@ -501,6 +502,16 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   {
     display: none;
   }
+}
+
+.layers-tab {
+  margin: 0 10px;
+  font-size: 1rem;
+}
+
+.layers-tab .title {
+  margin: 10px 0px;
+  font-size: 1.25rem;
 }
 
 .preview-map {

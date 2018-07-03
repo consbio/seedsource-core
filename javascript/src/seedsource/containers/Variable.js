@@ -1,13 +1,14 @@
 import { connect } from 'react-redux'
-import { modifyVariable, resetTransfer, toggleVariable, removeVariable } from '../../actions/variables'
+import { modifyVariable, resetTransfer, removeVariable } from '../../actions/variables'
+import { toggleLayer } from '../../actions/layers'
 import Variable from 'seedsource/components/Variable'
-import { variables } from '../../config'
+import { variables as allVariables } from '../../config'
 
 const mapStateToProps = (state, { variable }) => {
-    let { activeVariable, runConfiguration } = state
-    let active = activeVariable === variable.name
+    let { layers, runConfiguration } = state
+    let active = !!layers.find(layer => layer.name === variable.name && layer.displayed === true)
     let { objective, unit, method, center } = runConfiguration
-    let variableConfig = variables.find(item => item.name === variable.name)
+    let variableConfig = allVariables.find(item => item.name === variable.name)
     let { name, value, zoneCenter, transfer, avgTransfer, transferIsModified } = variable
     let { label, multiplier, units } = variableConfig
 
@@ -92,7 +93,7 @@ const mapDispatchToProps = (dispatch, { variable, index }) => {
                     }
                 }
 
-                let variableConfig = variables.find(item => item.name === variable.name)
+                let variableConfig = allVariables.find(item => item.name === variable.name)
 
                 dispatch(modifyVariable(variable.name, value * variableConfig.multiplier))
             }
@@ -103,7 +104,7 @@ const mapDispatchToProps = (dispatch, { variable, index }) => {
         },
 
         onToggle: () => {
-            dispatch(toggleVariable(variable.name))
+            dispatch(toggleLayer(variable.name))
         },
 
         onRemove: () => {

@@ -1,5 +1,4 @@
-import { SET_MAP_OPACITY, SET_BASEMAP, SET_ZOOM, TOGGLE_VISIBILITY, SET_MAP_CENTER } from '../actions/map'
-import { FINISH_JOB } from '../actions/job'
+import { SET_MAP_OPACITY, SET_BASEMAP, SET_ZOOM, SET_MAP_CENTER } from '../actions/map'
 import { LOAD_CONFIGURATION } from '../actions/saves'
 import { morph } from '../utils'
 
@@ -7,8 +6,7 @@ const defaultState = {
     opacity: 1,
     basemap: '//{s}.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
     zoom: 4,
-    center: [55.0, -112.0],
-    showResults: true
+    center: [55.0, -112.0]
 }
 
 export default (state=defaultState, action) => {
@@ -21,12 +19,6 @@ export default (state=defaultState, action) => {
 
         case SET_ZOOM:
             return morph(state, {zoom: action.zoom})
-
-        case TOGGLE_VISIBILITY:
-            return morph(state, {showResults: !state.showResults})
-
-        case FINISH_JOB:
-            return morph(state, {showResults: true})
 
         case SET_MAP_CENTER:
             return morph(state, {center: action.center})

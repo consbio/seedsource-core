@@ -1,13 +1,13 @@
-import { variables } from '../config'
+import { variables as allVariables } from '../config'
 import {
     ADD_VARIABLE, REMOVE_VARIABLE, MODIFY_VARIABLE, RESET_TRANSFER, REQUEST_VALUE, RECEIVE_VALUE, SELECT_METHOD,
-    REQUEST_TRANSFER, RECEIVE_TRANSFER, TOGGLE_VARIABLE
+    REQUEST_TRANSFER, RECEIVE_TRANSFER
 } from '../actions/variables'
+import { TOGGLE_LAYER } from "../actions/layers"
 import { SET_LATITUDE, SET_LONGITUDE, SET_POINT } from '../actions/point'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
 import { SELECT_CLIMATE_YEAR, SELECT_CLIMATE_MODEL } from '../actions/climate'
 import { SELECT_ZONE } from '../actions/zones'
-import { FINISH_JOB } from '../actions/job'
 import { morph } from '../utils'
 
 
@@ -30,7 +30,7 @@ export default (state = [], action) => {
 
     switch(action.type) {
         case ADD_VARIABLE:
-            variable = variables.find((item) => item.name === action.variable)
+            variable = allVariables.find((item) => item.name === action.variable)
 
             let { name } = variable
 
@@ -108,22 +108,6 @@ export default (state = [], action) => {
                 transfer: variable.transferIsModified ? variable.transfer : action.transfer
             })
 
-
-        default:
-            return state
-    }
-}
-
-export const activeVariable = (state = null, action) => {
-    switch(action.type) {
-        case TOGGLE_VARIABLE:
-            return state === action.variable ? null : action.variable
-
-        case REMOVE_VARIABLE:
-            return action.variable === state ? null : state
-
-        case FINISH_JOB:
-            return null
 
         default:
             return state

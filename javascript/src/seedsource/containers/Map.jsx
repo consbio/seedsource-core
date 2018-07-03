@@ -14,12 +14,15 @@ import 'leaflet-zoombox/L.Control.ZoomBox'
 import 'leaflet-range/L.Control.Range'
 
 import * as io from '../../io'
-import { variables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
+import { getLayerUrl } from '../../utils'
+import { variables as allVariables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
 import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
-import { getServiceName, isClose } from '../../utils'
+import { isClose } from '../../utils'
 import '../../leaflet-controls'
+import config from 'seedsource/config'
+
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -40,9 +43,7 @@ class Map extends React.Component {
         this.showPreview = false
         this.resultRegion = props.resultRegion
         this.pointMarker = null
-        this.variableLayer = null
         this.legend = null
-        this.resultsLayer = null
         this.zoneLayer = null
         this.currentZone = null
         this.opacityControl = null
@@ -52,6 +53,7 @@ class Map extends React.Component {
         this.mapIsMoving = false
         this.shapefile = null
         this.geojson = null
+        this.displayedRasterLayers = []
         this.simple = props.simple || false
     }
 
@@ -176,8 +178,7 @@ class Map extends React.Component {
                 this.props.onPopupLocation(e.latlng.lat, e.latlng.lng)
             })
         }
-
-
+        
         this.map.on('zoomend', () => {
             this.props.onZoomChange(this.map.getZoom())
         })
@@ -191,9 +192,8 @@ class Map extends React.Component {
                     opacity: 0
                 }
             })
-        ).on('ready', () => {
-            this.updateAll()
-        })
+        )
+
         this.map.addLayer(this.regionsBoundaries)
 
         if (this.simple) {
@@ -231,47 +231,41 @@ class Map extends React.Component {
             else {
                 this.pointMarker.setLatLng([point.y, point.x])
             }
-        }
-        else if (this.pointMarker !== null) {
+        } else if (this.pointMarker !== null) {
             this.map.removeLayer(this.pointMarker)
             this.pointMarker = null
         }
     }
 
-    updateVariableLayer(variable, objective, climate, region) {
-        if (variable !== null) {
-            let layerUrl = '/tiles/' + getServiceName(variable, objective, climate, region) + '/{z}/{x}/{y}.png'
+    updateRasterLayers(layers) {
+        let numLayersToAdd = layers.length - this.displayedRasterLayers.length
+        if (numLayersToAdd === 0) {
+            return
+        }
 
-            if (this.variableLayer === null) {
-                this.variableLayer = L.tileLayer(layerUrl, {zIndex: 1, opacity: 1}).addTo(this.map)
-            }
-            else if(layerUrl !== this.variableLayer._url) {
-                this.variableLayer.setUrl(layerUrl)
+        let rewriteLeafletRasters = () => {
+            if (layers.length) {
+                let { objective, climate, region } = this.props
+                let { serviceId } = this.props.job
+                let url
+                layers.forEach((layer, index) => {
+                    url = getLayerUrl(layer, serviceId, objective, climate, region)
+                    this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
+                        .setZIndex(layer.zIndex)
+                })
             }
         }
-        else if (this.variableLayer !== null) {
-            this.map.removeLayer(this.variableLayer)
-            this.variableLayer = null
-        }
-    }
 
-    updateResultsLayer(serviceId, showResults) {
-        if (serviceId !== null && showResults) {
-            let layerUrl = '/tiles/' + serviceId + '/{z}/{x}/{y}.png'
-
-            if (this.resultsLayer === null) {
-                this.resultsLayer = L.tileLayer(layerUrl, {zIndex: 2, opacity: 1}).addTo(this.map)
-            }
-            else if (layerUrl !== this.resultsLayer._url) {
-                this.resultsLayer.setUrl(layerUrl)
-            }
-
-            this.addBoundaryToMap(this.resultRegion, '#006600', false)
+        if (numLayersToAdd > 0) {
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+            ))
+        } else {
+            this.displayedRasterLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
         }
-        else if (this.resultsLayer !== null) {
-            this.map.removeLayer(this.resultsLayer)
-            this.resultsLayer = null
-        }
+        rewriteLeafletRasters()
     }
 
     addBoundaryToMap(region, color, showFill = true) {
@@ -294,7 +288,7 @@ class Map extends React.Component {
         this.cancelBoundaryPreview()
 
         if (this.props.regionMethod === 'auto') {
-            let regionUrl = '/sst/regions/?' + io.urlEncode({
+            let regionUrl = config.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
 
@@ -326,7 +320,7 @@ class Map extends React.Component {
     }
 
     updateBoundaryLayer(region) {
-        if(this.props.regionMethod === 'custom') {
+        if (this.props.regionMethod === 'custom') {
             this.cancelBoundaryPreview()
         }
 
@@ -338,10 +332,6 @@ class Map extends React.Component {
 
             let regionObj = regions.find(r => r.name === region)
             this.addBoundaryToMap(regionObj.name, '#000066', false)
-
-            if (this.resultRegion) {
-                this.addBoundaryToMap(this.resultRegion, '#006600', false)
-            }
         } else if (region === null) {
             this.boundaryName = null
             this.removeBoundaryFromMap()
@@ -350,11 +340,15 @@ class Map extends React.Component {
                 this.addBoundaryToMap(this.clickedRegion, '#aaa')
             }
         }
+
+        if (this.resultRegion) {
+            this.addBoundaryToMap(this.resultRegion, '#006600', false)
+        }
     }
 
-    updateOpacity(opacity, serviceId, variable) {
+    updateOpacity(opacity) {
         if (!this.simple) {
-            if (serviceId !== null || variable !== null) {
+            if (this.displayedRasterLayers.length) {
                 if (this.opacityControl === null) {
                     this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
                     this.map.addControl(this.opacityControl)
@@ -363,30 +357,23 @@ class Map extends React.Component {
                         this.props.onOpacityChange(e.value / 100)
                     })
                 }
-
                 this.opacityControl.setValue(Math.round(opacity * 100))
-            }
-            else if (this.opacityControl !== null) {
+            } else if (this.opacityControl !== null) {
                 this.map.removeControl(this.opacityControl)
                 this.opacityControl = null
             }
         }
 
-        if (this.variableLayer !== null && this.variableLayer.options.opacity !== opacity) {
-            this.variableLayer.setOpacity(opacity)
-        }
-
-        if (this.resultsLayer !== null && this.resultsLayer.options.opacity !== opacity) {
-            this.resultsLayer.setOpacity(opacity)
-        }
+        this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
     }
 
-    updateVisibilityButton(serviceId, showResults) {
+    updateVisibilityButton(layersCount) {
         if (this.simple){
             return
         }
-        if (serviceId !== null) {
-            let icon = showResults ? 'eye-closed' : 'eye';
+
+        if (layersCount) {
+            let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {
                 this.visibilityButton = L.control.button({'icon': icon})
@@ -394,68 +381,69 @@ class Map extends React.Component {
                     this.props.onToggleVisibility()
                 })
                 this.map.addControl(this.visibilityButton)
-            }
-            else if (this.visibilityButton.options.icon !== icon) {
+            } else if (this.visibilityButton.options.icon !== icon) {
                 this.visibilityButton.setIcon(icon)
             }
-        }
-        else if (this.visibilityButton !== null) {
+        } else if (this.visibilityButton !== null) {
             this.map.removeControl(this.visibilityButton)
             this.visibilityButton = null
         }
     }
 
-    updateLegends(legends, activeVariable, serviceId, unit) {
+    updateLegends(legends, layers, unit) {
         if (this.simple){
             return
         }
-        let mapLegends = []
 
-        if (serviceId !== null && legends.results.legend !== null) {
-            mapLegends.push({
-                label: 'Match',
-                className: 'results',
-                elements: legends.results.legend
-            })
-        }
+        let mapLegends = legends.legends.map(legend => {
+            let variable = allVariables.find(item => item.name === legend.layerName)
+            if (variable) {
+                let { units, multiplier } = variable
+                let newLegend = legend.legend.map(item => {
+                    let value = parseFloat(item.label)
 
-        if (activeVariable !== null && legends.variable.legend !== null) {
-            let variable = variables.find(item => item.name === activeVariable)
-            let { units, multiplier } = variable
-            let legend = legends.variable.legend.map(item => {
-                let value = parseFloat(item.label)
+                    if (!isNaN(value)) {
+                        value /= multiplier
 
-                if (!isNaN(value)) {
-                    value /= multiplier
+                        if (units !== null && unit == 'imperial') {
+                            value = units.imperial.convert(value)
+                        }
 
-                    if (units !== null && unit == 'imperial') {
-                        value = units.imperial.convert(value)
+                        value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
+
+                        return Object.assign({}, item, {label: value})
                     }
+                    return item
+                })
 
-                    value = parseFloat(value.toFixed(2)) + ' ' + units[unit].label
-
-                    return Object.assign({}, item, {label: value})
+                return {
+                    label: legend.layerName,
+                    elements: newLegend
                 }
 
-                return item
-            })
+            } else {
+                return {
+                    label: "Match",
+                    elements: legend.legend
+                }
+            }
+        })
 
-            mapLegends.push({
-                label: activeVariable,
-                elements: legend
-            })
-        }
+        let legendOrder = layers.filter(layer => layer.displayed === true).map(layer => {
+            return layer.name
+        })
 
-        if (mapLegends.length) {
+        let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
+            || (el.label === "Match" && name ==="Last Run"))).filter(el => typeof el == 'object')
+
+        if (orderedMapLegends.length) {
             if (this.legend === null) {
-                this.legend = L.control.legend({legends: mapLegends})
+                this.legend = L.control.legend({legends: orderedMapLegends})
                 this.map.addControl(this.legend)
+            } else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
+                this.legend.setLegends(orderedMapLegends)
             }
-            else if (JSON.stringify(mapLegends) !== JSON.stringify(this.legend.options.legends)) {
-                this.legend.setLegends(mapLegends)
-            }
-        }
-        else if (this.legend !== null) {
+        } else if (this.legend !== null) {
             this.map.removeControl(this.legend)
             this.legend = null
         }
@@ -475,8 +463,7 @@ class Map extends React.Component {
             }
 
             this.currentZone = zone
-        }
-        else if (this.zoneLayer !== null) {
+        } else if (this.zoneLayer !== null) {
             this.map.removeLayer(this.zoneLayer)
             this.zoneLayer = null
             this.currentZone = null
@@ -565,7 +552,7 @@ class Map extends React.Component {
             }
 
             let valueRows = popup.values.map(item => {
-                let variableConfig = variables.find(variable => variable.name === item.name)
+                let variableConfig = allVariables.find(variable => variable.name === item.name)
                 let { multiplier, units } = variableConfig
                 let value = 'N/A'
                 let unitLabel = units.metric.label
@@ -592,8 +579,7 @@ class Map extends React.Component {
             if (values !== this.popup.values.innerHTML) {
                 this.popup.values.innerHTML = values
             }
-        }
-        else if (this.popup) {
+        } else if (this.popup) {
             this.cancelBoundaryPreview()
             this.map.closePopup(this.popup.popup)
             this.popup = null
@@ -610,7 +596,7 @@ class Map extends React.Component {
             this.map.setView(center)
         }
     }
-
+  
     updateMapZoom(zoomLevel) {
         let mapZoomLevel = this.map.getZoom()
 
@@ -619,37 +605,35 @@ class Map extends React.Component {
         }
     }
 
-    updateAll() {
-        let {
-            activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method,
-            zone, geometry, center, zoom, region, geojson
-        } = this.props
-        let { serviceId } = job
+    updateLayers(layers) {
+        let rasterLayers = layers.filter(layer => (layer.type === "raster") && (layer.displayed === true))
 
-        this.updatePointMarker(point)
-        this.updateVariableLayer(activeVariable, objective, climate, region)
-        this.updateResultsLayer(serviceId, showResults)
-        this.updateBoundaryLayer(region)
-        this.updateOpacity(opacity, serviceId, activeVariable)
-        this.updateVisibilityButton(serviceId, showResults)
-        this.updateLegends(legends, activeVariable, serviceId, unit)
-        this.updateZoneLayer(method, zone, geometry)
-        this.updatePopup(popup, unit)
-        this.updateMapCenter(center)
-        this.updateMapZoom(zoom)
-        this.updateShapefileLayer(geojson)
+        this.updateRasterLayers(rasterLayers)
     }
 
     render() {
         let timeOverlay = null
 
         if (this.map !== null) {
-            this.updateAll()
+            let {
+                objective, point, climate, opacity, legends, popup, unit, method,
+                zone, geometry, center, region, geojson, layers, zoom
+            } = this.props
 
-            let { activeVariable } = this.props
+            this.updateLayers(layers)
+            this.updatePointMarker(point)
+            this.updateBoundaryLayer(region)
+            this.updateOpacity(opacity)
+            this.updateVisibilityButton(layers.length)
+            this.updateLegends(legends, layers, unit)
+            this.updateZoneLayer(method, zone, geometry)
+            this.updatePopup(popup, unit)
+            this.updateMapCenter(center)
+            this.updateMapZoom(zoom)
+            this.updateShapefileLayer(geojson)
 
             // Time overlay
-            if (activeVariable !== null) {
+            if (layers.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}" && layer.displayed === true)) {
                 let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
                 let { time, model } = selectedClimate
                 let labelKey = time
@@ -675,8 +659,9 @@ class Map extends React.Component {
 }
 
 const mapStateToProps = state => {
-    let { runConfiguration, activeVariable, map, job, legends, popup, lastRun } = state
-    let { opacity, showResults, center, zoom } = map
+
+    let { runConfiguration, map, job, legends, popup, lastRun, layers } = state
+    let { opacity, center, zoom } = map
     let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
     let { geometry } = zones
     let zone = zones.selected
@@ -684,8 +669,8 @@ const mapStateToProps = state => {
     let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
 
     return {
-        activeVariable, objective, point, climate, opacity, job, showResults, legends, popup, unit, method, geometry,
-        zone, center, zoom, region, regionMethod, resultRegion, geojson
+        objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
+        zone, center, zoom, region, regionMethod, resultRegion, geojson, layers
     }
 }
 

@@ -51,8 +51,8 @@ class Map extends React.Component {
         this.boundaryName = null
         this.popup = null
         this.mapIsMoving = false
-        this.shapefile = null
-        this.geojson = null
+        this.shpConstraintLayers = []
+        this.shpConstraintData = []
         this.displayedRasterLayers = []
         this.simple = props.simple || false
     }
@@ -470,21 +470,23 @@ class Map extends React.Component {
         }
     }
 
-    updateShapefileLayer(geojson) {
-        if (geojson === this.geojson) {
+    updateShapefileLayer(constraints) {
+        let data = constraints.map(c => c.values.geoJSON).filter(geojson => !!geojson)
+        if (JSON.stringify(data) === JSON.stringify(this.shpConstraintData)) {
             return
         }
-        this.geojson = geojson
-        if (this.shapefile) {
-            this.map.removeLayer(this.shapefile)
-        }
-        if (geojson.features && geojson.features.length) {
-            this.shapefile = L.geoJSON(geojson, { style: { "fill": false }})
-            this.map.addLayer(this.shapefile)
-            this.map.fitBounds(this.shapefile.getBounds())
-        } else {
-            this.shapefile = null
-        }
+
+        // Create new layers for each feature, even if they already exist...
+        let layers = data.map(geojson => L
+            .geoJSON(geojson, {style: {fill: false, color: '#a50f15', weight: 1.5}})
+            .addTo(this.map)
+        )
+
+        // ... then delete the old layers
+        this.shpConstraintLayers.forEach(layer => this.map.removeLayer(layer))
+
+        this.shpConstraintLayers = layers
+        this.shpConstraintData = data
     }
 
     updatePopup(popup, unit) {
@@ -617,7 +619,7 @@ class Map extends React.Component {
         if (this.map !== null) {
             let {
                 objective, point, climate, opacity, legends, popup, unit, method,
-                zone, geometry, center, region, geojson, layers, zoom
+                zone, geometry, center, region, shapefileConstraints, layers, zoom
             } = this.props
 
             this.updateLayers(layers)
@@ -630,7 +632,7 @@ class Map extends React.Component {
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateMapZoom(zoom)
-            this.updateShapefileLayer(geojson)
+            this.updateShapefileLayer(shapefileConstraints)
 
             // Time overlay
             if (layers.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}" && layer.displayed === true)) {
@@ -666,11 +668,11 @@ const mapStateToProps = state => {
     let { geometry } = zones
     let zone = zones.selected
     let resultRegion = lastRun ? lastRun.region : null
-    let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
+    let shapefileConstraints = constraints.filter(item => item.type === 'shapefile')
 
     return {
         objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
-        zone, center, zoom, region, regionMethod, resultRegion, geojson, layers
+        zone, center, zoom, region, regionMethod, resultRegion, shapefileConstraints, layers
     }
 }
 

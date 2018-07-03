@@ -11,27 +11,33 @@ import ShapefileConstraint from 'seedsource/containers/ShapefileConstraint'
 const constraintOptions = [
     {
         type: 'elevation',
-        label: 'Elevation'
+        label: 'Elevation',
+        maxInstances: 1
     },
     {
         type: 'photoperiod',
-        label: 'Photoperiod'
+        label: 'Photoperiod',
+        maxInstances: 1
     },
     {
         type: 'latitude',
-        label: 'Latitude'
+        label: 'Latitude',
+        maxInstances: 1
     },
     {
         type: 'longitude',
-        label: 'Longitude'
+        label: 'Longitude',
+        maxInstances: 1
     },
     {
         type: 'distance',
-        label: 'Distance'
+        label: 'Distance',
+        maxInstances: 1
     },
     {
         type: 'shapefile',
-        label: 'Shapefile'
+        label: 'Shapefile',
+        maxInstances: 0
     }
 ]
 
@@ -60,8 +66,8 @@ const ConstraintStep = ({ number, constraints, onChange }) => {
                 </thead>
                 <tbody>
                     {constraints.map(({ type, values }, i) => {
-                        let tag = {type: constraintMap[type]}
-                        return <tag.type index={i} values={values} key={type + '_' + i} />
+                        let ConstraintTag = constraintMap[type]
+                        return <ConstraintTag index={i} values={values} key={type + '_' + i} />
                     })}
                 </tbody>
             </table>
@@ -82,7 +88,15 @@ const ConstraintStep = ({ number, constraints, onChange }) => {
                     <option value="none">Add a constraint...</option>
                     {
                         constraintOptions
-                            .filter(constraint => !constraints.some(c => c.type === constraint.type))
+                            .filter(constraint => {
+                                if (constraint.maxInstances === 0) {
+                                    return true
+                                }
+                                else {
+                                    const count = constraints.filter(c => c.type === constraint.type).length
+                                    return count < constraint.maxInstances
+                                }
+                            })
                             .map(constraint => {
                                 return <option value={constraint.type} key={constraint.type}>{constraint.label}</option>
                             })

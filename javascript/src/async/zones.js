@@ -1,10 +1,20 @@
 import resync from '../resync'
 import {
-    requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry
+    requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry, receiveAvailableZones
 } from '../actions/zones'
 import { urlEncode } from '../io'
 import config from '../../../../javascript/src/seedsource/config'
 
+
+const availableZoneSelect = ({ runConfiguration }) => {
+    let { point, method } = runConfiguration
+
+    if (point) {
+        point = {x: point.x, y: point.y}
+    }
+
+    return {point, method}
+}
 
 const zoneSelect = ({ runConfiguration }) => {
     let { point, method, species } = runConfiguration
@@ -27,6 +37,25 @@ const zoneGeometrySelect = ({ runConfiguration }) => {
 }
 
 export default store => {
+    // Available Zones
+    resync(store, availableZoneSelect, ({ point, method }, io, dispatch) => {
+        let pointIsValid = point !== null && point.x && point.y
+
+        if (method === 'seedzone' && pointIsValid) {
+            dispatch(requestZones())
+
+            let url = config.apiRoot + 'seedzones/?' + urlEncode({point: point.x + ',' + point.y})
+
+            return io.get(url)
+                .then(response => response.json())
+                .then(json => dispatch(receiveAvailableZones(json.results)))
+                .catch(err => {
+                    console.log(err)
+                })
+        }
+    })
+
+
     // Zones
     resync(store, zoneSelect, ({ point, method, species }, io, dispatch) => {
         let pointIsValid = point !== null && point.x && point.y
@@ -54,9 +83,7 @@ export default store => {
     resync(store, zoneGeometrySelect, ({zone, hasGeometry}, io, dispatch) => {
         if (zone !== null && !hasGeometry) {
             dispatch(requestGeometry())
-
-            let url = config.apiRoot + 'seedzones/?' + store.getState().runConfiguration.zones.selected + '/geometry/'
-
+            let url = config.apiRoot + 'seedzones/' + store.getState().runConfiguration.zones.selected + '/geometry/'
             return io.get(url)
                 .then(response => response.json())
                 .then(json => dispatch(receiveGeometry(json)))

@@ -1,9 +1,10 @@
 import {
-    SELECT_ZONE, REQUEST_ZONES, RECEIVE_ZONES, FAIL_ZONES, REQUEST_GEOMETRY, RECEIVE_GEOMETRY, FAIL_GEOMETRY
+    SELECT_ZONE, REQUEST_ZONES, RECEIVE_ZONES, FAIL_ZONES, REQUEST_GEOMETRY, RECEIVE_GEOMETRY, FAIL_GEOMETRY, RECEIVE_AVAILABLE_ZONES
 } from '../actions/zones'
 import { morph } from '../utils'
 
 const defaultState = {
+    availableZones: [],
     matched: [],
     elevationAtPoint: null,
     selected: null,
@@ -16,6 +17,9 @@ export default (state = defaultState, action) => {
     switch(action.type) {
         case SELECT_ZONE:
             return morph(state, {selected: action.zone, geometry: null, isFetchingGeometry: null})
+
+        case RECEIVE_AVAILABLE_ZONES:
+            return morph(state, {availableZones: action.zones})
 
         case REQUEST_ZONES:
             return morph(state, {isFetchingZones: true})

@@ -19,22 +19,6 @@ const defaultState = config.seedzones.sort((a,b) => a.name.localeCompare(b.name)
 export default (state = defaultState, action) => {
         let index = null
         switch(action.type) {
-            case RECEIVE_ZONES:
-                if (action.zones[0] && action.zones[0].zone_uid) {
-                    let zone_uid = action.zones[0].zone_uid
-                    return state.map(layer => {
-                        if (layer.urlTemplate.includes(zone_uid)) {
-                            return morph(layer, {displayed: true})
-                        } else if (layer.urlTemplate.includes("seedzones")) {
-                            return morph(layer, {displayed: false})
-                        } else {
-                            return layer
-                        }
-                    })
-                } else {
-                    return state
-                }
-
             case TOGGLE_VISIBILITY:
                 if (state.filter(layer => layer.displayed === true).length) {
                     return state.map(layer => morph(layer, {displayed: false}))

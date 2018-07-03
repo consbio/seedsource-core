@@ -2,10 +2,12 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { species as speciesList } from '../../config'
 
-const SpeciesChooser = ({ method, species, onSpeciesChange }) => {
+const SpeciesChooser = ({ method, species, onSpeciesChange, zones }) => {
     if (method !== 'seedzone') {
         return null
     }
+
+    let availableSpecies = speciesList.filter(species => zones.availableZones.map(zone => zone.species).includes(species.name))
 
     return (
         <div>
@@ -20,7 +22,7 @@ const SpeciesChooser = ({ method, species, onSpeciesChange }) => {
                 >
                     <option value="generic">Generic</option>
 
-                    {speciesList.map(item => (
+                    {availableSpecies.map(item => (
                         <option value={item.name} key={item.name}>{item.label}</option>
                     ))}
                 </select>

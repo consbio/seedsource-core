@@ -35,13 +35,14 @@ class Layers extends React.Component {
                 }
             })
             .map(layer =>   {
-                                return  <li key={layer.name}>
-                                            <a onClick={() => onToggleLayer(layer.name)}><input
+                                return  <li className="layer-list" key={layer.name}>
+                                            <input
+                                                className="is-checkradio"
                                                 type="checkbox"
                                                 value={layer.name}
                                                 checked={layer.displayed}
                                                 disabled={(layer.urlTemplate === "seedZone") ? true : false}
-                                            />{layer.name}</a>
+                                            /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
                                         </li>
             })
 

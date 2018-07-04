@@ -5,15 +5,7 @@ export const REQUEST_GEOMETRY = 'REQUEST_GEOMETRY'
 export const RECEIVE_GEOMETRY = 'RECEIVE_GEOMETRY'
 export const FAIL_GEOMETRY = 'FAIL_GEOMETRY'
 export const FAIL_ZONES = 'FAIL_ZONES'
-export const RECEIVE_AVAILABLE_ZONES = 'RECEIVE_AVAILABLE_ZONES'
 
-
-export const receiveAvailableZones = zones => {
-    return {
-        type: RECEIVE_AVAILABLE_ZONES,
-        zones
-    }
-}
 
 export const selectZone = zone => {
     return {

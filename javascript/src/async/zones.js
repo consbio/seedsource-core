@@ -1,7 +1,8 @@
 import resync from '../resync'
 import {
-    requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry, receiveAvailableZones
+    requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry
 } from '../actions/zones'
+import { receiveAvailableSpecies } from '../actions/species'
 import { urlEncode } from '../io'
 import config from '../../../../javascript/src/seedsource/config'
 
@@ -48,7 +49,7 @@ export default store => {
 
             return io.get(url)
                 .then(response => response.json())
-                .then(json => dispatch(receiveAvailableZones(json.results)))
+                .then(json => dispatch(receiveAvailableSpecies(json.results.map(zone => zone.species))))
                 .catch(err => {
                     console.log(err)
                 })

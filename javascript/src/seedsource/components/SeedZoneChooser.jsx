@@ -15,7 +15,7 @@ const getZoneLabel = zone => {
     return label
 }
 
-const SeedZoneChooser = ({ method, pointIsValid, selected, zones, isFetchingZones, onZoneChange }) => {
+const SeedZoneChooser = ({ method, selected, zones, pointIsValid, isFetchingZones, onZoneChange }) => {
     if (method !== 'seedzone') {
         return null
     }

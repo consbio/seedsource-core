@@ -3,9 +3,9 @@ import SpeciesChooser from 'seedsource/components/SpeciesChooser'
 import { selectSpecies } from '../../actions/species'
 
 const mapStateToProps = ({ runConfiguration }) => {
-    let { method, species, zones } = runConfiguration
+    let { method, species, availableSpecies, zones } = runConfiguration
 
-    return {method, species, zones}
+    return {method, species, zones, availableSpecies}
 }
 
 const mapDispatchToProps = dispatch => {

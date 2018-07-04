@@ -610,32 +610,27 @@ class Map extends React.Component {
 
     updateVectorLayers(layers) {
         let numLayersToAdd = layers.length - this.displayedVectorLayers.length
+
         if (this.displayedVectorLayers.map(layer => layer._url).toString() === layers.map(layer => layer.urlTemplate).toString()) {
             return
         }
 
-        let rewriteLeafletVectors = () => {
-            if (layers.length) {
-                layers.forEach((layer, index) => {
-                    this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
-                        .setZIndex(layer.zIndex)
-                })
-            }
+        if (numLayersToAdd > 0) {
+            this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/ca_91/tiles/{z}/{x}/{y}.png", {zIndex: 1, opacity: 1}).addTo(this.map)
+            ))
+        } else {
+            this.displayedVectorLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
         }
 
-        if (numLayersToAdd > 0) {
-            while (numLayersToAdd > 0) {
-                let newVectorLayer = L.vectorGrid.protobuf("http://localhost:3333/services/seedzones/ca_91/tiles/{z}/{x}/{y}.png", {zIndex: 1, opacity: 1}).addTo(this.map)
-                this.displayedVectorLayers.push(newVectorLayer)
-                numLayersToAdd --
-            }
-        } else {
-            while (numLayersToAdd < 0) {
-                this.map.removeLayer(this.displayedVectorLayers.pop())
-                numLayersToAdd ++
-            }
+        if (layers.length) {
+            layers.forEach((layer, index) => {
+                this.displayedVectorLayers[index].setUrl(config.mbtileserverRoot + layer.urlTemplate)
+                    .setZIndex(layer.zIndex)
+            })
         }
-        rewriteLeafletVectors()
     }
 
     updateLayers(layers) {

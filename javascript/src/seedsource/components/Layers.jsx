@@ -15,42 +15,23 @@ class Layers extends React.Component {
     render() {
         let { onToggleLayer, layers } = this.props
 
-        let layerList = (urlSegment, sort=false) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
-            .sort((a,b) => {
-                if (sort) {
-                    let x = a.name.toLowerCase()
-                    let y = b.name.toLowerCase()
-                    if (a.displayed === true && b.displayed === false) {
-                        return -1
-                    } else if (a.displayed === false && b.displayed === true) {
-                        return 1
-                    } else if (x < y) {
-                        return -1
-                    } else if (x > y) {
-                        return 1
-                    } else {
-                        return 0
-                    }
-                } else {
-                    return 0
-                }
-            })
-            .map(layer =>   {
-                                return  <li className="layer-list" key={layer.name}>
-                                            <input
-                                                className="is-checkradio"
-                                                type="checkbox"
-                                                value={layer.name}
-                                                checked={layer.displayed}
-                                                disabled={(layer.urlTemplate === "seedZone") ? true : false}
-                                            /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
-                                        </li>
+        let layerList = (urlSegment) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
+            .map(layer => {
+                return (
+                    <li className="layer-list" key={layer.name}>
+                        <input
+                            className="is-checkradio"
+                            type="checkbox"
+                            value={layer.name}
+                            checked={layer.displayed}
+                            disabled={(layer.urlTemplate === "seedZone") ? true : false}
+                        /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
+                    </li>
+                )
             })
 
-        let [resultsLayer, variableLayers] = ["{serviceId}", "{region}_{modelTime}"]
+        let [resultsLayer, variableLayers, seedZoneLayers] = ["{serviceId}", "{region}_{modelTime}", "tiles"]
             .map(layer => layerList(layer))
-
-        let seedZoneLayers = layerList("tiles", true)
 
         return (
             <div className={"layers-tab"}>

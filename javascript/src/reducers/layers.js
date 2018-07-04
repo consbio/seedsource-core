@@ -3,7 +3,9 @@ import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
 import {TOGGLE_LAYER} from '../actions/layers'
-import config from '../../../../javascript/src/seedsource/config'
+import config from 'seedsource/config'
+import tilesIndex from 'tilesIndex'
+
 
 const defaultLayer = {
     name: null,
@@ -13,7 +15,13 @@ const defaultLayer = {
     displayed: false
 }
 
-const defaultState = config.seedzones.sort((a,b) => a.name.localeCompare(b.name))
+let defaultState = []
+
+if (tilesIndex) {
+    defaultState = tilesIndex
+}
+
+console.log(window.SS_CONFIG)
 
 export default (state = defaultState, action) => {
         let index = null

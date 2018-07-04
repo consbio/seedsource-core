@@ -26,11 +26,11 @@ class Command(BaseCommand):
 
         for source in sources:
             zones = SeedZone.objects.filter(source=source[0])
-            source = source[0].replace("/", "-").lower()
+            formatted_source = source[0].replace("/", "-").lower()
             tmp_dir = mkdtemp()
 
             try:
-                self._write_out(f'Loading seedzones of source "{source}" ...')
+                self._write_out(f'Loading seedzones of source "{source[0]}" ...')
                 geojson = {
                     'type': 'FeatureCollection',
                     'features': [json.loads(sz.polygon.geojson) for sz in zones]
@@ -44,9 +44,9 @@ class Command(BaseCommand):
                 process = subprocess.run([
                     'tippecanoe',
                     '-o',
-                    f'seedzones/{source}.mbtiles',
+                    f'seedzones/{formatted_source}.mbtiles',
                     '-f',
-                    f'--name={source}',
+                    f'--name={formatted_source}',
                     '--drop-densest-as-needed',
                     os.path.join(tmp_dir, 'zones.json')],
                     cwd=tiles_dir)
@@ -60,24 +60,26 @@ class Command(BaseCommand):
             if process.returncode == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
                 outputIndex.append({
-                    'name': source,
+                    'name': source[0],
                     'type': 'vector',
-                    'urlTemplate': f'http://localhost:3333/services/seedzones/{source}' + "/tiles/{z}/{x}/{y}.png",
+                    'urlTemplate': f'services/seedzones/{formatted_source}' + "/tiles/{z}/{x}/{y}.png",
                     'zIndex': 1,
                     'displayed': False
-                })
+                    })
             else:
-                errors.append(source)
+                errors.append(formatted_source)
                 self.stdout.write(self.style.ERROR("Error\n"))
 
-        self._write_out("Creating index..")
-        with open(os.path.join(tiles_dir, "index.js"), "w") as f:
-            f.write("[\n")
+        self._write_out("Creating tilesIndex..")
+        with open(os.path.join(tiles_dir, "tilesIndex.js"), "wb") as f:
+            f.write('export default [\n'.encode())
             for i in outputIndex:
-                f.write("  ")
-                f.write(json.dumps(i))
-                f.write(",\n")
-            f.write("]")
+                f.write('    '.encode())
+                f.write(json.dumps(i).encode())
+                f.write(',\n'.encode())
+            f.seek(-2, 2)
+            f.truncate()
+            f.write("\n]".encode())
 
         self._write_out("Done\n\nAn index of successful outputs can be found in the tiles folder in your project directory.")
 

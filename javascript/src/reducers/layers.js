@@ -21,8 +21,6 @@ if (tilesIndex) {
     defaultState = tilesIndex
 }
 
-console.log(window.SS_CONFIG)
-
 export default (state = defaultState, action) => {
         let index = null
         switch(action.type) {

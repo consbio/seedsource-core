@@ -14,6 +14,7 @@ class Layers extends React.Component {
 
     render() {
         let { onToggleLayer, layers } = this.props
+
         let layerList = (urlSegment, sort=false) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
             .sort((a,b) => {
                 if (sort) {

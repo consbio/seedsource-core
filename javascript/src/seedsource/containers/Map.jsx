@@ -22,7 +22,8 @@ import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
 import 'leaflet.vectorgrid/dist/Leaflet.VectorGrid.js'
-import projConfig from '../../../../../javascript/src/seedsource/config'
+import config from 'seedsource/config'
+
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -232,8 +233,7 @@ class Map extends React.Component {
             else {
                 this.pointMarker.setLatLng([point.y, point.x])
             }
-        }
-        else if (this.pointMarker !== null) {
+        } else if (this.pointMarker !== null) {
             this.map.removeLayer(this.pointMarker)
             this.pointMarker = null
         }
@@ -259,16 +259,13 @@ class Map extends React.Component {
         }
 
         if (numLayersToAdd > 0) {
-            while (numLayersToAdd > 0) {
-                let newRasterLayer = L.tileLayer("placeHolder", {zIndex: 1, opacity: 1}).addTo(this.map)
-                this.displayedRasterLayers.push(newRasterLayer)
-                numLayersToAdd --
-            }
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+            ))
         } else {
-            while (numLayersToAdd < 0) {
-                this.map.removeLayer(this.displayedRasterLayers.pop())
-                numLayersToAdd ++
-            }
+            this.displayedRasterLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
         }
         rewriteLeafletRasters()
     }
@@ -293,7 +290,8 @@ class Map extends React.Component {
         this.cancelBoundaryPreview()
 
         if (this.props.regionMethod === 'auto') {
-            let regionUrl = projConfig.apiRoot + 'regions/?' + io.urlEncode({
+
+            let regionUrl = config.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
 
@@ -353,7 +351,6 @@ class Map extends React.Component {
 
     updateOpacity(opacity) {
         if (!this.simple) {
-            //TODO: add other displayed layers as they become available
             if (this.displayedRasterLayers.length) {
                 if (this.opacityControl === null) {
                     this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
@@ -363,26 +360,22 @@ class Map extends React.Component {
                         this.props.onOpacityChange(e.value / 100)
                     })
                 }
-
                 this.opacityControl.setValue(Math.round(opacity * 100))
-            }
-            else if (this.opacityControl !== null) {
+            } else if (this.opacityControl !== null) {
                 this.map.removeControl(this.opacityControl)
                 this.opacityControl = null
             }
         }
 
-        if (this.displayedRasterLayers.length) {
-            this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
-        }
+        this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
     }
 
     updateVisibilityButton(layersCount) {
         if (this.simple){
             return
         }
+
         if (layersCount) {
-            //TODO: account for other displayed layers as they become available
             let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {
@@ -391,12 +384,10 @@ class Map extends React.Component {
                     this.props.onToggleVisibility()
                 })
                 this.map.addControl(this.visibilityButton)
-            }
-            else if (this.visibilityButton.options.icon !== icon) {
+            } else if (this.visibilityButton.options.icon !== icon) {
                 this.visibilityButton.setIcon(icon)
             }
-        }
-        else if (this.visibilityButton !== null) {
+        } else if (this.visibilityButton !== null) {
             this.map.removeControl(this.visibilityButton)
             this.visibilityButton = null
         }
@@ -406,6 +397,7 @@ class Map extends React.Component {
         if (this.simple){
             return
         }
+
         let mapLegends = legends.legends.map(legend => {
             let variable = allVariables.find(item => item.name === legend.layerName)
             if (variable) {
@@ -434,7 +426,7 @@ class Map extends React.Component {
 
             } else {
                 return {
-                    label: legend.layerName,
+                    label: "Match",
                     elements: legend.legend
                 }
             }
@@ -443,19 +435,18 @@ class Map extends React.Component {
         let legendOrder = layers.filter(layer => layer.displayed === true).map(layer => {
             return layer.name
         })
+
         let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
-            || (el.label === "data" && name ==="Last Run"))).filter(el => typeof el == 'object')
+            || (el.label === "Match" && name ==="Last Run"))).filter(el => typeof el == 'object')
 
         if (orderedMapLegends.length) {
             if (this.legend === null) {
                 this.legend = L.control.legend({legends: orderedMapLegends})
                 this.map.addControl(this.legend)
-            }
-            else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
+            } else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
                 this.legend.setLegends(orderedMapLegends)
             }
-        }
-        else if (this.legend !== null) {
+        } else if (this.legend !== null) {
             this.map.removeControl(this.legend)
             this.legend = null
         }
@@ -475,8 +466,7 @@ class Map extends React.Component {
             }
 
             this.currentZone = zone
-        }
-        else if (this.zoneLayer !== null) {
+        } else if (this.zoneLayer !== null) {
             this.map.removeLayer(this.zoneLayer)
             this.zoneLayer = null
             this.currentZone = null
@@ -592,8 +582,7 @@ class Map extends React.Component {
             if (values !== this.popup.values.innerHTML) {
                 this.popup.values.innerHTML = values
             }
-        }
-        else if (this.popup) {
+        } else if (this.popup) {
             this.cancelBoundaryPreview()
             this.map.closePopup(this.popup.popup)
             this.popup = null

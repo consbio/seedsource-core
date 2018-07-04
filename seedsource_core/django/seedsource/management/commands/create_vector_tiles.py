@@ -1,9 +1,11 @@
 from django.core.management import BaseCommand
-from seedsource_core.django.seedsource.models import SeedZone
-import subprocess
-import os
 from django.conf import settings
+from seedsource_core.django.seedsource.models import SeedZone
+from tempfile import mkdtemp
+import os
+import subprocess
 import json
+import shutil
 
 
 class Command(BaseCommand):
@@ -12,62 +14,64 @@ class Command(BaseCommand):
     def _write_out(self, output):
         self.stdout.write('\033[0;33m' + output + '\033[0m')
 
-    def _create_folder(self, directory):
-        try:
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-        except OSError:
-            print('Error: Creating directory. ' + directory)
-
     def handle(self, *args, **options):
-        tiles_dir = settings.BASE_DIR + "/tiles"
+        tiles_dir = os.path.join(settings.BASE_DIR, "tiles")
+        seedzone_dir = os.path.join(tiles_dir, "seedzones")
         outputIndex = []
         errors = []
+        sources = SeedZone.objects.values_list('source').distinct()
 
-        self._create_folder(tiles_dir + "/temp")
-        self._create_folder(tiles_dir + "/seedzones")
+        if not os.path.exists(seedzone_dir):
+            os.makedirs(seedzone_dir)
 
-        for sz in SeedZone.objects.all():
-            name = sz.name.replace("/", "-")
-            uid = sz.zone_uid
+        for source in sources:
+            zones = SeedZone.objects.filter(source=source[0])
+            source = source[0].replace("/", "-").lower()
+            tmp_dir = mkdtemp()
 
-            self._write_out("loading " + name)
+            try:
+                self._write_out(f'Loading seedzones of source "{source}" ...')
+                geojson = {
+                    'type': 'FeatureCollection',
+                    'features': [json.loads(sz.polygon.geojson) for sz in zones]
+                }
 
-            check = [element['name'] for element in outputIndex if element['name'] == name]
-            if check:
-                self._write_out("repeat name, appending zone_uid to name: " + uid)
-                name = f'{name}({uid})'
-                self._write_out("loading " + name)
+                with open(os.path.join(tmp_dir, 'zones.json'), "w") as f:
+                    f.write(json.dumps(geojson))
 
-            with open(tiles_dir + "/temp/geojson", "w") as f:
-                f.write(sz.polygon.json)
+                self._write_out("Processing...")
 
-            self._write_out("processing..")
-
-            process = subprocess.run([
+                process = subprocess.run([
                     'tippecanoe',
                     '-o',
-                    f'seedzones/{uid}.mbtiles',
+                    f'seedzones/{source}.mbtiles',
                     '-f',
-                    f'--name={name}',
-                    f'--layer={uid}',
+                    f'--name={source}',
                     '--drop-densest-as-needed',
-                    'temp/geojson'],
-                cwd=tiles_dir)
+                    os.path.join(tmp_dir, 'zones.json')],
+                    cwd=tiles_dir)
+
+            finally:
+                try:
+                    shutil.rmtree(tmp_dir)
+                except OSError:
+                    print(f'Could not remove temp dir "{tmp_dir}" Garbage collector will clean later.')
 
             if process.returncode == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
-                outputIndex.append({'name': name, 'type': 'vector', 'urlTemplate': f'http://localhost:3333/services/seedzones/{uid}' + "/tiles/{z}/{x}/{y}.png", 'zIndex': 1, 'displayed': False})
+                outputIndex.append({
+                    'name': source,
+                    'type': 'vector',
+                    'urlTemplate': f'http://localhost:3333/services/seedzones/{source}' + "/tiles/{z}/{x}/{y}.png",
+                    'zIndex': 1,
+                    'displayed': False
+                })
             else:
-                errors.append(name)
+                errors.append(source)
                 self.stdout.write(self.style.ERROR("Error\n"))
 
-        self._write_out("Cleaning up temp files..")
-        os.remove(tiles_dir + "/temp/geojson")
-        os.rmdir(tiles_dir + "/temp")
-
         self._write_out("Creating index..")
-        with open(tiles_dir + "/index.js", "w") as f:
+        with open(os.path.join(tiles_dir, "index.js"), "w") as f:
             f.write("[\n")
             for i in outputIndex:
                 f.write("  ")

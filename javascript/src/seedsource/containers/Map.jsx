@@ -21,7 +21,7 @@ import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
-import 'leaflet.vectorgrid/dist/Leaflet.VectorGrid.js'
+import 'leaflet.vectorgrid'
 import config from 'seedsource/config'
 
 

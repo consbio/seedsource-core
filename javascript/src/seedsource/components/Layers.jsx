@@ -35,7 +35,7 @@ class Layers extends React.Component {
 
         return (
             <div className={"layers-tab"}>
-                <aside className="menu">
+                <div className="menu">
                     <ul className="menu-list">
                         <li>
                             <a onClick={ () => this.setState({displayResults: !this.state.displayResults})}>
@@ -74,7 +74,7 @@ class Layers extends React.Component {
                             {this.state.displaySeedZones ? <ul>{seedZoneLayers}</ul> : null}
                         </li>
                     </ul>
-                </aside>
+                </div>
             </div>
         )
     }

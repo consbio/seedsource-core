@@ -71,15 +71,8 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR("Error\n"))
 
         self._write_out("Creating tilesIndex..")
-        with open(os.path.join(tiles_dir, "tilesIndex.js"), "wb") as f:
-            f.write('export default [\n'.encode())
-            for i in outputIndex:
-                f.write('    '.encode())
-                f.write(json.dumps(i).encode())
-                f.write(',\n'.encode())
-            f.seek(-2, 2)
-            f.truncate()
-            f.write("\n]".encode())
+        with open(os.path.join(tiles_dir, "tilesIndex.json"), "w") as f:
+            f.write(json.dumps(outputIndex))
 
         self._write_out("Done\n\nAn index of successful outputs can be found in the tiles folder in your project directory.")
 

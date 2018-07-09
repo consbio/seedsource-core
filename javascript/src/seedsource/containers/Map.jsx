@@ -627,7 +627,7 @@ class Map extends React.Component {
 
         if (layers.length) {
             layers.forEach((layer, index) => {
-                this.displayedVectorLayers[index].setUrl(config.mbtileserverRoot + layer.urlTemplate)
+                this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
                     .setZIndex(layer.zIndex)
             })
         }

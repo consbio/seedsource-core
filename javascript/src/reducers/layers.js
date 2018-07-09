@@ -3,10 +3,9 @@ import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
 import {TOGGLE_LAYER} from '../actions/layers'
+import config from 'seedsource/config'
 
 
-let tilesIndex = null
-let defaultState = []
 const defaultLayer = {
     name: null,
     type: null,
@@ -15,17 +14,7 @@ const defaultLayer = {
     displayed: false
 }
 
-try {
-    tilesIndex = require('tilesIndex.json')
-} catch (err) {
-    console.log("No tiles loaded. Have you run manage.py's create_vector_tiles command?")
-}
-
-if (tilesIndex) {
-    defaultState = tilesIndex
-}
-
-export default (state = defaultState, action) => {
+export default (state = config.tilesIndex, action) => {
         let index = null
         switch(action.type) {
             case TOGGLE_VISIBILITY:

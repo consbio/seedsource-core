@@ -2,6 +2,16 @@ import { morph } from './utils'
 
 export const collapsibleSteps = false
 
+let tilesIndex = []
+
+try {
+    tilesIndex = require('../../../tiles/tilesIndex.json')
+} catch (err) {
+    console.log("No tiles loaded. Have you run manage.py's create_vector_tiles command?")
+}
+
+export { tilesIndex }
+
 const celsiusUnits = {
     metric: {
         label: '°C',

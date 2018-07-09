@@ -1,6 +1,6 @@
 import { connect } from 'react-redux'
 import Layers from 'seedsource/components/Layers'
-import {toggleLayer} from '../../actions/layers';
+import {toggleLayer, loadTiles} from '../../actions/layers';
 
 
 const mapStateToProps = state => {
@@ -13,6 +13,10 @@ const mapDispatchToProps = (dispatch) => {
     return {
         onToggleLayer: (name) => {
             dispatch(toggleLayer(name))
+        },
+
+        onLoadTiles: (tiles) => {
+            dispatch(loadTiles(tiles))
         }
     }
 }

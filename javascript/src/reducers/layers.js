@@ -2,8 +2,7 @@ import {morph} from '../utils'
 import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
-import {TOGGLE_LAYER} from '../actions/layers'
-import config from 'seedsource/config'
+import {TOGGLE_LAYER, LOAD_TILES} from '../actions/layers'
 
 
 const defaultLayer = {
@@ -14,9 +13,11 @@ const defaultLayer = {
     displayed: false
 }
 
-export default (state = config.tilesIndex, action) => {
+export default (state = [], action) => {
         let index = null
         switch(action.type) {
+            case LOAD_TILES:
+                return action.tiles || state
             case TOGGLE_VISIBILITY:
                 if (state.filter(layer => layer.displayed === true).length) {
                     return state.map(layer => morph(layer, {displayed: false}))

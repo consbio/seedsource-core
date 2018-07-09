@@ -3,7 +3,7 @@ import {
     requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry
 } from '../actions/zones'
 import { urlEncode } from '../io'
-import config from '../../../../javascript/src/seedsource/config'
+import config from 'seedsource/config'
 
 
 const zoneSelect = ({ runConfiguration }) => {

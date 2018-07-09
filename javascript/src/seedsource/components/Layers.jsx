@@ -1,4 +1,6 @@
 import React from 'react'
+import {get} from "io"
+import config from 'seedsource/config'
 
 
 class Layers extends React.Component {
@@ -10,6 +12,25 @@ class Layers extends React.Component {
             displayVariables: true,
             displaySeedZones: false
         }
+    }
+
+    componentDidMount() {
+        let request = get(config.mbtileserverRoot + 'services')
+            .then(response => response.json())
+            .then(json => {
+                let tileSets = json.map(service => {
+                    let url = service.url
+                    return {
+                        name: url.substring(url.lastIndexOf('/') + 1),
+                        type: "vector",
+                        urlTemplate: url + "/tiles/{z}/{x}/{y}.png",
+                        zIndex: 1,
+                        displayed: false
+                    }
+                })
+                this.props.onLoadTiles(tileSets)
+            })
+            .catch(err => console.log(err))
     }
 
     render() {

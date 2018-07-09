@@ -8,16 +8,15 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         outputIndex = []
-        all_tile_dirs = [os.path.join(settings.BASE_DIR, "tiles/layers"), os.path.join(settings.BASE_DIR, "tiles/seedzones")]
-        for tile_dir in all_tile_dirs:
-            for dirName, subdirList, fileList in os.walk(tile_dir):
-                for tileset in subdirList:
-                    print('\t%s' % tileset)
-                    outputIndex.append({
-                        'name': tileset,
-                        'type': 'vector',
-                        'urlTemplate': f'services/{tileset}' + "/tiles/{z}/{x}/{y}.png",
-                        'zIndex': 1,
-                        'displayed': False
-                    })
+        for dirName, subdirList, fileList in os.walk(os.path.join(settings.BASE_DIR, "tiles")):
+            for tileset in fileList:
+                print('\t%s' % tileset)
+                outputIndex.append({
+                    'name': f'{dirName}/{tileset}',
+                    'type': 'vector',
+                    'urlTemplate': f'services/{dirName}/{tileset}' + "/tiles/{z}/{x}/{y}.png",
+                    'zIndex': 1,
+                    'displayed': False
+                })
 
+        print(str(outputIndex))

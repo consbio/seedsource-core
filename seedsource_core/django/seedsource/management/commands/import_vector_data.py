@@ -1,12 +1,13 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from tempfile import mkdtemp
+import json
 import shutil
 import subprocess
 import os
 
 class Command(BaseCommand):
-    help = 'Import shapefiles to be served as mb vectortiles. Viewable on front-end in "Layers" tab.'
+    help = 'Import vector data to be served as mapbox vectortiles. Viewable on front-end in "Layers" tab.'
 
     def add_arguments(self, parser):
         parser.add_argument('shapefile', nargs=1, type=str)
@@ -35,7 +36,7 @@ class Command(BaseCommand):
                 '-t_srs',
                 'EPSG:4326',
                 os.path.join(tmp_dir, 'output.json'),
-                os.path.join('/vsizip/', shapefilepath)
+                '/vsizip/' + shapefilepath
             ])
 
             self._write_out('Processing into mbtiles...')

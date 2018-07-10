@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
         for source in sources:
             zones = SeedZone.objects.filter(source=source[0])
-            formatted_source = source[0].replace("/", "-").lower()
+            formatted_source = os.path.splitext(source[0].replace("/", "-").lower())[0]
             tmp_dir = mkdtemp()
 
             try:
@@ -67,3 +67,6 @@ class Command(BaseCommand):
         if errors:
             self._write_out("There were errors with the following:\n")
             self.stdout.write(self.style.ERROR("\n".join(errors)))
+
+        else:
+            self._write_out("Done\n")

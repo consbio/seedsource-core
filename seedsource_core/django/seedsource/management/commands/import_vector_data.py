@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from tempfile import mkdtemp
-import json
 import shutil
 import subprocess
 import os
@@ -18,9 +17,8 @@ class Command(BaseCommand):
     def handle(self, shapefile, *args, **options):
         tiles_dir = os.path.join(settings.BASE_DIR, "tiles")
         layers_dir = os.path.join(tiles_dir, "layers")
-        shapefilepath = os.path.abspath(shapefile[0])
-        shapefile = os.path.basename(shapefilepath)
-        outputIndex = []
+        file_path = os.path.abspath(shapefile[0])
+        name = os.path.splitext(os.path.basename(file_path))[0]
 
         if not os.path.exists(layers_dir):
             os.makedirs(layers_dir)
@@ -28,7 +26,7 @@ class Command(BaseCommand):
         tmp_dir = mkdtemp()
 
         try:
-            self._write_out(f'Converting {shapefile} to EPSG:4326 GeoJSON for processing...')
+            self._write_out(f'Converting {name} to EPSG:4326 GeoJSON for processing...')
             subprocess.run([
                 'ogr2ogr',
                 '-f',
@@ -36,16 +34,16 @@ class Command(BaseCommand):
                 '-t_srs',
                 'EPSG:4326',
                 os.path.join(tmp_dir, 'output.json'),
-                '/vsizip/' + shapefilepath
+                '/vsizip/' + file_path
             ])
 
             self._write_out('Processing into mbtiles...')
-            process2 = subprocess.run([
+            tippecanoe = subprocess.run([
                 'tippecanoe',
                 '-o',
-                f'layers/{shapefile}.mbtiles',
+                f'layers/{name}.mbtiles',
                 '-f',
-                f'--name={shapefile}',
+                f'--name={name}',
                 '--drop-densest-as-needed',
                 os.path.join(tmp_dir, 'output.json')],
                 cwd=tiles_dir)
@@ -56,21 +54,8 @@ class Command(BaseCommand):
             except OSError:
                 print(f'Could not remove temp dir "{tmp_dir}" Garbage collector will clean later.')
 
-        if process2.returncode == 0:
+        if tippecanoe.returncode == 0:
             self.stdout.write(self.style.SUCCESS("Success\n"))
-            outputIndex.append({
-                'name': shapefile,
-                'type': 'vector',
-                'urlTemplate': f'services/seedzones/{shapefile}' + "/tiles/{z}/{x}/{y}.png",
-                'zIndex': 1,
-                'displayed': False
-            })
-            self._write_out("Creating shapeIndex..")
-            with open(os.path.join(tiles_dir, "shapeIndex.json"), "w") as f:
-                f.write(json.dumps(outputIndex))
-
-            self._write_out(
-                "Done\n\nAn index of successful outputs can be found in the tiles folder in your project directory.")
 
         else:
             self.stdout.write(self.style.ERROR("Error processing file\n"))

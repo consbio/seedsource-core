@@ -22,7 +22,7 @@ from .serializers import TransferLimitSerializer, RegionSerializer
 from .utils import get_elevation_at_point, get_regions_for_point
 
 SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'seedsource-core')
-MBTILESERVERROOT = getattr(settings, 'MBTILESERVERROOT', 'seedsource-core')
+MBTILESERVER_ROOT = getattr(settings, 'MBTILESERVER_ROOT', 'seedsource-core')
 
 class ToolView(TemplateView):
     template_name = 'seedsource.html'
@@ -30,7 +30,7 @@ class ToolView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = SEEDSOURCE_TITLE
-        context['mbtileserverRoot'] = MBTILESERVERROOT
+        context['mbtileserverRoot'] = MBTILESERVER_ROOT
         return context
 
 

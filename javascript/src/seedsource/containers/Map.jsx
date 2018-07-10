@@ -655,7 +655,7 @@ class Map extends React.Component {
             this.updateOpacity(opacity)
             this.updateVisibilityButton(layers.length)
             this.updateLegends(legends, layers, unit)
-            // this.updateZoneLayer(method, zone, geometry)
+            this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateMapZoom(zoom)

@@ -65,7 +65,7 @@ class Layers extends React.Component {
                             &nbsp; {state[key].name}
                         </h4>
                     </a>
-                    {/*Displayed? If yes but list is empty then show awayMessage*/}
+                    {/*Display? If yes but list is empty then show awayMessage*/}
                     {state[key].display ? <ul>{ layerList(state[key].urlIdentifier).length ? layerList(state[key].urlIdentifier) : state[key].awayMessage }</ul> : null }
                 </li>
             )

@@ -617,7 +617,10 @@ class Map extends React.Component {
 
         if (numLayersToAdd > 0) {
             this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
-                () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/ca_91/tiles/{z}/{x}/{y}.png", {zIndex: 1, opacity: 1}).addTo(this.map)
+                () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/wa_new_zones-psme/tiles/{z}/{x}/{y}.pbf",
+                    {zIndex: 1, opacity: 1, vectorTileLayerStyles: {
+                        data: {color: 'red'}
+                    }}).addTo(this.map)
             ))
         } else {
             this.displayedVectorLayers
@@ -627,8 +630,8 @@ class Map extends React.Component {
 
         if (layers.length) {
             layers.forEach((layer, index) => {
-                this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
-                    .setZIndex(layer.zIndex)
+                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data = layer.style
+                this.displayedVectorLayers[index].setUrl(layer.urlTemplate).redraw()
             })
         }
     }

@@ -3,7 +3,14 @@ import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB} from "../actions/job"
 import {TOGGLE_LAYER, LOAD_TILES} from '../actions/layers'
+import config from 'seedsource/config'
 
+let labels = []
+if (config.labels) {
+    labels = config.labels
+} else {
+    console.log("No project labels loaded. Layer names and styling may be ugly.")
+}
 
 const defaultLayer = {
     name: null,
@@ -17,7 +24,24 @@ export default (state = [], action) => {
         let index = null
         switch(action.type) {
             case LOAD_TILES:
-                return action.tiles || state
+                if (!action.tiles.length) {
+                    return state
+                }
+                let newState =  action.tiles.map(tileset => {
+                    index = labels.findIndex(label => label.serviceName === tileset.name)
+                    if (index !== -1 && index !== null) {
+                        let correctLabel = labels.splice(index, 1)
+                        return morph(tileset, {name: correctLabel[0].label}, {style: correctLabel[0].style})
+                    } else {
+                        return tileset
+                    }
+                })
+                if (labels.length) {
+                    console.log("The following hard-coded layer labels/styles were not used:\n",
+                        labels.map(i => i.label).join("\n"))
+                }
+                return newState
+
             case TOGGLE_VISIBILITY:
                 if (state.filter(layer => layer.displayed === true).length) {
                     return state.map(layer => morph(layer, {displayed: false}))

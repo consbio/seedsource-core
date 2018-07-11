@@ -43,7 +43,9 @@ class Command(BaseCommand):
                 '-o',
                 f'layers/{name}.mbtiles',
                 '-f',
-                f'--name={name}',
+                '--layer=data',
+                '--name',
+                name,
                 '--drop-densest-as-needed',
                 os.path.join(tmp_dir, 'output.json')],
                 cwd=tiles_dir)

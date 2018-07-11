@@ -619,7 +619,7 @@ class Map extends React.Component {
             this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
                 () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/wa_new_zones-psme/tiles/{z}/{x}/{y}.pbf",
                     {zIndex: 1, opacity: 1, vectorTileLayerStyles: {
-                        data: {color: 'red'}
+                        data: {color: null}
                     }}).addTo(this.map)
             ))
         } else {
@@ -630,8 +630,8 @@ class Map extends React.Component {
 
         if (layers.length) {
             layers.forEach((layer, index) => {
-                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data = layer.style
-                this.displayedVectorLayers[index].setUrl(layer.urlTemplate).redraw()
+                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data.color = layer.style["color"]
+                this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
             })
         }
     }

@@ -17,7 +17,8 @@ const defaultLayer = {
     type: null,
     urlTemplate: null,
     zIndex: 1,
-    displayed: false
+    displayed: false,
+    style: null
 }
 
 export default (state = [], action) => {
@@ -31,7 +32,7 @@ export default (state = [], action) => {
                     index = labels.findIndex(label => label.serviceName === tileset.name)
                     if (index !== -1 && index !== null) {
                         let correctLabel = labels.splice(index, 1)
-                        return morph(tileset, {name: correctLabel[0].label}, {style: correctLabel[0].style})
+                        return morph(tileset, {name: correctLabel[0].label, style: correctLabel[0].style})
                     } else {
                         return tileset
                     }

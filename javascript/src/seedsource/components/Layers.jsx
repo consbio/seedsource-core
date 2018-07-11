@@ -23,9 +23,10 @@ class Layers extends React.Component {
                     return {
                         name: url.substring(url.lastIndexOf('/') + 1),
                         type: "vector",
-                        urlTemplate: url + "/tiles/{z}/{x}/{y}.png",
+                        urlTemplate: url + "/tiles/{z}/{x}/{y}.pbf",
                         zIndex: 1,
-                        displayed: false
+                        displayed: false,
+                        style: null
                     }
                 })
                 this.props.onLoadTiles(tileSets)

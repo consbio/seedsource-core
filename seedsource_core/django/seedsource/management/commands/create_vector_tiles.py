@@ -17,7 +17,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         tiles_dir = os.path.join(settings.BASE_DIR, "tiles")
         seedzone_dir = os.path.join(tiles_dir, "seedzones")
-        outputIndex = []
         errors = []
         sources = SeedZone.objects.values_list('source').distinct()
 
@@ -61,22 +60,9 @@ class Command(BaseCommand):
 
             if process.returncode == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
-                outputIndex.append({
-                    'name': source[0],
-                    'type': 'vector',
-                    'urlTemplate': f'services/seedzones/{formatted_source}' + "/tiles/{z}/{x}/{y}.png",
-                    'zIndex': 1,
-                    'displayed': False
-                    })
             else:
                 errors.append(formatted_source)
                 self.stdout.write(self.style.ERROR("Error\n"))
-
-        self._write_out("Creating tilesIndex..")
-        with open(os.path.join(tiles_dir, "tilesIndex.json"), "w") as f:
-            f.write(json.dumps(outputIndex))
-
-        self._write_out("Done\n\nAn index of successful outputs can be found in the tiles folder in your project directory.")
 
         if errors:
             self._write_out("There were errors with the following:\n")

@@ -55,7 +55,7 @@ export default store => {
         if (zone !== null && !hasGeometry) {
             dispatch(requestGeometry())
 
-            let url = config.apiRoot + 'seedzones/?' + store.getState().runConfiguration.zones.selected + '/geometry/'
+            let url = config.apiRoot + 'seedzones/' + store.getState().runConfiguration.zones.selected + '/geometry/'
 
             return io.get(url)
                 .then(response => response.json())

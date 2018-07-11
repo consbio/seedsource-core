@@ -144,9 +144,8 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
   }
 
   .tabs.is-boxed {
-    position: fixed;
+    position: relative;
     width: 100%;
-    top: $header-height;
     background-color: $white;
     z-index: 6;
 

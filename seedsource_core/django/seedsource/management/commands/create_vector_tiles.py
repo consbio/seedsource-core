@@ -46,7 +46,9 @@ class Command(BaseCommand):
                     '-o',
                     f'seedzones/{formatted_source}.mbtiles',
                     '-f',
-                    f'--name={formatted_source}',
+                    '--layer=data',
+                    '--name',
+                    formatted_source,
                     '--drop-densest-as-needed',
                     os.path.join(tmp_dir, 'zones.json')],
                     cwd=tiles_dir)

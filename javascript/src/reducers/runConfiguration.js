@@ -5,7 +5,7 @@ import climate from './climate'
 import constraints from './constraints'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
 import { SET_LATITUDE, SET_LONGITUDE, SET_POINT, SET_ELEVATION } from '../actions/point'
-import { SELECT_SPECIES } from '../actions/species'
+import { SELECT_SPECIES, RECEIVE_AVAILABLE_SPECIES } from '../actions/species'
 import { SELECT_UNIT, SELECT_METHOD, SELECT_CENTER } from '../actions/variables'
 import { LOAD_CONFIGURATION, RESET_CONFIGURATION } from '../actions/saves'
 import { FINISH_JOB } from '../actions/job'
@@ -18,6 +18,7 @@ import { regions } from '../config'
 const defaultConfiguration = {
     objective: 'seedlots',
     species: 'generic',
+    availableSpecies: [],
     point: defaultPoint,
     region: null,
     validRegions: [],
@@ -42,6 +43,13 @@ export default (state = defaultConfiguration, action) => {
             case SET_POINT:
             case SET_ELEVATION:
                 return morph(state, {point: point(state.point, action)})
+
+            case RECEIVE_AVAILABLE_SPECIES:
+                if (!action.species.length || action.species.includes(state.species)) {
+                    return morph(state, {availableSpecies: action.species})
+                } else {
+                    return morph(state, {availableSpecies: action.species, species: action.species[0]})
+                }
 
             case SELECT_SPECIES:
                 return morph(state, {species: action.species})

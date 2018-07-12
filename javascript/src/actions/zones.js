@@ -6,6 +6,7 @@ export const RECEIVE_GEOMETRY = 'RECEIVE_GEOMETRY'
 export const FAIL_GEOMETRY = 'FAIL_GEOMETRY'
 export const FAIL_ZONES = 'FAIL_ZONES'
 
+
 export const selectZone = zone => {
     return {
         type: SELECT_ZONE,

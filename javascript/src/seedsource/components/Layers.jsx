@@ -1,4 +1,6 @@
 import React from 'react'
+import {get} from "io"
+import config from 'seedsource/config'
 
 
 class Layers extends React.Component {
@@ -12,48 +14,50 @@ class Layers extends React.Component {
         }
     }
 
+    componentDidMount() {
+        let request = get(config.mbtileserverRoot + 'services')
+            .then(response => response.json())
+            .then(json => {
+                let tileSets = json.map(service => {
+                    let url = service.url
+                    return {
+                        name: url.substring(url.lastIndexOf('/') + 1),
+                        type: "vector",
+                        urlTemplate: url + "/tiles/{z}/{x}/{y}.pbf",
+                        zIndex: 1,
+                        displayed: false,
+                        style: null
+                    }
+                })
+                this.props.onLoadTiles(tileSets)
+            })
+            .catch(err => console.log(err))
+    }
+
     render() {
         let { onToggleLayer, layers } = this.props
-        let layerList = (urlSegment, sort=false) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
-            .sort((a,b) => {
-                if (sort) {
-                    let x = a.name.toLowerCase()
-                    let y = b.name.toLowerCase()
-                    if (a.displayed === true && b.displayed === false) {
-                        return -1
-                    } else if (a.displayed === false && b.displayed === true) {
-                        return 1
-                    } else if (x < y) {
-                        return -1
-                    } else if (x > y) {
-                        return 1
-                    } else {
-                        return 0
-                    }
-                } else {
-                    return 0
-                }
-            })
-            .map(layer =>   {
-                                return  <li className="layer-list" key={layer.name}>
-                                            <input
-                                                className="is-checkradio"
-                                                type="checkbox"
-                                                value={layer.name}
-                                                checked={layer.displayed}
-                                                disabled={(layer.urlTemplate === "seedZone") ? true : false}
-                                            /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
-                                        </li>
+
+        let layerList = (urlSegment) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
+            .map(layer => {
+                return (
+                    <li className="layer-list" key={layer.name}>
+                        <input
+                            className="is-checkradio"
+                            type="checkbox"
+                            value={layer.name}
+                            checked={layer.displayed}
+                            disabled={(layer.urlTemplate === "seedZone") ? true : false}
+                        /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
+                    </li>
+                )
             })
 
-        let [resultsLayer, variableLayers] = ["{serviceId}", "{region}_{modelTime}"]
+        let [resultsLayer, variableLayers, seedZoneLayers] = ["{serviceId}", "{region}_{modelTime}", "tiles"]
             .map(layer => layerList(layer))
-
-        let seedZoneLayers = layerList("tiles", true)
 
         return (
             <div className={"layers-tab"}>
-                <aside className="menu">
+                <div className="menu">
                     <ul className="menu-list">
                         <li>
                             <a onClick={ () => this.setState({displayResults: !this.state.displayResults})}>
@@ -92,7 +96,7 @@ class Layers extends React.Component {
                             {this.state.displaySeedZones ? <ul>{seedZoneLayers}</ul> : null}
                         </li>
                     </ul>
-                </aside>
+                </div>
             </div>
         )
     }

@@ -21,8 +21,9 @@ import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
-import 'leaflet.vectorgrid/dist/Leaflet.VectorGrid.js'
-import projConfig from '../../../../../javascript/src/seedsource/config'
+import 'leaflet.vectorgrid'
+import config from 'seedsource/config'
+
 
 /* This is a workaround for a webpack-leaflet incompatibility (https://github.com/PaulLeCam/react-leaflet/issues/255)w */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -51,8 +52,8 @@ class Map extends React.Component {
         this.boundaryName = null
         this.popup = null
         this.mapIsMoving = false
-        this.shapefile = null
-        this.geojson = null
+        this.shpConstraintLayers = []
+        this.shpConstraintData = []
         this.displayedRasterLayers = []
         this.displayedVectorLayers = []
         this.simple = props.simple || false
@@ -232,8 +233,7 @@ class Map extends React.Component {
             else {
                 this.pointMarker.setLatLng([point.y, point.x])
             }
-        }
-        else if (this.pointMarker !== null) {
+        } else if (this.pointMarker !== null) {
             this.map.removeLayer(this.pointMarker)
             this.pointMarker = null
         }
@@ -259,16 +259,13 @@ class Map extends React.Component {
         }
 
         if (numLayersToAdd > 0) {
-            while (numLayersToAdd > 0) {
-                let newRasterLayer = L.tileLayer("placeHolder", {zIndex: 1, opacity: 1}).addTo(this.map)
-                this.displayedRasterLayers.push(newRasterLayer)
-                numLayersToAdd --
-            }
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+            ))
         } else {
-            while (numLayersToAdd < 0) {
-                this.map.removeLayer(this.displayedRasterLayers.pop())
-                numLayersToAdd ++
-            }
+            this.displayedRasterLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
         }
         rewriteLeafletRasters()
     }
@@ -293,7 +290,8 @@ class Map extends React.Component {
         this.cancelBoundaryPreview()
 
         if (this.props.regionMethod === 'auto') {
-            let regionUrl = projConfig.apiRoot + 'regions/?' + io.urlEncode({
+
+            let regionUrl = config.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
 
@@ -353,7 +351,6 @@ class Map extends React.Component {
 
     updateOpacity(opacity) {
         if (!this.simple) {
-            //TODO: add other displayed layers as they become available
             if (this.displayedRasterLayers.length) {
                 if (this.opacityControl === null) {
                     this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
@@ -363,26 +360,22 @@ class Map extends React.Component {
                         this.props.onOpacityChange(e.value / 100)
                     })
                 }
-
                 this.opacityControl.setValue(Math.round(opacity * 100))
-            }
-            else if (this.opacityControl !== null) {
+            } else if (this.opacityControl !== null) {
                 this.map.removeControl(this.opacityControl)
                 this.opacityControl = null
             }
         }
 
-        if (this.displayedRasterLayers.length) {
-            this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
-        }
+        this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
     }
 
     updateVisibilityButton(layersCount) {
         if (this.simple){
             return
         }
+
         if (layersCount) {
-            //TODO: account for other displayed layers as they become available
             let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {
@@ -391,12 +384,10 @@ class Map extends React.Component {
                     this.props.onToggleVisibility()
                 })
                 this.map.addControl(this.visibilityButton)
-            }
-            else if (this.visibilityButton.options.icon !== icon) {
+            } else if (this.visibilityButton.options.icon !== icon) {
                 this.visibilityButton.setIcon(icon)
             }
-        }
-        else if (this.visibilityButton !== null) {
+        } else if (this.visibilityButton !== null) {
             this.map.removeControl(this.visibilityButton)
             this.visibilityButton = null
         }
@@ -406,6 +397,7 @@ class Map extends React.Component {
         if (this.simple){
             return
         }
+
         let mapLegends = legends.legends.map(legend => {
             let variable = allVariables.find(item => item.name === legend.layerName)
             if (variable) {
@@ -434,7 +426,7 @@ class Map extends React.Component {
 
             } else {
                 return {
-                    label: legend.layerName,
+                    label: "Match",
                     elements: legend.legend
                 }
             }
@@ -443,19 +435,18 @@ class Map extends React.Component {
         let legendOrder = layers.filter(layer => layer.displayed === true).map(layer => {
             return layer.name
         })
+
         let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
-            || (el.label === "data" && name ==="Last Run"))).filter(el => typeof el == 'object')
+            || (el.label === "Match" && name ==="Last Run"))).filter(el => typeof el == 'object')
 
         if (orderedMapLegends.length) {
             if (this.legend === null) {
                 this.legend = L.control.legend({legends: orderedMapLegends})
                 this.map.addControl(this.legend)
-            }
-            else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
+            } else if (JSON.stringify(orderedMapLegends) !== JSON.stringify(this.legend.options.legends)) {
                 this.legend.setLegends(orderedMapLegends)
             }
-        }
-        else if (this.legend !== null) {
+        } else if (this.legend !== null) {
             this.map.removeControl(this.legend)
             this.legend = null
         }
@@ -475,29 +466,30 @@ class Map extends React.Component {
             }
 
             this.currentZone = zone
-        }
-        else if (this.zoneLayer !== null) {
+        } else if (this.zoneLayer !== null) {
             this.map.removeLayer(this.zoneLayer)
             this.zoneLayer = null
             this.currentZone = null
         }
     }
 
-    updateShapefileLayer(geojson) {
-        if (geojson === this.geojson) {
+    updateShapefileLayer(constraints) {
+        let data = constraints.map(c => c.values.geoJSON).filter(geojson => !!geojson)
+        if (JSON.stringify(data) === JSON.stringify(this.shpConstraintData)) {
             return
         }
-        this.geojson = geojson
-        if (this.shapefile) {
-            this.map.removeLayer(this.shapefile)
-        }
-        if (geojson.features && geojson.features.length) {
-            this.shapefile = L.geoJSON(geojson, { style: { "fill": false }})
-            this.map.addLayer(this.shapefile)
-            this.map.fitBounds(this.shapefile.getBounds())
-        } else {
-            this.shapefile = null
-        }
+
+        // Create new layers for each feature, even if they already exist...
+        let layers = data.map(geojson => L
+            .geoJSON(geojson, {style: {fill: false, color: '#a50f15', weight: 1.5}})
+            .addTo(this.map)
+        )
+
+        // ... then delete the old layers
+        this.shpConstraintLayers.forEach(layer => this.map.removeLayer(layer))
+
+        this.shpConstraintLayers = layers
+        this.shpConstraintData = data
     }
 
     updatePopup(popup, unit) {
@@ -592,8 +584,7 @@ class Map extends React.Component {
             if (values !== this.popup.values.innerHTML) {
                 this.popup.values.innerHTML = values
             }
-        }
-        else if (this.popup) {
+        } else if (this.popup) {
             this.cancelBoundaryPreview()
             this.map.closePopup(this.popup.popup)
             this.popup = null
@@ -621,32 +612,30 @@ class Map extends React.Component {
 
     updateVectorLayers(layers) {
         let numLayersToAdd = layers.length - this.displayedVectorLayers.length
+
         if (this.displayedVectorLayers.map(layer => layer._url).toString() === layers.map(layer => layer.urlTemplate).toString()) {
             return
         }
 
-        let rewriteLeafletVectors = () => {
-            if (layers.length) {
-                layers.forEach((layer, index) => {
-                    this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
-                        .setZIndex(layer.zIndex)
-                })
-            }
+        if (numLayersToAdd > 0) {
+            this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/wa_new_zones-psme/tiles/{z}/{x}/{y}.pbf",
+                    {zIndex: 1, opacity: 1, vectorTileLayerStyles: {
+                        data: {color: null}
+                    }}).addTo(this.map)
+            ))
+        } else {
+            this.displayedVectorLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
         }
 
-        if (numLayersToAdd > 0) {
-            while (numLayersToAdd > 0) {
-                let newVectorLayer = L.vectorGrid.protobuf("http://localhost:3333/services/seedzones/ca_91/tiles/{z}/{x}/{y}.png", {zIndex: 1, opacity: 1}).addTo(this.map)
-                this.displayedVectorLayers.push(newVectorLayer)
-                numLayersToAdd --
-            }
-        } else {
-            while (numLayersToAdd < 0) {
-                this.map.removeLayer(this.displayedVectorLayers.pop())
-                numLayersToAdd ++
-            }
+        if (layers.length) {
+            layers.forEach((layer, index) => {
+                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data.color = layer.style["color"]
+                this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
+            })
         }
-        rewriteLeafletVectors()
     }
 
     updateLayers(layers) {
@@ -662,7 +651,7 @@ class Map extends React.Component {
         if (this.map !== null) {
             let {
                 objective, point, climate, opacity, legends, popup, unit, method,
-                zone, geometry, center, region, geojson, layers, zoom
+                zone, geometry, center, region, shapefileConstraints, layers, zoom
             } = this.props
 
             this.updateLayers(layers)
@@ -675,7 +664,7 @@ class Map extends React.Component {
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateMapZoom(zoom)
-            this.updateShapefileLayer(geojson)
+            this.updateShapefileLayer(shapefileConstraints)
 
             // Time overlay
             if (layers.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}" && layer.displayed === true)) {
@@ -711,11 +700,11 @@ const mapStateToProps = state => {
     let { geometry } = zones
     let zone = zones.selected
     let resultRegion = lastRun ? lastRun.region : null
-    let geojson = (constraints.find(item => item.type === 'shapefile') || {values: {geoJSON: {}}}).values.geoJSON
+    let shapefileConstraints = constraints.filter(item => item.type === 'shapefile')
 
     return {
         objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
-        zone, center, zoom, region, regionMethod, resultRegion, geojson, layers
+        zone, center, zoom, region, regionMethod, resultRegion, shapefileConstraints, layers
     }
 }
 

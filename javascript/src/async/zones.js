@@ -40,7 +40,7 @@ const zoneGeometrySelect = ({ runConfiguration }) => {
 export default store => {
     // Available Zones
     resync(store, availableZoneSelect, ({ point, method }, io, dispatch) => {
-        let pointIsValid = point !== null && point.x && point.y
+        let pointIsValid = point !== null && point.x !== null && point.y !== null
 
         if (method === 'seedzone' && pointIsValid) {
             dispatch(requestZones())
@@ -59,7 +59,7 @@ export default store => {
 
     // Zones
     resync(store, zoneSelect, ({ point, method, species }, io, dispatch) => {
-        let pointIsValid = point !== null && point.x && point.y
+        let pointIsValid = point !== null && point.x !== null && point.y !== null
 
         if (method === 'seedzone' && pointIsValid) {
             dispatch(requestZones())

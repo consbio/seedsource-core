@@ -54,7 +54,7 @@ class Command(BaseCommand):
             try:
                 shutil.rmtree(tmp_dir)
             except OSError:
-                print(f'Could not remove temp dir "{tmp_dir}" Garbage collector will clean later.')
+                print(f'Could not remove temp dir "{tmp_dir}"')
 
         if tippecanoe.returncode == 0:
             self.stdout.write(self.style.SUCCESS("Success\n"))

@@ -9,10 +9,10 @@ class Layers extends React.Component {
         super(props)
 
         this.state = {
-            results: {name: "Results", urlIdentifier: "{serviceId}", awayMessage: "Run the tool to view results", display: true},
-            variables: {name: "Variables", urlIdentifier: "{region}_{modelTime}", awayMessage: "Select variables in the Tool tab", display: true},
-            seedZones : {name: "Seed Zones", urlIdentifier: "seedzones", awayMessage: "No Seed Zones available", display: false},
-            layers: {name: "Layers", urlIdentifier: "layers", awayMessage: "No Layers Available", display: false}
+            displayresults: true,
+            displayvariables: true,
+            displayseedzones: false,
+            displaylayers: false
         }
     }
 
@@ -40,6 +40,13 @@ class Layers extends React.Component {
         let { onToggleLayer, layers } = this.props
         let state = this.state
 
+        let categories = {
+            results: {name: "Results", urlIdentifier: "{serviceId}", awayMessage: "Run the tool to view results"},
+            variables: {name: "Variables", urlIdentifier: "{region}_{modelTime}", awayMessage: "Select variables in the Tool tab"},
+            seedZones : {name: "Seed Zones", urlIdentifier: "seedzones", awayMessage: "No Seed Zones available"},
+            layers: {name: "Layers", urlIdentifier: "layers", awayMessage: "No Layers Available"}
+        }
+
         let layerList = (urlIdentifier) => layers.filter(layer => layer.urlTemplate.includes(urlIdentifier))
             .map(layer => {
                 return (
@@ -54,20 +61,20 @@ class Layers extends React.Component {
                 )
             })
 
-        let items = Object.keys(state).map(key => {
+        let sections = Object.keys(categories).map(key => {
             return (
                 <li key={key}>
-                    <a onClick={ () => this.setState({[key]: morph(state[key], {display: !state[key].display})})}>
+                    <a onClick={ () => this.setState({["display" + key]: !state["display" + key]})}>
                         <h4 className="title">
-                            {state[key].display ?
+                            {state["display" + key] ?
                                 <span className="icon-chevron-bottom-12"></span> :
                                 <span className="icon-chevron-top-12"></span>
                             }
-                            &nbsp; {state[key].name}
+                            &nbsp; {categories[key].name}
                         </h4>
                     </a>
                     {/*Display? If yes but list is empty then show awayMessage*/}
-                    {state[key].display ? <ul>{ layerList(state[key].urlIdentifier).length ? layerList(state[key].urlIdentifier) : state[key].awayMessage }</ul> : null }
+                    {state["display" + key] ? <ul>{ layerList(categories[key].urlIdentifier).length ? layerList(categories[key].urlIdentifier) : categories[key].awayMessage }</ul> : null }
                 </li>
             )
         })
@@ -76,7 +83,7 @@ class Layers extends React.Component {
             <div className={"layers-tab"}>
                 <div className="menu">
                     <ul className="menu-list">
-                        {items}
+                        {sections}
                     </ul>
                 </div>
             </div>

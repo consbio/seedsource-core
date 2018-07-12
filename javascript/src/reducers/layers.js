@@ -65,12 +65,12 @@ export default (state = [], action) => {
                 return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
             
             case START_JOB:
-                let lastRunIndex = state.findIndex(layer => layer.name === 'Last Run')
-                if (lastRunIndex < 0) {
+                index = state.findIndex(layer => layer.name === 'Last Run')
+                if (index < 0) {
                     return state
                 }
                 else {
-                    return state.slice(0, lastRunIndex).concat(state.slice(lastRunIndex+1))
+                    return state.slice(0, index).concat(state.slice(index+1))
                 }
 
             case FINISH_JOB:

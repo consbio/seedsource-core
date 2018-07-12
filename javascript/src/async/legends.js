@@ -23,7 +23,7 @@ export default store => {
     // Layers legend
     resync(store, layerLegendSelect, ({ layers, serviceId, objective, climate, region }, io, dispatch) => {
         if (layers.length) {
-            let legendLayers = layers.filter(layer => layer.displayed === true && layer.urlTemplate !== "seedZone")
+            let legendLayers = layers.filter(layer => layer.displayed === true && layer.type !== "vector")
             dispatch(resetLegends())
             legendLayers.forEach(layer => {
                 dispatch(requestLayersLegend())

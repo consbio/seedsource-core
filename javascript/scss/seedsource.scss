@@ -1,5 +1,6 @@
 @import "variables";
 @import '~bulma/bulma';
+@import '~bulma-checkradio';
 @import '~leaflet/dist/leaflet.css';
 @import '~leaflet-basemaps/L.Control.Basemaps';
 @import '~leaflet-geonames/L.Control.Geonames';
@@ -143,9 +144,8 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
   }
 
   .tabs.is-boxed {
-    position: fixed;
+    position: relative;
     width: 100%;
-    top: $header-height;
     background-color: $white;
     z-index: 6;
 
@@ -522,4 +522,8 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 
 .report-preview .modal-card-foot {
   justify-content: flex-end;
+}
+
+.layer-list {
+  padding: .5rem 0;
 }

@@ -21,6 +21,7 @@ import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
+import 'leaflet.vectorgrid'
 import config from 'seedsource/config'
 
 
@@ -54,6 +55,7 @@ class Map extends React.Component {
         this.shpConstraintLayers = []
         this.shpConstraintData = []
         this.displayedRasterLayers = []
+        this.displayedVectorLayers = []
         this.simple = props.simple || false
     }
 
@@ -288,6 +290,7 @@ class Map extends React.Component {
         this.cancelBoundaryPreview()
 
         if (this.props.regionMethod === 'auto') {
+
             let regionUrl = config.apiRoot + 'regions/?' + io.urlEncode({
                 point: point.lng + ',' + point.lat
             })
@@ -607,10 +610,39 @@ class Map extends React.Component {
         }
     }
 
+    updateVectorLayers(layers) {
+        let numLayersToAdd = layers.length - this.displayedVectorLayers.length
+
+        if (this.displayedVectorLayers.map(layer => layer._url).toString() === layers.map(layer => layer.urlTemplate).toString()) {
+            return
+        }
+
+        if (numLayersToAdd > 0) {
+            this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/wa_new_zones-psme/tiles/{z}/{x}/{y}.pbf",
+                    {zIndex: 1, opacity: 1, vectorTileLayerStyles: {
+                        data: {color: null}
+                    }}).addTo(this.map)
+            ))
+        } else {
+            this.displayedVectorLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
+        }
+
+        if (layers.length) {
+            layers.forEach((layer, index) => {
+                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data.color = layer.style["color"]
+                this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
+            })
+        }
+    }
+
     updateLayers(layers) {
         let rasterLayers = layers.filter(layer => (layer.type === "raster") && (layer.displayed === true))
-
+        let vectorLayers = layers.filter(layer => (layer.type === "vector") && (layer.displayed === true))
         this.updateRasterLayers(rasterLayers)
+        this.updateVectorLayers(vectorLayers)
     }
 
     render() {

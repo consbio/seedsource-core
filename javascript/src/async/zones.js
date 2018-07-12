@@ -3,7 +3,8 @@ import {
     requestZones, receiveZones, failZones, requestGeometry, receiveGeometry, failGeometry
 } from '../actions/zones'
 import { urlEncode } from '../io'
-import config from '../../../../javascript/src/seedsource/config'
+import config from 'seedsource/config'
+
 
 const zoneSelect = ({ runConfiguration }) => {
     let { point, method, species } = runConfiguration
@@ -54,7 +55,7 @@ export default store => {
         if (zone !== null && !hasGeometry) {
             dispatch(requestGeometry())
 
-            let url = config.apiRoot + 'seedzones/?' + store.getState().runConfiguration.zones.selected + '/geometry/'
+            let url = config.apiRoot + 'seedzones/' + store.getState().runConfiguration.zones.selected + '/geometry/'
 
             return io.get(url)
                 .then(response => response.json())

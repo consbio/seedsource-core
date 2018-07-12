@@ -17,7 +17,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         tiles_dir = os.path.join(settings.BASE_DIR, "tiles")
         seedzone_dir = os.path.join(tiles_dir, "seedzones")
-        outputIndex = []
         errors = []
         sources = SeedZone.objects.values_list('source').distinct()
 
@@ -26,11 +25,11 @@ class Command(BaseCommand):
 
         for source in sources:
             zones = SeedZone.objects.filter(source=source[0])
-            source = source[0].replace("/", "-").lower()
+            formatted_source = source[0].replace("/", "-").lower()
             tmp_dir = mkdtemp()
 
             try:
-                self._write_out(f'Loading seedzones of source "{source}" ...')
+                self._write_out(f'Loading seedzones of source "{source[0]}" ...')
                 geojson = {
                     'type': 'FeatureCollection',
                     'features': [json.loads(sz.polygon.geojson) for sz in zones]
@@ -44,9 +43,11 @@ class Command(BaseCommand):
                 process = subprocess.run([
                     'tippecanoe',
                     '-o',
-                    f'seedzones/{source}.mbtiles',
+                    f'seedzones/{formatted_source}.mbtiles',
                     '-f',
-                    f'--name={source}',
+                    '--layer=data',
+                    '--name',
+                    formatted_source,
                     '--drop-densest-as-needed',
                     os.path.join(tmp_dir, 'zones.json')],
                     cwd=tiles_dir)
@@ -59,27 +60,9 @@ class Command(BaseCommand):
 
             if process.returncode == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))
-                outputIndex.append({
-                    'name': source,
-                    'type': 'vector',
-                    'urlTemplate': f'http://localhost:3333/services/seedzones/{source}' + "/tiles/{z}/{x}/{y}.png",
-                    'zIndex': 1,
-                    'displayed': False
-                })
             else:
-                errors.append(source)
+                errors.append(formatted_source)
                 self.stdout.write(self.style.ERROR("Error\n"))
-
-        self._write_out("Creating index..")
-        with open(os.path.join(tiles_dir, "index.js"), "w") as f:
-            f.write("[\n")
-            for i in outputIndex:
-                f.write("  ")
-                f.write(json.dumps(i))
-                f.write(",\n")
-            f.write("]")
-
-        self._write_out("Done\n\nAn index of successful outputs can be found in the tiles folder in your project directory.")
 
         if errors:
             self._write_out("There were errors with the following:\n")

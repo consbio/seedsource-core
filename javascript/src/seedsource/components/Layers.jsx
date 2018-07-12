@@ -1,33 +1,102 @@
 import React from 'react'
+import {get} from "io"
+import config from 'seedsource/config'
 
 
 class Layers extends React.Component {
+    constructor(props) {
+        super(props)
+
+        this.state = {
+            displayResults: true,
+            displayVariables: true,
+            displaySeedZones: false
+        }
+    }
+
+    componentDidMount() {
+        let request = get(config.mbtileserverRoot + 'services')
+            .then(response => response.json())
+            .then(json => {
+                let tileSets = json.map(service => {
+                    let url = service.url
+                    return {
+                        name: url.substring(url.lastIndexOf('/') + 1),
+                        type: "vector",
+                        urlTemplate: url + "/tiles/{z}/{x}/{y}.pbf",
+                        zIndex: 1,
+                        displayed: false,
+                        style: null
+                    }
+                })
+                this.props.onLoadTiles(tileSets)
+            })
+            .catch(err => console.log(err))
+    }
+
     render() {
         let { onToggleLayer, layers } = this.props
+
         let layerList = (urlSegment) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
             .map(layer => {
                 return (
-                    <div key={layer.name}>
+                    <li className="layer-list" key={layer.name}>
                         <input
+                            className="is-checkradio"
                             type="checkbox"
                             value={layer.name}
-                            onChange={() => onToggleLayer(layer.name)}
                             checked={layer.displayed}
                             disabled={(layer.urlTemplate === "seedZone") ? true : false}
-                        />
-                        {layer.name}
-                    </div>
+                        /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
+                    </li>
                 )
             })
-        let [resultsLayer, seedZoneLayers, variableLayers] = ["{serviceId}", "seedZone", "{region}_{modelTime}"]
+
+        let [resultsLayer, variableLayers, seedZoneLayers] = ["{serviceId}", "{region}_{modelTime}", "tiles"]
             .map(layer => layerList(layer))
 
         return (
             <div className={"layers-tab"}>
-                {layers.length ? null : <p>No layers available</p>}
-                {resultsLayer.length ? <div><h4 className="title">Results</h4>{resultsLayer}<br/></div> : null }
-                {seedZoneLayers.length ? <div><h4 className="title">Seed Zones</h4>{seedZoneLayers}<br/></div> : null }
-                {variableLayers.length ? <div><h4 className="title">Variables</h4>{variableLayers}</div> : null }
+                <div className="menu">
+                    <ul className="menu-list">
+                        <li>
+                            <a onClick={ () => this.setState({displayResults: !this.state.displayResults})}>
+                                <h4 className="title">
+                                    {this.state.displayResults ?
+                                        <span className="icon-chevron-bottom-12"></span> :
+                                        <span className="icon-chevron-top-12"></span>
+                                    }
+                                    &nbsp; Results
+                                </h4>
+                            </a>
+                            {this.state.displayResults ? <ul>{ resultsLayer.length ? resultsLayer : <p>Run the tool to view results</p> }</ul> : null }
+                        </li>
+                        <li>
+                            <a onClick={ () => this.setState({displayVariables: !this.state.displayVariables})}>
+                                <h4 className="title">
+                                    {this.state.displayVariables ?
+                                        <span className="icon-chevron-bottom-12"></span> :
+                                        <span className="icon-chevron-top-12"></span>
+                                    }
+                                    &nbsp; Variables
+                                </h4>
+                            </a>
+                            {this.state.displayVariables ? <ul>{ variableLayers.length ? variableLayers : <p>Select variables in the Tool tab</p> }</ul> : null}
+                        </li>
+                        <li>
+                            <a onClick={ () => this.setState({displaySeedZones: !this.state.displaySeedZones})}>
+                                <h4 className="title">
+                                    {this.state.displaySeedZones ?
+                                        <span className="icon-chevron-bottom-12"></span> :
+                                        <span className="icon-chevron-top-12"></span>
+                                    }
+                                    &nbsp; Seed Zones
+                                </h4>
+                            </a>
+                            {this.state.displaySeedZones ? <ul>{seedZoneLayers}</ul> : null}
+                        </li>
+                    </ul>
+                </div>
             </div>
         )
     }

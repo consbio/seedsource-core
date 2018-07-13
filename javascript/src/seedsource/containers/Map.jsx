@@ -632,7 +632,7 @@ class Map extends React.Component {
 
         if (layers.length) {
             layers.forEach((layer, index) => {
-                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data.color = layer.style["color"]
+                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data = layer.style
                 this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
             })
         }

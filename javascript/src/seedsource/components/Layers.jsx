@@ -9,10 +9,10 @@ class Layers extends React.Component {
         super(props)
 
         this.state = {
-            displayresults: true,
-            displayvariables: true,
-            displayseedzones: false,
-            displaylayers: false
+            results: true,
+            variables: true,
+            seedzones: false,
+            layers: false
         }
     }
 
@@ -28,7 +28,7 @@ class Layers extends React.Component {
                         urlTemplate: url + "/tiles/{z}/{x}/{y}.pbf",
                         zIndex: 1,
                         displayed: false,
-                        style: null
+                        style: {color: "turquoise"}
                     }
                 })
                 this.props.onLoadTiles(tileSets)
@@ -64,9 +64,9 @@ class Layers extends React.Component {
         let sections = Object.keys(categories).map(key => {
             return (
                 <li key={key}>
-                    <a onClick={ () => this.setState({["display" + key]: !state["display" + key]})}>
+                    <a onClick={ () => this.setState({[key]: !state[key]})}>
                         <h4 className="title">
-                            {state["display" + key] ?
+                            {state[key] ?
                                 <span className="icon-chevron-bottom-12"></span> :
                                 <span className="icon-chevron-top-12"></span>
                             }
@@ -74,7 +74,7 @@ class Layers extends React.Component {
                         </h4>
                     </a>
                     {/*Display? If yes but list is empty then show awayMessage*/}
-                    {state["display" + key] ? <ul>{ layerList(categories[key].urlIdentifier).length ? layerList(categories[key].urlIdentifier) : categories[key].awayMessage }</ul> : null }
+                    {state[key] ? <ul>{ layerList(categories[key].urlIdentifier).length ? layerList(categories[key].urlIdentifier) : categories[key].awayMessage }</ul> : null }
                 </li>
             )
         })

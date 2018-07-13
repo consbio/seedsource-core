@@ -18,7 +18,11 @@ class Command(BaseCommand):
         tiles_dir = os.path.join(settings.BASE_DIR, "tiles")
         layers_dir = os.path.join(tiles_dir, "layers")
         file_path = os.path.abspath(shapefile[0])
+        zip_option = ""
         name = os.path.splitext(os.path.basename(file_path))[0]
+
+        if os.path.splitext(os.path.basename(file_path))[1] == ".zip":
+            zip_option = '/vsizip/'
 
         if not os.path.exists(layers_dir):
             os.makedirs(layers_dir)
@@ -34,7 +38,7 @@ class Command(BaseCommand):
                 '-t_srs',
                 'EPSG:4326',
                 os.path.join(tmp_dir, 'output.json'),
-                '/vsizip/' + file_path
+                zip_option + file_path
             ])
 
             self._write_out('Processing into mbtiles...')
@@ -61,3 +65,11 @@ class Command(BaseCommand):
 
         else:
             self.stdout.write(self.style.ERROR("Error processing file\n"))
+
+            try:
+                self._write_out(f'Removing {name}...\n')
+                os.remove(os.path.join(layers_dir, f'{name}.mbtiles'))
+            except OSError:
+                print(f'Could not remove .../layers/{name}.mbtiles')
+
+            self._write_out("Done.")

@@ -21,7 +21,7 @@ class Command(BaseCommand):
         zip_option = ""
         name = os.path.splitext(os.path.basename(file_path))[0]
 
-        if os.path.splitext(os.path.basename(file_path))[1] == ".zip":
+        if file_path.endswith('.zip'):
             zip_option = '/vsizip/'
 
         if not os.path.exists(layers_dir):

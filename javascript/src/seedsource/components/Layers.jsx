@@ -1,6 +1,7 @@
 import React from 'react'
 import {get} from "io"
 import config from 'seedsource/config'
+import { morph } from 'utils'
 
 
 class Layers extends React.Component {
@@ -8,9 +9,10 @@ class Layers extends React.Component {
         super(props)
 
         this.state = {
-            displayResults: true,
-            displayVariables: true,
-            displaySeedZones: false
+            results: true,
+            variables: true,
+            seedzones: false,
+            layers: false
         }
     }
 
@@ -26,7 +28,7 @@ class Layers extends React.Component {
                         urlTemplate: url + "/tiles/{z}/{x}/{y}.pbf",
                         zIndex: 1,
                         displayed: false,
-                        style: null
+                        style: {color: "turquoise"}
                     }
                 })
                 this.props.onLoadTiles(tileSets)
@@ -36,8 +38,16 @@ class Layers extends React.Component {
 
     render() {
         let { onToggleLayer, layers } = this.props
+        let state = this.state
 
-        let layerList = (urlSegment) => layers.filter(layer => layer.urlTemplate.includes(urlSegment))
+        let categories = {
+            results: {name: "Results", urlIdentifier: "{serviceId}", awayMessage: "Run the tool to view results"},
+            variables: {name: "Variables", urlIdentifier: "{region}_{modelTime}", awayMessage: "Select variables in the Tool tab"},
+            seedZones : {name: "Seed Zones", urlIdentifier: "seedzones", awayMessage: "No Seed Zones available"},
+            layers: {name: "Layers", urlIdentifier: "layers", awayMessage: "No Layers Available"}
+        }
+
+        let layerList = (urlIdentifier) => layers.filter(layer => layer.urlTemplate.includes(urlIdentifier))
             .map(layer => {
                 return (
                     <li className="layer-list" key={layer.name}>
@@ -46,55 +56,34 @@ class Layers extends React.Component {
                             type="checkbox"
                             value={layer.name}
                             checked={layer.displayed}
-                            disabled={(layer.urlTemplate === "seedZone") ? true : false}
                         /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
                     </li>
                 )
             })
 
-        let [resultsLayer, variableLayers, seedZoneLayers] = ["{serviceId}", "{region}_{modelTime}", "tiles"]
-            .map(layer => layerList(layer))
+        let sections = Object.keys(categories).map(key => {
+            return (
+                <li key={key}>
+                    <a onClick={ () => this.setState({[key]: !state[key]})}>
+                        <h4 className="title">
+                            {state[key] ?
+                                <span className="icon-chevron-bottom-12"></span> :
+                                <span className="icon-chevron-top-12"></span>
+                            }
+                            &nbsp; {categories[key].name}
+                        </h4>
+                    </a>
+                    {/*Display? If yes but list is empty then show awayMessage*/}
+                    {state[key] ? <ul>{ layerList(categories[key].urlIdentifier).length ? layerList(categories[key].urlIdentifier) : categories[key].awayMessage }</ul> : null }
+                </li>
+            )
+        })
 
         return (
             <div className={"layers-tab"}>
                 <div className="menu">
                     <ul className="menu-list">
-                        <li>
-                            <a onClick={ () => this.setState({displayResults: !this.state.displayResults})}>
-                                <h4 className="title">
-                                    {this.state.displayResults ?
-                                        <span className="icon-chevron-bottom-12"></span> :
-                                        <span className="icon-chevron-top-12"></span>
-                                    }
-                                    &nbsp; Results
-                                </h4>
-                            </a>
-                            {this.state.displayResults ? <ul>{ resultsLayer.length ? resultsLayer : <p>Run the tool to view results</p> }</ul> : null }
-                        </li>
-                        <li>
-                            <a onClick={ () => this.setState({displayVariables: !this.state.displayVariables})}>
-                                <h4 className="title">
-                                    {this.state.displayVariables ?
-                                        <span className="icon-chevron-bottom-12"></span> :
-                                        <span className="icon-chevron-top-12"></span>
-                                    }
-                                    &nbsp; Variables
-                                </h4>
-                            </a>
-                            {this.state.displayVariables ? <ul>{ variableLayers.length ? variableLayers : <p>Select variables in the Tool tab</p> }</ul> : null}
-                        </li>
-                        <li>
-                            <a onClick={ () => this.setState({displaySeedZones: !this.state.displaySeedZones})}>
-                                <h4 className="title">
-                                    {this.state.displaySeedZones ?
-                                        <span className="icon-chevron-bottom-12"></span> :
-                                        <span className="icon-chevron-top-12"></span>
-                                    }
-                                    &nbsp; Seed Zones
-                                </h4>
-                            </a>
-                            {this.state.displaySeedZones ? <ul>{seedZoneLayers}</ul> : null}
-                        </li>
+                        {sections}
                     </ul>
                 </div>
             </div>

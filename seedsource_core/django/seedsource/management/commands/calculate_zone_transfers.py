@@ -177,11 +177,10 @@ class Command(BaseCommand):
             TransferLimit.objects.filter(zone__source__istartswith=query_zone_name).delete()
 
             last_region = None
+            last_dataset = None
 
             for time_period in ('1961_1990', '1981_2010'):
                 for variable in VARIABLES:
-                    print('Processing {} for {}...'.format(variable, time_period))
-
                     for zone in zones:
                         print(zone.name)
                         region = Region.objects.filter(
@@ -209,10 +208,12 @@ class Command(BaseCommand):
                                 )
                                 elevation = ds.variables[elevation_variable.variable][:]
 
-                            variable_service = Service.objects.get(
-                                name='{}_{}Y_{}'.format(region.name, time_period, variable)
-                            )
-                            dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
+                        variable_service = Service.objects.get(
+                            name='{}_{}Y_{}'.format(region.name, time_period, variable)
+                        )
+                        dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
+
+                        if dataset_path != last_dataset:
                             with Dataset(dataset_path) as ds:
                                 data = ds.variables[variable][:]
 

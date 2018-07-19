@@ -36,7 +36,7 @@ const VariableStep = ({ number, active, variables }) => {
     )
 }
 
-VariableStep.shouldRender = () => true
+VariableStep.shouldRender = ({ runConfiguration }) => runConfiguration.method !== 'function'
 
 VariableStep.propTypes = {
     active: PropTypes.bool.isRequired,

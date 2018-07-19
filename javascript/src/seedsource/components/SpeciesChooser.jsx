@@ -1,12 +1,10 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { species as speciesList } from '../../config'
+import config from 'seedsource/config'
 
-const SpeciesChooser = ({ method, species, onSpeciesChange, zones, availableSpecies }) => {
-    if (method !== 'seedzone') {
-        return null
-    }
+const { species: speciesList } = config
 
+const SpeciesChooser = ({ method, species, generic=true, onSpeciesChange, zones, availableSpecies }) => {
     let availableSpeciesList = speciesList.filter(item => availableSpecies.includes(item.name))
 
     return (
@@ -20,7 +18,7 @@ const SpeciesChooser = ({ method, species, onSpeciesChange, zones, availableSpec
                         onSpeciesChange(e.target.value)
                     }}
                 >
-                    <option value="generic">Generic</option>
+                    { generic ? <option value="generic">Generic</option> : null }
 
                     {availableSpeciesList.map(item => (
                         <option value={item.name} key={item.name}>{item.label}</option>
@@ -34,6 +32,7 @@ const SpeciesChooser = ({ method, species, onSpeciesChange, zones, availableSpec
 SpeciesChooser.propTypes = {
     method: PropTypes.string.isRequired,
     species: PropTypes.string.isRequired,
+    generic: PropTypes.bool,
     onSpeciesChange: PropTypes.func.isRequired
 }
     

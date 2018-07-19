@@ -1,8 +1,9 @@
 import React from 'react'
-import logo from '../../../images/logo.png'
 import config from 'seedsource/config'
 import Menu from 'seedsource/components/Menu'
 import AccountMenu from 'seedsource/containers/AccountMenu'
+
+let { logo, title, navbarClass } = config
 
 class Navbar extends React.Component {
     constructor(props) {
@@ -14,11 +15,14 @@ class Navbar extends React.Component {
         let isActive = this.state.isActive ? 'is-active' : ''
 
         return (
-            <nav className={[isActive, 'navbar', config.navbarClass || 'is-dark'].join(' ')} role='navigation' aria-label='main navigation'>
+            <nav className={[isActive, 'navbar', navbarClass || 'is-dark'].join(' ')} role='navigation' aria-label='main navigation'>
                 <div className='navbar-brand'>
                     <div className='navbar-item'>
-                        <img src={logo} className='image is-24x24 margin-right-5' alt={config.title} />
-                        <span className='is-size-4 is-size-5-mobile has-text-weight-bold'>{config.title}</span>
+                        {
+                            logo !== null ?
+                            <img src={logo} className='image is-24x24 margin-right-5' alt={title} /> : null
+                        }
+                        <span className='is-size-4 is-size-5-mobile has-text-weight-bold'>{title}</span>
                     </div>
                     <div
                         className={isActive + ' navbar-burger is-light'}

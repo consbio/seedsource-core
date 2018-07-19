@@ -1,9 +1,17 @@
 import { connect } from 'react-redux'
 import SpeciesChooser from 'seedsource/components/SpeciesChooser'
 import { selectSpecies } from '../../actions/species'
+import config from 'seedsource/config'
+
+const { species: speciesList, functions } = config
 
 const mapStateToProps = ({ runConfiguration }) => {
     let { method, species, availableSpecies, zones } = runConfiguration
+
+    if (method === 'function') {
+        let functionSpecies = functions.reduce((a, b) => [...a.species, ...b.species])
+        availableSpecies = speciesList.filter(item => functionSpecies.includes(item.name)).map(item => item.name)
+    }
 
     return {method, species, zones, availableSpecies}
 }

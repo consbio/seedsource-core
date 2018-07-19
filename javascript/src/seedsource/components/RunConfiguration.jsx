@@ -6,6 +6,7 @@ import RegionStep from 'seedsource/containers/RegionStep'
 import ClimateStep from 'seedsource/containers/ClimateStep'
 import TransferStep from 'seedsource/containers/TransferStep'
 import VariableStep from 'seedsource/containers/VariableStep'
+import TraitStep from 'seedsource/components/TraitStep'
 import ConstraintStep from 'seedsource/containers/ConstraintStep'
 import RunStep from 'seedsource/containers/RunStep'
 import { collapsibleSteps } from '../../config'
@@ -45,6 +46,7 @@ let RunConfiguration = ({ state, job, activeStep }) => {
         {type: ClimateStep, key: 'climate'},
         {type: TransferStep, key: 'transfer'},
         {type: VariableStep, key: 'variables'},
+        {type: TraitStep, key: 'traits'},
         {type: ConstraintStep, key: 'constraints'},
         {type: RunStep, key: 'run'}
     ]

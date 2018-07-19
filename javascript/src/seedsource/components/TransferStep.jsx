@@ -66,12 +66,13 @@ const TransferStep = ({ number, active, objective, method, center, onCenterChang
                 <ul>
                     <MethodButton name="custom">Custom</MethodButton>
                     <MethodButton name="seedzone">Zone</MethodButton>
+                    <MethodButton name="function">Function</MethodButton>
                 </ul>
             </div>
             {centerNode}
-            <SpeciesChooser />
+            { method !== 'custom' ? <SpeciesChooser generic={method !== 'function'} /> : null }
             <div style={{height: '10px'}}></div>
-            <SeedZoneChooser />
+            { method === 'seedzone' ? <SeedZoneChooser /> : null }
         </ConfigurationStep>
     )
 }

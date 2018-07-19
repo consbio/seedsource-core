@@ -181,6 +181,8 @@ class Command(BaseCommand):
 
             for time_period in ('1961_1990', '1981_2010'):
                 for variable in VARIABLES:
+                    print('Processing {} for {}...'.format(variable, time_period))
+
                     for zone in zones:
                         print(zone.name)
                         region = Region.objects.filter(

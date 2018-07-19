@@ -646,7 +646,7 @@ class Map extends React.Component {
         if (this.map !== null) {
             this.updateAll()
 
-            let { activeVariable } = this.props
+            let { activeVariable, objective, climate } = this.props
 
             // Time overlay
             if (activeVariable !== null) {

@@ -1,5 +1,5 @@
 import resync from '../resync'
-import { requestTransfer, receiveTransfer, requestValue, receiveValue } from '../actions/variables'
+import { requestTransfer, receiveTransfer, requestValue, receiveValue, receiveVariablesRegion } from '../actions/variables'
 import { requestPopupValue, receivePopupValue } from '../actions/popup'
 import { urlEncode } from '../io'
 import { getServiceName, morph } from '../utils'
@@ -38,6 +38,16 @@ const valueSelect = ({ runConfiguration }) => {
     }
 }
 
+const sansVariableSelect = ({ runConfiguration }) => {
+    let { objective, climate, validRegions } = runConfiguration
+
+    return {
+        objective,
+        climate,
+        validRegions
+    }
+}
+
 const popupSelect = ({ runConfiguration, popup }) => {
     let { objective, climate, variables } = runConfiguration
     let { point, region } = popup
@@ -53,6 +63,17 @@ const popupSelect = ({ runConfiguration, popup }) => {
         variables: variables.map(item => item.name),
         region
     }
+}
+
+export const fetchAllValues = (store, state, io, dispatch, previousState, region) => {
+    let { objective } = state
+    let { climate, validRegions } = store.getState().runConfiguration
+
+    if (region === undefined) {
+        return null
+    }
+
+    return region
 }
 
 export const fetchValues = (store, state, io, dispatch, previousState, region) => {
@@ -152,6 +173,12 @@ export default store => {
                 })
             }
         }
+    })
+
+    resync(store, sansVariableSelect, (state, io, dispatch, previousState) => {
+        let { validRegions } = state
+        let region = fetchAllValues(store, state, io, dispatch, previousState, validRegions[0])
+        dispatch(receiveVariablesRegion(region))
     })
 
     // Values at point (for popup)

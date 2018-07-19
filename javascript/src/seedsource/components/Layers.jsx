@@ -42,7 +42,7 @@ class Layers extends React.Component {
 
         let categories = {
             results: {name: "Results", urlIdentifier: "{serviceId}", awayMessage: "Run the tool to view results"},
-            variables: {name: "Variables", urlIdentifier: "{region}_{modelTime}", awayMessage: "Select variables in the Tool tab"},
+            variables: {name: "Variables", urlIdentifier: "{region}_{modelTime}", awayMessage: "Select a region and climate scenario to view variables"},
             seedZones : {name: "Seed Zones", urlIdentifier: "seedzones", awayMessage: "No Seed Zones available"},
             layers: {name: "Layers", urlIdentifier: "layers", awayMessage: "No Layers Available"}
         }

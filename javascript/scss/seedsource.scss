@@ -40,7 +40,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 @each $icon in $icons {
   @each $size in $icon-sizes {
     .icon-#{$icon}-#{$size} {
-      background: url('/images/icon-#{$icon}.svg') no-repeat center center;
+      background: url('~images/icon-#{$icon}.svg') no-repeat center center;
       width: #{$size}px;
       height: #{$size}px;
       display: inline-block;
@@ -489,7 +489,7 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 }
 
 .leaflet-default-icon-path {
-  background-image: url(/images/marker-icon.png);
+  background-image: url(~images/marker-icon.png);
 }
 
 @include mobile {

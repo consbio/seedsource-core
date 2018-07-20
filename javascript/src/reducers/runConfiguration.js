@@ -1,5 +1,6 @@
 import point, { defaultState as defaultPoint } from './point'
 import variables from './variables'
+import traits from './traits'
 import zones from './zones'
 import climate from './climate'
 import constraints from './constraints'
@@ -14,6 +15,7 @@ import { REQUEST_REPORT, RECEIVE_REPORT, FAIL_REPORT } from '../actions/report'
 import { SELECT_REGION_METHOD, SET_REGION, RECEIVE_REGIONS } from '../actions/region'
 import { morph } from '../utils'
 import { regions } from '../config'
+import config from 'seedsource/config'
 
 const defaultConfiguration = {
     objective: 'seedlots',
@@ -29,6 +31,7 @@ const defaultConfiguration = {
     zones: null,
     regionMethod: 'auto',
     variables: [],
+    traits: [],
     constraints: []
 }
 
@@ -58,7 +61,19 @@ export default (state = defaultConfiguration, action) => {
                 return morph(state, {unit: action.unit})
 
             case SELECT_METHOD:
-                return morph(state, {method: action.method})
+                let newState = morph(state, {method: action.method})
+
+                if (action.method === 'seedzone' && !state.availableSpecies.includes(state.species)) {
+                    newState.species = 'generic'
+                }
+                else if (action.method === 'function') {
+                    let functionSpecies = config.functions.reduce((a, b) => [...a.species, ...b.species])
+                    if (!functionSpecies.includes(state.species)) {
+                        newState.species = functionSpecies[0]
+                    }
+                }
+
+                return newState
 
             case SELECT_CENTER:
                 return morph(state, {center: action.center})
@@ -96,6 +111,7 @@ export default (state = defaultConfiguration, action) => {
 
     return morph(state, {
         variables: variables(state.variables, action),
+        traits: traits(state.traits, action),
         zones: zones(state.zones || undefined, action),
         climate: climate(state.climate || undefined, action),
         constraints: constraints(state.constraints, action)

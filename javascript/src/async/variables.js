@@ -38,13 +38,12 @@ const valueSelect = ({ runConfiguration }) => {
     }
 }
 
-const sansVariableSelect = ({ runConfiguration }) => {
-    let { objective, climate, validRegions } = runConfiguration
+const climateAndRegionSelect = ({ runConfiguration }) => {
+    let { climate, region } = runConfiguration
 
     return {
-        objective,
         climate,
-        validRegions
+        region
     }
 }
 
@@ -63,17 +62,6 @@ const popupSelect = ({ runConfiguration, popup }) => {
         variables: variables.map(item => item.name),
         region
     }
-}
-
-export const fetchAllValues = (store, state, io, dispatch, previousState, region) => {
-    let { objective } = state
-    let { climate, validRegions } = store.getState().runConfiguration
-
-    if (region === undefined) {
-        return null
-    }
-
-    return region
 }
 
 export const fetchValues = (store, state, io, dispatch, previousState, region) => {
@@ -175,9 +163,9 @@ export default store => {
         }
     })
 
-    resync(store, sansVariableSelect, (state, io, dispatch, previousState) => {
-        let { validRegions } = state
-        let region = fetchAllValues(store, state, io, dispatch, previousState, validRegions[0])
+    resync(store, climateAndRegionSelect, (state, io, dispatch, previousState) => {
+        let { region } = state || null
+
         dispatch(receiveVariablesRegion(region))
     })
 

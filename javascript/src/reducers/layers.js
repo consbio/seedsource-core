@@ -72,7 +72,7 @@ export default (state = [], action) => {
                         type: "raster",
                         urlTemplate: "{region}_{modelTime}Y_{name}"
                     }))
-                    return [...state, ...layersToAdd]
+                    return [...newState, ...layersToAdd]
                 }
 
             case TOGGLE_LAYER:

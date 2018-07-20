@@ -4,6 +4,7 @@ import ConfigurationStep from 'seedsource/containers/ConfigurationStep'
 import MethodButton from 'seedsource/containers/MethodButton'
 import SpeciesChooser from 'seedsource/containers/SpeciesChooser'
 import SeedZoneChooser from 'seedsource/containers/SeedZoneChooser'
+import config from 'seedsource/config'
 
 const TransferStep = ({ number, active, objective, method, center, onCenterChange }) => {
     if (!active) {
@@ -60,13 +61,15 @@ const TransferStep = ({ number, active, objective, method, center, onCenterChang
         )
     }
 
+    let hasFunctions = !!config.functions && config.functions.length > 0
+
     return (
         <ConfigurationStep title="Select transfer limit method" number={number} name="transfer" active={true}>
             <div className="tabs is-toggle is-small">
                 <ul>
                     <MethodButton name="custom">Custom</MethodButton>
                     <MethodButton name="seedzone">Zone</MethodButton>
-                    <MethodButton name="function">Function</MethodButton>
+                    { hasFunctions ? <MethodButton name="function">Function</MethodButton> : null }
                 </ul>
             </div>
             {centerNode}

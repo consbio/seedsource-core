@@ -13,7 +13,7 @@ export default (state = [], action) => {
             return state.filter(t =>
                 config.functions
                     .filter(f => f.species.includes(action.species)).map(f => f.name)
-                    .includes(action.species)
+                    .includes(t)
             )
         case SELECT_METHOD:
             return []

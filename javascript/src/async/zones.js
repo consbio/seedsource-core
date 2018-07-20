@@ -7,6 +7,8 @@ import { urlEncode } from '../io'
 import config from 'seedsource/config'
 
 
+const pointIsValid = point => point !== null && (!!point.x || point.x === 0) && (!!point.y || point.y === 0)
+
 const availableZoneSelect = ({ runConfiguration }) => {
     let { point, method } = runConfiguration
 
@@ -40,9 +42,7 @@ const zoneGeometrySelect = ({ runConfiguration }) => {
 export default store => {
     // Available Zones
     resync(store, availableZoneSelect, ({ point, method }, io, dispatch) => {
-        let pointIsValid = point !== null && point.x !== null && point.y !== null
-
-        if (method === 'seedzone' && pointIsValid) {
+        if (method === 'seedzone' && pointIsValid(point)) {
             dispatch(requestZones())
 
             let url = config.apiRoot + 'seedzones/?' + urlEncode({point: point.x + ',' + point.y})
@@ -59,9 +59,7 @@ export default store => {
 
     // Zones
     resync(store, zoneSelect, ({ point, method, species }, io, dispatch) => {
-        let pointIsValid = point !== null && point.x !== null && point.y !== null
-
-        if (method === 'seedzone' && pointIsValid) {
+        if (method === 'seedzone' && pointIsValid(point)) {
             dispatch(requestZones())
 
             let url = config.apiRoot + 'seedzones/?' + urlEncode({

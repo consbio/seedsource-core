@@ -241,21 +241,9 @@ class Map extends React.Component {
 
     updateRasterLayers(layers) {
         let numLayersToAdd = layers.length - this.displayedRasterLayers.length
+        // TODO: add logic for discerning a refresh
         if (numLayersToAdd === 0) {
             return
-        }
-
-        let rewriteLeafletRasters = () => {
-            if (layers.length) {
-                let { objective, climate, region } = this.props
-                let { serviceId } = this.props.job
-                let url
-                layers.forEach((layer, index) => {
-                    url = getLayerUrl(layer, serviceId, objective, climate, region)
-                    this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
-                        .setZIndex(layer.zIndex)
-                })
-            }
         }
 
         if (numLayersToAdd > 0) {
@@ -267,7 +255,16 @@ class Map extends React.Component {
                 .splice(numLayersToAdd, Math.abs(numLayersToAdd))
                 .forEach(layer => this.map.removeLayer(layer))
         }
-        rewriteLeafletRasters()
+        if (layers.length) {
+            let { objective, climate, region } = this.props
+            let { serviceId } = this.props.job
+            let url
+            layers.forEach((layer, index) => {
+                url = getLayerUrl(layer, serviceId, objective, climate, region)
+                this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
+                    .setZIndex(layer.zIndex)
+            })
+        }
     }
 
     addBoundaryToMap(region, color, showFill = true) {

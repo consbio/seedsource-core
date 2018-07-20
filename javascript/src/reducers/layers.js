@@ -1,5 +1,5 @@
 import {morph} from '../utils'
-import {ADD_VARIABLE, REMOVE_VARIABLE, RECIEVE_VARIABLES_REGION} from "../actions/variables"
+import {ADD_VARIABLE, REMOVE_VARIABLE, SET_VARIABLES_REGION} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB, START_JOB} from "../actions/job"
 import {TOGGLE_LAYER, LOAD_TILES} from '../actions/layers'
@@ -25,13 +25,12 @@ const defaultLayer = {
 
 export default (state = [], action) => {
         let index = null
-        let newState = []
         switch(action.type) {
             case LOAD_TILES:
                 if (!action.tiles.length) {
                     return state
                 }
-                newState =  action.tiles.map(tileset => {
+                let newState =  action.tiles.map(tileset => {
                     index = labels.findIndex(label => label.serviceName === tileset.name)
                     if (index !== -1 && index !== null) {
                         let correctLabel = labels.splice(index, 1)
@@ -62,17 +61,22 @@ export default (state = [], action) => {
                     }
                 })
 
-            case RECIEVE_VARIABLES_REGION:
-                newState = state.filter(layer => layer.urlTemplate !== "{region}_{modelTime}Y_{name}")
+            case SET_VARIABLES_REGION:
                 if (action.region === null) {
-                    return newState
+                    return state.filter(layer => layer.urlTemplate !== "{region}_{modelTime}Y_{name}")
                 } else {
-                    let layersToAdd = allVariables.map(variable => morph(defaultLayer, {
+                    let checkVariableLayers = state.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}")
+                    if (checkVariableLayers) {
+                        //TODO: possibly append a count or something to variable layers so a refresh will occur
+                        return state
+                    } else {
+                        let layersToAdd = allVariables.map(variable => morph(defaultLayer, {
                         name: variable.name,
                         type: "raster",
                         urlTemplate: "{region}_{modelTime}Y_{name}"
                     }))
-                    return [...newState, ...layersToAdd]
+                        return [...state, ...layersToAdd]
+                    }
                 }
 
             case TOGGLE_LAYER:

@@ -1,5 +1,5 @@
 import resync from '../resync'
-import { requestTransfer, receiveTransfer, requestValue, receiveValue, receiveVariablesRegion } from '../actions/variables'
+import { requestTransfer, receiveTransfer, requestValue, receiveValue, setVariablesRegion } from '../actions/variables'
 import { requestPopupValue, receivePopupValue } from '../actions/popup'
 import { urlEncode } from '../io'
 import { getServiceName, morph } from '../utils'
@@ -38,12 +38,13 @@ const valueSelect = ({ runConfiguration }) => {
     }
 }
 
-const climateAndRegionSelect = ({ runConfiguration }) => {
-    let { climate, region } = runConfiguration
+const climateRegionObjectiveSelect = ({ runConfiguration }) => {
+    let { climate, region, objective } = runConfiguration
 
     return {
         climate,
-        region
+        region,
+        objective
     }
 }
 
@@ -163,10 +164,10 @@ export default store => {
         }
     })
 
-    resync(store, climateAndRegionSelect, (state, io, dispatch, previousState) => {
+    resync(store, climateRegionObjectiveSelect, (state, io, dispatch) => {
         let { region } = state || null
 
-        dispatch(receiveVariablesRegion(region))
+        dispatch(setVariablesRegion(region))
     })
 
     // Values at point (for popup)

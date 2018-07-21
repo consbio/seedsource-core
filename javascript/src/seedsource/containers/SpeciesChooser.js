@@ -9,7 +9,13 @@ const mapStateToProps = ({ runConfiguration }) => {
     let { method, species, availableSpecies, zones } = runConfiguration
 
     if (method === 'function') {
-        let functionSpecies = functions.reduce((a, b) => [...a.species, ...b.species])
+        let functionSpecies
+        if (functions.length === 1) {
+            functionSpecies = functions[0].species
+        }
+        else {
+            functionSpecies = functions.reduce((a, b) => [...a.species, ...b.species])
+        }
         availableSpecies = speciesList.filter(item => functionSpecies.includes(item.name)).map(item => item.name)
     }
 

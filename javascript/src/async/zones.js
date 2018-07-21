@@ -5,9 +5,7 @@ import {
 import { receiveAvailableSpecies } from '../actions/species'
 import { urlEncode } from '../io'
 import config from 'seedsource/config'
-
-
-const pointIsValid = point => point !== null && (!!point.x || point.x === 0) && (!!point.y || point.y === 0)
+import { pointIsValid } from './utils'
 
 const availableZoneSelect = ({ runConfiguration }) => {
     let { point, method } = runConfiguration

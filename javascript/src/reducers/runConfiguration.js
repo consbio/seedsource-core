@@ -67,7 +67,13 @@ export default (state = defaultConfiguration, action) => {
                     newState.species = 'generic'
                 }
                 else if (action.method === 'function') {
-                    let functionSpecies = config.functions.reduce((a, b) => [...a.species, ...b.species])
+                    let functionSpecies
+                    if (config.functions.length === 1) {
+                        functionSpecies = config.functions[0].species
+                    }
+                    else {
+                        functionSpecies = config.functions.reduce((a, b) => [...a.species, ...b.species])
+                    }
                     if (!functionSpecies.includes(state.species)) {
                         newState.species = functionSpecies[0]
                     }

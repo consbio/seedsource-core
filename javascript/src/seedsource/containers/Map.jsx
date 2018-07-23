@@ -239,34 +239,6 @@ class Map extends React.Component {
         }
     }
 
-    updateRasterLayers(layers) {
-        let numLayersToAdd = layers.length - this.displayedRasterLayers.length
-        // TODO: add logic for discerning a refresh
-        if (numLayersToAdd === 0) {
-            return
-        }
-
-        if (numLayersToAdd > 0) {
-            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
-                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
-            ))
-        } else {
-            this.displayedRasterLayers
-                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
-                .forEach(layer => this.map.removeLayer(layer))
-        }
-        if (layers.length) {
-            let { objective, climate, region } = this.props
-            let { serviceId } = this.props.job
-            let url
-            layers.forEach((layer, index) => {
-                url = getLayerUrl(layer, serviceId, objective, climate, region)
-                this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
-                    .setZIndex(layer.zIndex)
-            })
-        }
-    }
-
     addBoundaryToMap(region, color, showFill = true) {
         let fillOpacity = showFill ? 0.3 : 0
         this.regionsBoundaries.setStyle(f =>
@@ -607,12 +579,42 @@ class Map extends React.Component {
         }
     }
 
-    updateVectorLayers(layers) {
-        let numLayersToAdd = layers.length - this.displayedVectorLayers.length
+    updateRasterLayers(layers) {
+        let numLayersToAdd = layers.length - this.displayedRasterLayers.length
 
+        if (numLayersToAdd > 0) {
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
+                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+            ))
+        } else if (numLayersToAdd < 0) {
+            this.displayedRasterLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
+        }
+
+        if (layers.length) {
+            let { objective, climate, region } = this.props
+            let { serviceId } = this.props.job
+            let urls = []
+            layers.forEach((layer, index) => {
+                urls.push(getLayerUrl(layer, serviceId, objective, climate, region))
+            })
+
+            urls.forEach((url, index) => {
+                if (url !== this.displayedRasterLayers[index]._url.replace("/tiles/", "").replace("/{z}/{x}/{y}.png", "")) {
+                    this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
+                        .setZIndex(layers[index].zIndex)
+                }
+            })
+        }
+    }
+
+    updateVectorLayers(layers) {
         if (this.displayedVectorLayers.map(layer => layer._url).toString() === layers.map(layer => layer.urlTemplate).toString()) {
             return
         }
+
+        let numLayersToAdd = layers.length - this.displayedVectorLayers.length
 
         if (numLayersToAdd > 0) {
             this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(

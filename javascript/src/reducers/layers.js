@@ -67,7 +67,6 @@ export default (state = [], action) => {
                 } else {
                     let checkVariableLayers = state.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}")
                     if (checkVariableLayers) {
-                        //TODO: possibly append a count or something to variable layers so a refresh will occur
                         return state
                     } else {
                         let layersToAdd = allVariables.map(variable => morph(defaultLayer, {

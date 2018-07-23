@@ -599,9 +599,9 @@ class Map extends React.Component {
         if (layers.length) {
             let url
             layers.forEach((layer, index) => {
-                url = getLayerUrl(layer, serviceId, objective, climate, region)
-                if (url !== this.displayedRasterLayers[index]._url.replace("/tiles/", "").replace("/{z}/{x}/{y}.png", "")) {
-                    this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
+                url = `/tiles/${getLayerUrl(layer, serviceId, objective, climate, region)}/{z}/{x}/{y}.png`
+                if (url !== this.displayedRasterLayers[index]._url) {
+                    this.displayedRasterLayers[index].setUrl(url)
                         .setZIndex(layers[index].zIndex)
                 }
             })

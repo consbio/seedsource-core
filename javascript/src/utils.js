@@ -5,7 +5,6 @@ import config from 'seedsource/config'
 export const morph = (obj, props = {}) => Object.assign({}, obj, props)
 
 export const getLayerUrl = (layer, serviceId, objective, climate, region) => {
-    let name = layer.name
     let generateModelTimeString = (objective, climate) => {
         let modelTimeString = ''
         let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
@@ -20,7 +19,7 @@ export const getLayerUrl = (layer, serviceId, objective, climate, region) => {
         return modelTimeString
     }
     let modelTime = generateModelTimeString(objective, climate)
-    let varsObj = { serviceId, region, modelTime, name }
+    let varsObj = { serviceId, region, modelTime }
     let newrl = layer.urlTemplate
 
     for (let key in varsObj) {

@@ -239,37 +239,6 @@ class Map extends React.Component {
         }
     }
 
-    updateRasterLayers(layers) {
-        let numLayersToAdd = layers.length - this.displayedRasterLayers.length
-        if (numLayersToAdd === 0) {
-            return
-        }
-
-        let rewriteLeafletRasters = () => {
-            if (layers.length) {
-                let { objective, climate, region } = this.props
-                let { serviceId } = this.props.job
-                let url
-                layers.forEach((layer, index) => {
-                    url = getLayerUrl(layer, serviceId, objective, climate, region)
-                    this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
-                        .setZIndex(layer.zIndex)
-                })
-            }
-        }
-
-        if (numLayersToAdd > 0) {
-            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
-                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
-            ))
-        } else {
-            this.displayedRasterLayers
-                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
-                .forEach(layer => this.map.removeLayer(layer))
-        }
-        rewriteLeafletRasters()
-    }
-
     addBoundaryToMap(region, color, showFill = true) {
         let fillOpacity = showFill ? 0.3 : 0
         this.regionsBoundaries.setStyle(f =>
@@ -610,12 +579,38 @@ class Map extends React.Component {
         }
     }
 
-    updateVectorLayers(layers) {
-        let numLayersToAdd = layers.length - this.displayedVectorLayers.length
+    updateRasterLayers(layers) {
+        let numLayersToAdd = layers.length - this.displayedRasterLayers.length
+        let { objective, climate, region } = this.props
+        let { serviceId } = this.props.job
 
+        if (numLayersToAdd > 0) {
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map((_, index) => {
+                let layer = layers[this.displayedRasterLayers.length+index]
+                let url = getLayerUrl(layer, serviceId, objective, climate, region)
+                return L.tileLayer(`/tiles/${url}/{z}/{x}/{y}.png`, {zIndex: 1, opacity: 1}).addTo(this.map)
+            }))
+        } else if (numLayersToAdd < 0) {
+            this.displayedRasterLayers
+                .splice(numLayersToAdd, Math.abs(numLayersToAdd))
+                .forEach(layer => this.map.removeLayer(layer))
+        }
+
+        layers.forEach((layer, index) => {
+            let url = `/tiles/${getLayerUrl(layer, serviceId, objective, climate, region)}/{z}/{x}/{y}.png`
+            if (url !== this.displayedRasterLayers[index]._url) {
+                this.displayedRasterLayers[index].setUrl(url)
+                    .setZIndex(layers[index].zIndex)
+            }
+        })
+    }
+
+    updateVectorLayers(layers) {
         if (this.displayedVectorLayers.map(layer => layer._url).toString() === layers.map(layer => layer.urlTemplate).toString()) {
             return
         }
+
+        let numLayersToAdd = layers.length - this.displayedVectorLayers.length
 
         if (numLayersToAdd > 0) {
             this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
@@ -667,7 +662,7 @@ class Map extends React.Component {
             this.updateShapefileLayer(shapefileConstraints)
 
             // Time overlay
-            if (layers.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}" && layer.displayed === true)) {
+            if (layers.find(layer => layer.urlTemplate.includes("{region}_{modelTime}") && layer.displayed === true)) {
                 let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
                 let { time, model } = selectedClimate
                 let labelKey = time

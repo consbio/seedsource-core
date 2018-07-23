@@ -10,6 +10,7 @@ export const RECEIVE_VALUE = 'RECEIVE_VALUE'
 export const REQUEST_VALUE = 'REQUEST_VALUE'
 export const RECEIVE_TRANSFER = 'RECEIVE_TRANSFER'
 export const REQUEST_TRANSFER = 'REQUEST_TRANSFER'
+export const SET_VARIABLES_REGION = 'SET_VARIABLES_REGION'
 
 export const selectUnit = unit => {
     return {
@@ -103,5 +104,12 @@ export const requestTransfer = variable => {
     return {
         type: REQUEST_TRANSFER,
         variable
+    }
+}
+
+export const setVariablesRegion = region => {
+    return {
+        type: SET_VARIABLES_REGION,
+        region
     }
 }

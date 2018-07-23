@@ -1,9 +1,10 @@
 import {morph} from '../utils'
-import {ADD_VARIABLE, REMOVE_VARIABLE} from "../actions/variables"
+import {ADD_VARIABLE, REMOVE_VARIABLE, SET_VARIABLES_REGION} from "../actions/variables"
 import {TOGGLE_VISIBILITY} from "../actions/map"
 import {FINISH_JOB, START_JOB} from "../actions/job"
 import {TOGGLE_LAYER, LOAD_TILES} from '../actions/layers'
 import config from 'seedsource/config'
+import { variables as allVariables } from '../config'
 
 let labels = []
 if (config.labels) {
@@ -11,6 +12,7 @@ if (config.labels) {
 } else {
     console.log("No project labels loaded. Layer names and styling may be ugly.")
 }
+
 
 const defaultLayer = {
     name: null,
@@ -50,15 +52,31 @@ export default (state = [], action) => {
                     return state.map(layer => morph(layer, {displayed: true}))
                 }
 
-            case ADD_VARIABLE:
-                return [...state, morph(defaultLayer, {
-                    name: action.variable,
-                    type: "raster",
-                    urlTemplate: "{region}_{modelTime}Y_{name}"})]
-
             case REMOVE_VARIABLE:
-                index = state.findIndex(layer => layer.name === action.variable)
-                return state.slice(0, index).concat(state.slice(index+1))
+                return state.map (layer => {
+                    if (layer.name === action.variable) {
+                        return morph(layer, {displayed: false})
+                    } else {
+                        return layer
+                    }
+                })
+
+            case SET_VARIABLES_REGION:
+                if (action.region === null) {
+                    return state.filter(layer => !layer.urlTemplate.includes("{region}_{modelTime}"))
+                } else {
+                    let checkVariableLayers = state.find(layer => layer.urlTemplate.includes("{region}_{modelTime}"))
+                    if (checkVariableLayers) {
+                        return state
+                    } else {
+                        let layersToAdd = allVariables.map(variable => morph(defaultLayer, {
+                        name: variable.label,
+                        type: "raster",
+                        urlTemplate: "{region}_{modelTime}Y_" + variable.name
+                    }))
+                        return [...state, ...layersToAdd]
+                    }
+                }
 
             case TOGGLE_LAYER:
                 index = state.findIndex(layer => layer.name === action.name)

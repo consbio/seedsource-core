@@ -596,16 +596,13 @@ class Map extends React.Component {
                 .forEach(layer => this.map.removeLayer(layer))
         }
 
-        if (layers.length) {
-            let url
-            layers.forEach((layer, index) => {
-                url = `/tiles/${getLayerUrl(layer, serviceId, objective, climate, region)}/{z}/{x}/{y}.png`
-                if (url !== this.displayedRasterLayers[index]._url) {
-                    this.displayedRasterLayers[index].setUrl(url)
-                        .setZIndex(layers[index].zIndex)
-                }
-            })
-        }
+        layers.forEach((layer, index) => {
+            let url = `/tiles/${getLayerUrl(layer, serviceId, objective, climate, region)}/{z}/{x}/{y}.png`
+            if (url !== this.displayedRasterLayers[index]._url) {
+                this.displayedRasterLayers[index].setUrl(url)
+                    .setZIndex(layers[index].zIndex)
+            }
+        })
     }
 
     updateVectorLayers(layers) {

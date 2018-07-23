@@ -588,7 +588,7 @@ class Map extends React.Component {
             this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map((_, index) => {
                 let layer = layers[this.displayedRasterLayers.length+index]
                 let url = getLayerUrl(layer, serviceId, objective, climate, region)
-                return L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+                return L.tileLayer(`/tiles/${url}/{z}/{x}/{y}.png`, {zIndex: 1, opacity: 1}).addTo(this.map)
             }))
         } else if (numLayersToAdd < 0) {
             this.displayedRasterLayers

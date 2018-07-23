@@ -581,11 +581,15 @@ class Map extends React.Component {
 
     updateRasterLayers(layers) {
         let numLayersToAdd = layers.length - this.displayedRasterLayers.length
+        let { objective, climate, region } = this.props
+        let { serviceId } = this.props.job
 
         if (numLayersToAdd > 0) {
-            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map(
-                () => L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
-            ))
+            this.displayedRasterLayers.push(...Array(numLayersToAdd).fill().map((_, index) => {
+                let layer = layers[this.displayedRasterLayers.length+index]
+                let url = getLayerUrl(layer, serviceId, objective, climate, region)
+                return L.tileLayer("placeholder", {zIndex: 1, opacity: 1}).addTo(this.map)
+            }))
         } else if (numLayersToAdd < 0) {
             this.displayedRasterLayers
                 .splice(numLayersToAdd, Math.abs(numLayersToAdd))
@@ -593,8 +597,6 @@ class Map extends React.Component {
         }
 
         if (layers.length) {
-            let { objective, climate, region } = this.props
-            let { serviceId } = this.props.job
             let url
             layers.forEach((layer, index) => {
                 url = getLayerUrl(layer, serviceId, objective, climate, region)

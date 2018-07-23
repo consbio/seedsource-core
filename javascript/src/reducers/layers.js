@@ -72,7 +72,7 @@ export default (state = [], action) => {
                         let layersToAdd = allVariables.map(variable => morph(defaultLayer, {
                         name: variable.label,
                         type: "raster",
-                        urlTemplate: "{region}_{modelTime}Y_".concat(variable.name)
+                        urlTemplate: "{region}_{modelTime}Y_" + variable.name
                     }))
                         return [...state, ...layersToAdd]
                     }

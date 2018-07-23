@@ -63,16 +63,16 @@ export default (state = [], action) => {
 
             case SET_VARIABLES_REGION:
                 if (action.region === null) {
-                    return state.filter(layer => layer.urlTemplate !== "{region}_{modelTime}Y_{name}")
+                    return state.filter(layer => !layer.urlTemplate.includes("{region}_{modelTime}"))
                 } else {
-                    let checkVariableLayers = state.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}")
+                    let checkVariableLayers = state.find(layer => layer.urlTemplate.includes("{region}_{modelTime}"))
                     if (checkVariableLayers) {
                         return state
                     } else {
                         let layersToAdd = allVariables.map(variable => morph(defaultLayer, {
-                        name: variable.name,
+                        name: variable.label,
                         type: "raster",
-                        urlTemplate: "{region}_{modelTime}Y_{name}"
+                        urlTemplate: "{region}_{modelTime}Y_".concat(variable.name)
                     }))
                         return [...state, ...layersToAdd]
                     }

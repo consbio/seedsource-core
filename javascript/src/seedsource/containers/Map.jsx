@@ -595,12 +595,9 @@ class Map extends React.Component {
         if (layers.length) {
             let { objective, climate, region } = this.props
             let { serviceId } = this.props.job
-            let urls = []
+            let url
             layers.forEach((layer, index) => {
-                urls.push(getLayerUrl(layer, serviceId, objective, climate, region))
-            })
-
-            urls.forEach((url, index) => {
+                url = getLayerUrl(layer, serviceId, objective, climate, region)
                 if (url !== this.displayedRasterLayers[index]._url.replace("/tiles/", "").replace("/{z}/{x}/{y}.png", "")) {
                     this.displayedRasterLayers[index].setUrl(`/tiles/${url}/{z}/{x}/{y}.png`)
                         .setZIndex(layers[index].zIndex)
@@ -666,7 +663,7 @@ class Map extends React.Component {
             this.updateShapefileLayer(shapefileConstraints)
 
             // Time overlay
-            if (layers.find(layer => layer.urlTemplate === "{region}_{modelTime}Y_{name}" && layer.displayed === true)) {
+            if (layers.find(layer => layer.urlTemplate.includes("{region}_{modelTime}") && layer.displayed === true)) {
                 let selectedClimate = objective === 'seedlots' ? climate.site : climate.seedlot
                 let { time, model } = selectedClimate
                 let labelKey = time

@@ -3,7 +3,7 @@ import { pointIsValid } from './utils'
 import { getServiceName, morph } from "../utils"
 import { setTraitValue } from '../actions/traits'
 import config from 'seedsource/config'
-import parser from '../parser'
+import parser,  { getNames } from '../parser'
 import { urlEncode } from "../io"
 
 const { functions } = config
@@ -44,10 +44,10 @@ export default store => {
         }
 
         traits.forEach((item, i) => {
-            dispatch(setTraitValue(item.index, item.value))
+            dispatch(setTraitValue(item.index, null))
 
             let config = functions.find(item => item.name === item.name)
-            let variables = parser.getNames(config.fn)
+            let variables = getNames(config.fn)
             Promise.all(variables.map(variable => {
                 let serviceName = getServiceName(variable, objective, climate, region)
                 let url = '/arcgis/rest/services/' + serviceName + '/MapServer/identify/?' + urlEncode({
@@ -65,10 +65,10 @@ export default store => {
                         .then(json => [variable, json.results[0].attributes['Pixel value']])
                 )
             })).then(values => {
-                parser.yy.context = {}
-                values.forEach(([variable, value]) => parser.yy.context[variable] = value)
-                dispatch(setTraitValue(i, parser.parse(config.fn)))
-            })
+                let context = {}
+                values.forEach(([variable, value]) => context[variable] = value)
+                dispatch(setTraitValue(i, parser(config.fn, context)))
+            }).catch(() => dispatch(setTraitValue(i, null)))
         })
     })
 }

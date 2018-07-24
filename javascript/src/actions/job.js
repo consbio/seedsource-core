@@ -38,24 +38,23 @@ export const finishJob = configuration => {
 
 export const runJob = configuration => {
    return dispatch => {
-       let { variables, objective, climate, region, constraints, point } = configuration
+       let { variables, objective, climate, region, constraints } = configuration
+
+       /* Run the tool against the seedlot climate when looking for seedlots, otherwise run against the
+        * planting site climate.
+        */
+        let selectedClimate = objective === 'seedlots' ? climate.seedlot : climate.site
 
         let inputs = {
+            region: region,
+            year: selectedClimate.time,
+            model: selectedClimate.model === null ? undefined : selectedClimate.model,
             variables: variables.map(item => {
-                /* Run the tool against the seedlot climate when looking for seedlots, otherwise run against the
-                 * planting site climate.
-                 */
-                let selectedClimate = objective === 'seedlots' ? climate.seedlot : climate.site
-                let year = selectedClimate.time
-
-                if (year !== '1961_1990' && year !== '1981_2010') {
-                    year = selectedClimate.model + '_' + selectedClimate.time
+                let { name, value, transfer } = item
+                return {
+                    name,
+                    limit: {min: value-transfer, max: value+transfer}
                 }
-
-                return 'service://' + region + '_' + year + 'Y_' + item.name + ':' + item.name
-            }),
-            limits: variables.map(item => {
-                return {min: item.value - item.transfer, max: item.value + item.transfer}
             }),
             constraints: constraints.map(({ type, values }) => {
                 return {name: type, args: constraintsConfig[type].serialize(configuration, values)}

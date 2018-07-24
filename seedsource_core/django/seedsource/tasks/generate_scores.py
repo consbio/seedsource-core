@@ -17,22 +17,28 @@ Y_INCREASING = False
 class GenerateScores(NetCdfDatasetMixin, Task):
     name = 'sst:generate_scores'
     inputs = [
-        DictParameter('limits'),
         StringParameter('region'),
         StringParameter('year'),
-        StringParameter('model'),
+        StringParameter('model', required=False),
         DictParameter('variables', required=False),
         DictParameter('traits', required=False),
         DictParameter('constraints', required=False)
     ]
     outputs = [RasterParameter('raster_out')]
 
+    def __init__(self):
+        self.service = None
+        self.dataset = None
+
     def load_variable_data(self, variable, region, year, model=None):
         if model is not None:
             year = '{model}_{year}'.format(model, year)
 
-        service = Service.objects.get(name='{region}_{year}Y_{variable}'.format(region, year, variable))
+        service = Service.objects.get(
+            name='{region}_{year}Y_{variable}'.format(region=region, year=year, variable=variable)
+        )
         variable = service.variable_set.first()
+        self.service = variable.service
         data = self.get_grid_for_variable(variable)
         return Raster(data, variable.full_extent, 1, 0, Y_INCREASING)
 
@@ -46,7 +52,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
         return data
 
-    def execute(self, limits, region, year, model, variables=[], traits=[], constraints=None):
+    def execute(self, region, year, model=None, variables=[], traits=[], constraints=None):
         data = {}
         variable_names = {v['name'] for v in variables}
 
@@ -69,17 +75,17 @@ class GenerateScores(NetCdfDatasetMixin, Task):
             factor = 100 / half
             mid_factor = factor * midpoint
             
-            if item.name in data:
-                raster = data[item.name]
-                del data[item.name]
+            if item['name'] in data:
+                raster = data[item['name']]
+                del data[item['name']]
             else:
-                raster = self.load_variable_data(item.name, region, year, model)
+                raster = self.load_variable_data(item['name'], region, year, model)
             
             extent = raster.extent
             mask = raster.mask if is_masked(raster) else numpy.zeros_like(raster, 'bool')
 
             mask |= raster < limit_min
-            mask |= raster > limit_min
+            mask |= raster > limit_max
             
             if sum_masks is not None:
                 sum_masks |= mask

@@ -5,12 +5,17 @@ import { runJob } from '../../actions/job'
 import { showSaveModal } from '../../actions/saves'
 import { createReport, runTIFJob } from '../../actions/report'
 
-const configurationCanRun = ({point, variables, constraints}) =>  {
+const configurationCanRun = ({point, variables, traits}) =>  {
     if (point === null || point.x === null || point.y === null) {
         return false
     }
 
-    return variables.length > 0 && variables.every(item => item.value !== null && item.isFetching === false)
+    let variablesComplete = (
+        variables.length > 0 && variables.every(item => item.value !== null && item.isFetching === false)
+    )
+    let traitsComplete = traits.length > 0 && traits.every(item => item.value !== null)
+
+    return variablesComplete || traitsComplete
 }
 
 const mapStateToProps = ({ runConfiguration, lastRun, job, auth, reportIsFetching }) => {

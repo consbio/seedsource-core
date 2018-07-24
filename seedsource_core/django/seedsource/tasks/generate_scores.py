@@ -39,6 +39,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         )
         variable = service.variable_set.first()
         self.service = variable.service
+        self.dataset = None
         data = self.get_grid_for_variable(variable)
         return Raster(data, variable.full_extent, 1, 0, Y_INCREASING)
 
@@ -59,9 +60,9 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         for trait in traits:
             fn = trait['fn']
             names = Lexer().get_names(fn)
-            context = {k: self.load_variable_data(k, region, year, model) for k, v in names}
+            context = {x: self.load_variable_data(x, region, year, model) for x in names}
             data[trait['name']] = Parser().evaluate(fn, context)
-            data.update({k: v for k, v in context if k in variable_names})
+            data.update({k: v for k, v in context.items() if k in variable_names})
 
         sum_rasters = None
         sum_masks = None

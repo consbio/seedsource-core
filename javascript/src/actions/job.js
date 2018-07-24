@@ -2,6 +2,9 @@ import { executeGPTask } from '../io'
 import { setError } from './error'
 import { selectTab } from './tabs'
 import { constraints as constraintsConfig } from '../config'
+import config from 'seedsource/config'
+
+const { functions } = config
 
 export const START_JOB = 'START_JOB'
 export const FAIL_JOB = 'FAIL_JOB'
@@ -38,7 +41,7 @@ export const finishJob = configuration => {
 
 export const runJob = configuration => {
    return dispatch => {
-       let { variables, objective, climate, region, constraints } = configuration
+       let { variables, traits, objective, climate, region, constraints } = configuration
 
        /* Run the tool against the seedlot climate when looking for seedlots, otherwise run against the
         * planting site climate.
@@ -53,6 +56,17 @@ export const runJob = configuration => {
                 let { name, value, transfer } = item
                 return {
                     name,
+                    limit: {min: value-transfer, max: value+transfer}
+                }
+            }),
+            traits: traits.map(item => {
+                let { name, value, transfer: customTransfer } = item
+                let traitConfig = functions.find(item => item.name === name)
+                let { transfer: defaultTransfer, fn } = traitConfig
+                let transfer = customTransfer === null ? defaultTransfer : customTransfer
+                return {
+                    name,
+                    fn,
                     limit: {min: value-transfer, max: value+transfer}
                 }
             }),

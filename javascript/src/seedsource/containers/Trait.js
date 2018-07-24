@@ -1,6 +1,6 @@
 import { connect } from 'react-redux'
 import config from 'seedsource/config'
-import { removeTrait } from '../../actions/traits'
+import { removeTrait, setTraitTransfer } from '../../actions/traits'
 import Trait from 'seedsource/components/Trait'
 
 const mapStateToProps = (_, { trait }) => {
@@ -10,7 +10,8 @@ const mapStateToProps = (_, { trait }) => {
 
 const mapDispatchToProps = (dispatch, { index }) => {
     return {
-        onRemove: () => dispatch(removeTrait(index))
+        onRemove: () => dispatch(removeTrait(index)),
+        onTransferChange: transfer => dispatch(setTraitTransfer(index, parseFloat(transfer)))
     }
 }
 

@@ -1,12 +1,12 @@
 from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.shortcuts import render_to_response
-from django.template import RequestContext
 from django.utils.timezone import now
 
 PREVIEW_MODE = getattr(settings, "PREVIEW_MODE", False)
 PREVIEW_PASSWORD = getattr(settings, "PREVIEW_PASSWORD", "")
 PREVIEW_EXPIRES = getattr(settings, "PREVIEW_EXPIRES", None)
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
 
 
 class PreviewAccessMiddleware(object):
@@ -26,6 +26,6 @@ class PreviewAccessMiddleware(object):
             request.session['authorized_for_preview'] = True
             return HttpResponseRedirect(request.path)
         else:
-            response = render_to_response("preview_login.html", {}, RequestContext(request))
+            response = render_to_response("preview_login.html", {'title': SEEDSOURCE_TITLE})
             response.status_code = 401
             return response

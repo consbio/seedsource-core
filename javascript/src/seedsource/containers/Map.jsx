@@ -613,24 +613,25 @@ class Map extends React.Component {
         let numLayersToAdd = layers.length - this.displayedVectorLayers.length
 
         if (numLayersToAdd > 0) {
-            this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map(
-                () => L.vectorGrid.protobuf(config.mbtileserverRoot + "services/seedzones/wa_new_zones-psme/tiles/{z}/{x}/{y}.pbf",
-                    {zIndex: 1, opacity: 1, vectorTileLayerStyles: {
-                        data: {color: null}
-                    }}).addTo(this.map)
-            ))
+            this.displayedVectorLayers.push(...Array(numLayersToAdd).fill().map((_, i) => {
+                let layer = layers[this.displayedVectorLayers.length+i]
+                return L.vectorGrid.protobuf(layer.urlTemplate, {
+                    zIndex: 1, opacity: 1, vectorTileLayerStyles: layer.style
+                }).addTo(this.map)
+            }))
         } else {
             this.displayedVectorLayers
                 .splice(numLayersToAdd, Math.abs(numLayersToAdd))
                 .forEach(layer => this.map.removeLayer(layer))
         }
 
-        if (layers.length) {
-            layers.forEach((layer, index) => {
+        layers.forEach((layer, index) => {
+            let displayedLayer = this.displayedVectorLayers[index]
+            if (displayedLayer.url !== layer.urlTemplate) {
                 this.displayedVectorLayers[index].options.vectorTileLayerStyles.data = layer.style
                 this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
-            })
-        }
+            }
+        })
     }
 
     updateLayers(layers) {

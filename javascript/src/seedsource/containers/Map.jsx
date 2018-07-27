@@ -628,7 +628,7 @@ class Map extends React.Component {
         layers.forEach((layer, index) => {
             let displayedLayer = this.displayedVectorLayers[index]
             if (displayedLayer.url !== layer.urlTemplate) {
-                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data = layer.style
+                this.displayedVectorLayers[index].options.vectorTileLayerStyles.data = Object.assign({}, layer.style)
                 this.displayedVectorLayers[index].setUrl(layer.urlTemplate)
             }
         })

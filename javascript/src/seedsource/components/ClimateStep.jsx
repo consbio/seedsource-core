@@ -2,6 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import ConfigurationStep from 'seedsource/containers/ConfigurationStep'
 import { timeLabels } from '../../config'
+import { text } from '../../utils'
 
 const ClimateStep = ({ climate, number, active, onChange }) => {
     let { seedlot, site } = climate
@@ -14,7 +15,7 @@ const ClimateStep = ({ climate, number, active, onChange }) => {
         }
 
         return (
-            <ConfigurationStep title="Select climate scenarios" number={number} name="climate" active={false}>
+            <ConfigurationStep title={text('climate_step_label', 'Select climate scenarios')} number={number} name="climate" active={false}>
                 <div><strong>Seedlot climate: </strong> {timeLabels[seedlot.time]}</div>
                 <div><strong>Planting site climate: </strong> {timeLabels[siteKey]}</div>
             </ConfigurationStep>
@@ -39,9 +40,9 @@ const ClimateStep = ({ climate, number, active, onChange }) => {
     }
 
     return (
-        <ConfigurationStep title="Select climate scenarios" number={number} name="climate" active={true}>
+        <ConfigurationStep title={text('climate_step_label', 'Select climate scenarios')} number={number} name="climate" active={true}>
             <div className="is-size-7">
-                <em>Which climate are the seedlots adapted to?</em>
+                <em>{text('climate_step_seedlot_help', 'Which climate are the seedlots adapted to?')}</em>
             </div>
 
             <div className="select is-inline-block">
@@ -58,7 +59,7 @@ const ClimateStep = ({ climate, number, active, onChange }) => {
             </div>
             <div style={{height: '10px'}}></div>
             <div className="is-size-7">
-                <em>When should trees be best adapted to the planting site?</em>
+                <em>{text('climate_step_site_help', 'When should trees be best adapted to the planting site?')}</em>
             </div>
 
             <div className="select is-inline-block">

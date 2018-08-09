@@ -60,3 +60,10 @@ export const getCookies = () => {
 export const isClose = (a, b) => {
     return Math.abs(a - b) <= Math.max(1e-3 * Math.max(Math.abs(a), Math.abs(b)), 0.0)
 }
+
+export const text = (key, def) => {
+    if (config.text.hasOwnProperty(key)) {
+        return config.text[key]
+    }
+    return def
+}

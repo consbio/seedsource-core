@@ -83,7 +83,8 @@ class Map extends React.Component {
             zoom: 4,
             center: [55.0, -112.0],
             minZoom: 3,
-            maxZoom: 13
+            maxZoom: 13,
+            preferCanvas: true
         })
 
         this.map.on('moveend', event => {

@@ -26,6 +26,12 @@ class Command(BaseCommand):
         for source in sources:
             zones = SeedZone.objects.filter(source=source[0])
             formatted_source = os.path.splitext(source[0].replace("/", "-").lower())[0]
+            path = 'seedzones/{}.mbtiles'.format(formatted_source)
+
+            if os.path.exists(os.path.join(tiles_dir, path)):
+                self._write_out('{} already exists...'.format(formatted_source))
+                continue
+
             tmp_dir = mkdtemp()
 
             try:
@@ -43,7 +49,7 @@ class Command(BaseCommand):
                 process = subprocess.run([
                     'tippecanoe',
                     '-o',
-                    f'seedzones/{formatted_source}.mbtiles',
+                    path,
                     '-f',
                     '--layer=data',
                     '--name',
@@ -56,7 +62,7 @@ class Command(BaseCommand):
                 try:
                     shutil.rmtree(tmp_dir)
                 except OSError:
-                    print(f'Could not remove temp dir "{tmp_dir}" Garbage collector will clean later.')
+                    print(f'Could not remove temp dir "{tmp_dir}"')
 
             if process.returncode == 0:
                 self.stdout.write(self.style.SUCCESS("Success\n"))

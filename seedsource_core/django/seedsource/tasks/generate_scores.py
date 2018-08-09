@@ -32,7 +32,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
     def load_variable_data(self, variable, region, year, model=None):
         if model is not None:
-            year = '{model}_{year}'.format(model, year)
+            year = '{model}_{year}'.format(model=model, year=year)
 
         service = Service.objects.get(
             name='{region}_{year}Y_{variable}'.format(region=region, year=year, variable=variable)

@@ -5,14 +5,18 @@ from functools import partial
 
 import numpy
 import pyproj
-from trefoil.netcdf.variable import SpatialCoordinateVariables
+import rasterio
 from django.conf import settings
 from ncdjango.models import Service
 from netCDF4 import Dataset
+from rasterio.crs import CRS
+from rasterio.enums import Resampling
 from rasterio.features import rasterize
+from rasterio.vrt import WarpedVRT
 from shapely.geometry import Point
-from shapely.geometry import shape
 from shapely.ops import transform
+from trefoil.netcdf.variable import SpatialCoordinateVariables
+
 
 class Constraint(object):
     def __init__(self, data, region):
@@ -29,7 +33,12 @@ class Constraint(object):
             'latitude': LatitudeConstraint,
             'longitude': LongitudeConstraint,
             'distance': DistanceConstraint,
-            'shapefile': GeometryConstraint
+            'shapefile': GeometryConstraint,
+            'pico': RasterConstraint,
+            'pisi': RasterConstraint,
+            'psme': RasterConstraint,
+            'pipo': RasterConstraint,
+            'pien': RasterConstraint
         }[constraint]
 
     def apply_constraint(self, **kwargs):
@@ -323,7 +332,12 @@ class DistanceConstraint(Constraint):
     
 
 class GeometryConstraint(Constraint): 
-    def get_mask(self, geoJSON=None):
+    def get_mask(self, **kwargs):
+        try:
+            geoJSON = kwargs['geoJSON']
+        except ValueError:
+            raise ValueError('Missing constraint arguments')
+
         features = geoJSON['features']
         geometries = [f['geometry'] for f in features]
         coords = SpatialCoordinateVariables.from_bbox(self.data.extent, *reversed(self.data.shape))
@@ -331,3 +345,36 @@ class GeometryConstraint(Constraint):
             geometries, out_shape=self.data.shape, fill=1, transform=coords.affine, all_touched=True, default_value=0,
             dtype=numpy.uint8 
         )
+
+
+class RasterConstraint(Constraint):
+    def warp_to_grid(self, path):
+        with rasterio.open(path) as dataset:
+            bbox = self.data.extent
+            vrt_options = {
+                'resampling': Resampling.nearest,
+                'dst_crs': CRS.from_string(bbox.projection.srs),
+                'dst_transform': SpatialCoordinateVariables.from_bbox(
+                    bbox, self.data.shape[1], self.data.shape[0]
+                ).affine,
+                'dst_height': self.data.shape[self.data.y_dim],
+                'dst_width': self.data.shape[self.data.x_dim]
+            }
+
+            with WarpedVRT(dataset, **vrt_options) as vrt:
+                return vrt.read(1)
+
+    def get_mask(self, **kwargs):
+        try:
+            service_name = kwargs['service']
+        except ValueError:
+            raise ValueError('Missing constraint arguments')
+
+        try:
+            service = Service.objects.get(name=service_name)
+        except Service.DoesNotExist:
+            raise ValueError('Service {} does not exist'.format(service_name))
+
+        raster = self.warp_to_grid(os.path.join(settings.NC_SERVICE_DATA_ROOT, service.data_path))
+
+        return raster != 1

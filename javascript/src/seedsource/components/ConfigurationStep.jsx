@@ -2,11 +2,11 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { collapsibleSteps } from '../../config'
 
-const ConfigurationStep = ({ number, title, children, active, onClick }) => {
+const ConfigurationStep = ({ number, title, children, active, className, onClick }) => {
     if (collapsibleSteps) {
         return (
             <div
-                className={"configuration-step" + (active ? " active" : "")}
+                className={`configuration-step ${className}` + (active ? " active" : "")}
                 onClick={e => {
                     e.stopPropagation()
                     onClick()
@@ -20,7 +20,7 @@ const ConfigurationStep = ({ number, title, children, active, onClick }) => {
     }
     else {
         return (
-            <div className="configuration-step no-collapse">
+            <div className={`configuration-step no-collapse ${className}`}>
                 <h4><span className="badge">{ number }</span> { title }</h4>
                 <div className="step-content">
                     {children}

@@ -62,8 +62,37 @@ export const isClose = (a, b) => {
 }
 
 export const text = (key, def) => {
-    if (config.text.hasOwnProperty(key)) {
+    if (config.text !== undefined && config.text.hasOwnProperty(key)) {
         return config.text[key]
     }
     return def
+}
+
+export const formatYear = year => {
+    const labels = {
+        '1961_1990': '1961 - 1990',
+        '1981_2010': '1981 - 2010',
+        2025: '2011 - 2040',
+        2055: '2041 - 2070',
+        2085: '2071 - 2100'
+    }
+
+    return labels[year]
+}
+
+export const formatModel = model => {
+    const labels = {
+        rcp45: 'RCP 4.5',
+        rcp85: 'RCP 8.5'
+    }
+
+    return labels[model]
+}
+
+export const formatClimate = (year, model) => {
+    let label = formatYear(year)
+    if (year !== '1961_1990' && year !== '1981_2010') {
+        label += ' ' + formatModel(model)
+    }
+    return label
 }

@@ -1,10 +1,9 @@
 import { executeGPTask } from '../io'
 import { setError } from './error'
 import { selectTab } from './tabs'
-import { constraints as constraintsConfig } from '../config'
 import config from 'seedsource/config'
 
-const { functions } = config
+const { functions, constraints: constraintsConfig } = config
 
 export const START_JOB = 'START_JOB'
 export const FAIL_JOB = 'FAIL_JOB'
@@ -71,7 +70,7 @@ export const runJob = configuration => {
                 }
             }),
             constraints: constraints.map(({ type, values }) => {
-                return {name: type, args: constraintsConfig[type].serialize(configuration, values)}
+                return {name: type, args: constraintsConfig.objects[type].serialize(configuration, values)}
             }),
             region
         }

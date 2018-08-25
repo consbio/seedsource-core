@@ -1,11 +1,13 @@
 import { ADD_CONSTRAINT, REMOVE_CONSTRAINT, UPDATE_CONSTRAINT_VALUES } from '../actions/constraints'
 import { morph } from '../utils'
-import { constraints } from '../config'
+import config from 'seedsource/config'
+
+const { constraints } = config
 
 export default (state = [], action) => {
     switch (action.type) {
         case ADD_CONSTRAINT:
-            return [...state, {type: action.constraint, values: constraints[action.constraint].values}]
+            return [...state, {type: action.constraint, values: constraints.objects[action.constraint].values}]
 
         case REMOVE_CONSTRAINT:
             return state.filter((constraint, i) => i !== action.index)

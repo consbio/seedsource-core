@@ -299,6 +299,17 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
   margin: 10px 0px 0px 25px;
 }
 
+.constraint-arrow {
+  margin: 6px auto 10px auto;
+  display: block;
+  width: 10px;
+  height: 10px;
+  padding: 3px;
+  border: solid black;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
 .point-chooser .input {
   width: 85px;
   margin-right: 10px;

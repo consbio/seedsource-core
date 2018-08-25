@@ -81,6 +81,8 @@ class GenerateScores(NetCdfDatasetMixin, Task):
                 del data[item['name']]
             else:
                 raster = self.load_variable_data(item['name'], region, year, model)
+
+            raster = self.apply_constraints(raster, constraints, region)
             
             extent = raster.extent
             mask = raster.mask if is_masked(raster) else numpy.zeros_like(raster, 'bool')

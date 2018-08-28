@@ -1,8 +1,7 @@
-import {morph} from '../utils'
-import {ADD_VARIABLE, REMOVE_VARIABLE, SET_VARIABLES_REGION} from "../actions/variables"
-import {TOGGLE_VISIBILITY} from "../actions/map"
-import {FINISH_JOB, START_JOB} from "../actions/job"
-import {TOGGLE_LAYER, LOAD_TILES} from '../actions/layers'
+import { morph } from '../utils'
+import { REMOVE_VARIABLE, SET_VARIABLES_REGION } from '../actions/variables'
+import { FINISH_JOB, START_JOB } from '../actions/job'
+import { TOGGLE_LAYER, LOAD_TILES } from '../actions/layers'
 import config from 'seedsource/config'
 import { variables as allVariables } from '../config'
 
@@ -16,6 +15,7 @@ if (config.labels) {
 
 const defaultLayer = {
     name: null,
+    label: null,
     type: null,
     urlTemplate: null,
     zIndex: 1,
@@ -45,13 +45,6 @@ export default (state = [], action) => {
                 }
                 return newState
 
-            case TOGGLE_VISIBILITY:
-                if (state.filter(layer => layer.displayed === true).length) {
-                    return state.map(layer => morph(layer, {displayed: false}))
-                } else {
-                    return state.map(layer => morph(layer, {displayed: true}))
-                }
-
             case REMOVE_VARIABLE:
                 return state.map (layer => {
                     if (layer.name === action.variable) {
@@ -70,7 +63,8 @@ export default (state = [], action) => {
                         return state
                     } else {
                         let layersToAdd = allVariables.map(variable => morph(defaultLayer, {
-                        name: variable.label,
+                        name: variable.name,
+                        label: variable.label,
                         type: "raster",
                         urlTemplate: "{region}_{modelTime}Y_" + variable.name
                     }))
@@ -80,7 +74,9 @@ export default (state = [], action) => {
 
             case TOGGLE_LAYER:
                 index = state.findIndex(layer => layer.name === action.name)
-                return state.slice(0, index).concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
+                return state
+                        .slice(0, index)
+                        .concat([morph(state[index], {displayed: !state[index].displayed}), ...state.slice(index+1)])
             
             case START_JOB:
                 index = state.findIndex(layer => layer.name === 'Last Run')
@@ -92,20 +88,21 @@ export default (state = [], action) => {
                 }
 
             case FINISH_JOB:
-                let lastRun = state.find(layer => layer.name === "Last Run")
+                let lastRun = state.find(layer => layer.name === 'Last Run')
                 if (lastRun) {
                     return state
                 } else {
                     return  [
-                                {
-                                    name: "Last Run",
-                                    type: "raster",
-                                    urlTemplate: "{serviceId}",
-                                    zIndex: 2,
-                                    displayed: true
-                                },
-                                ...state
-                            ]
+                        {
+                            name: 'results',
+                            label: 'Last Run',
+                            type: 'raster',
+                            urlTemplate: '{serviceId}',
+                            zIndex: 2,
+                            displayed: true
+                        },
+                        ...state
+                    ]
                 }
 
             default:

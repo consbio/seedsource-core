@@ -56,7 +56,7 @@ class Layers extends React.Component {
                             type="checkbox"
                             value={layer.name}
                             checked={layer.displayed}
-                        /><label onClick={() => onToggleLayer(layer.name)}>{layer.name}</label>
+                        /><label onClick={() => onToggleLayer(layer.name)}>{layer.label}</label>
                     </li>
                 )
             })

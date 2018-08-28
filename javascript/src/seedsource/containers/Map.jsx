@@ -16,7 +16,8 @@ import 'leaflet-range/L.Control.Range'
 import * as io from '../../io'
 import { getLayerUrl } from '../../utils'
 import { variables as allVariables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
-import { setMapOpacity, setBasemap, setZoom, toggleVisibility, setMapCenter } from '../../actions/map'
+import { setMapOpacity, setBasemap, setZoom, setMapCenter } from '../../actions/map'
+import { toggleLayer } from '../../actions/layers'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
 import { setPoint } from '../../actions/point'
 import { isClose } from '../../utils'
@@ -340,13 +341,15 @@ class Map extends React.Component {
         this.displayedRasterLayers.forEach(layer => layer.setOpacity(opacity))
     }
 
-    updateVisibilityButton(layersCount) {
+    updateVisibilityButton(layers) {
         if (this.simple){
             return
         }
 
-        if (layersCount) {
-            let icon = this.displayedRasterLayers.length ? 'eye-closed' : 'eye';
+        let resultsLayer = layers.find(item => item.name === 'results')
+
+        if (resultsLayer !== undefined) {
+            let icon = resultsLayer.displayed ? 'eye-closed' : 'eye';
 
             if (this.visibilityButton === null) {
                 this.visibilityButton = L.control.button({'icon': icon})
@@ -654,8 +657,8 @@ class Map extends React.Component {
             this.updateLayers(layers)
             this.updatePointMarker(point)
             this.updateBoundaryLayer(region)
+            this.updateVisibilityButton(layers)
             this.updateOpacity(opacity)
-            this.updateVisibilityButton(layers.length)
             this.updateLegends(legends, layers, unit)
             this.updateZoneLayer(method, zone, geometry)
             this.updatePopup(popup, unit)
@@ -733,7 +736,7 @@ const mapDispatchToProps = dispatch => {
         },
 
         onToggleVisibility: () => {
-            dispatch(toggleVisibility())
+            dispatch(toggleLayer('results'))
         },
 
         onMapMove: center => {

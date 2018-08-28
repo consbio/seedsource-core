@@ -25,12 +25,6 @@ export const setZoom = zoom => {
     }
 }
 
-export const toggleVisibility = () => {
-    return {
-        type: TOGGLE_VISIBILITY
-    }
-}
-
 export const setMapCenter = center => {
     return {
         type: SET_MAP_CENTER,

@@ -1,5 +1,6 @@
 import { connect } from 'react-redux'
 import SpeciesConstraint from 'seedsource/components/SpeciesConstraint'
+import { removeConstraint } from '../../actions/constraints'
 
 const mapStateToProps = ({ runConfiguration }, { index }) => {
     let { climate, constraints } = runConfiguration
@@ -14,4 +15,12 @@ const mapStateToProps = ({ runConfiguration }, { index }) => {
     }
 }
 
-export default connect(mapStateToProps, null)(SpeciesConstraint)
+const mapDispatchToProps = dispatch => {
+    return {
+        onRemove: index => {
+            dispatch(removeConstraint(index))
+        }
+    }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(SpeciesConstraint)

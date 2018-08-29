@@ -18,7 +18,7 @@
         window.SS_CONFIG = {
             title: '{{ title|escapejs }}',
             staticRoot: '{% static "/" %}',
-            mbtileserverRoot: '{{ mbtileserverRoot }}'
+            mbtileserverRoot: '{{ mbtileserverRoot|default:"" }}'
         }
     </script>
 

@@ -125,8 +125,11 @@ class Report(object):
                 constraints.append({
                     'type': name,
                     'label': config.label,
-                    'value': config.format_value(self.configuration, is_imperial),
-                    'range': config.format_range(values, is_imperial)
+                    'value': (
+                        '' if config.format_value is None else
+                        config.format_value(self.configuration, is_imperial)
+                    ),
+                    'range': '' if config.format_value is None else config.format_range(values, is_imperial)
                 })
 
         return constraints

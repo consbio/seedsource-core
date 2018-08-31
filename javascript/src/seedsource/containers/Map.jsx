@@ -410,7 +410,7 @@ class Map extends React.Component {
         })
 
         let orderedMapLegends = legendOrder.map(name => mapLegends.find(el => el.label === name
-            || (el.label === "Match" && name ==="Last Run"))).filter(el => typeof el == 'object')
+            || (el.label === "Match" && name ==="results"))).filter(el => typeof el == 'object')
 
         if (orderedMapLegends.length) {
             if (this.legend === null) {

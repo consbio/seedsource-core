@@ -1,3 +1,5 @@
+import os
+
 import numpy
 from django.conf import settings
 from ncdjango.geoprocessing.data import Raster
@@ -6,7 +8,10 @@ from ncdjango.geoprocessing.params import RasterParameter, DictParameter, String
 from ncdjango.geoprocessing.workflow import Task
 from ncdjango.models import Service
 from ncdjango.views import NetCdfDatasetMixin
+from netCDF4 import Dataset
 from numpy.ma import is_masked
+from seedsource_core.django.seedsource.tasks.utils import create_latitude_data
+from trefoil.netcdf.variable import SpatialCoordinateVariables
 
 from .constraints import Constraint
 
@@ -31,6 +36,10 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         self.dataset = None
 
     def load_variable_data(self, variable, region, year, model=None):
+        if variable == 'LAT':
+            with Dataset(os.path.join(NC_SERVICE_DIR, 'regions', region, '{}_dem.nc'.format(region))) as ds:
+                return create_latitude_data(SpatialCoordinateVariables.from_dataset(ds))
+
         if model is not None:
             year = '{model}_{year}'.format(model=model, year=year)
 
@@ -83,7 +92,6 @@ class GenerateScores(NetCdfDatasetMixin, Task):
                 raster = self.load_variable_data(item['name'], region, year, model)
 
             raster = self.apply_constraints(raster, constraints, region)
-            
             extent = raster.extent
             mask = raster.mask if is_masked(raster) else numpy.zeros_like(raster, 'bool')
 

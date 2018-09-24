@@ -20,14 +20,15 @@ const valueSelect = ({ runConfiguration }) => {
         objective,
         point,
         climate,
-        traits,
+        traits: traits.map(item => item.name),
         region
     }
 }
 
 export default store => {
     resync(store, valueSelect, (state, io, dispatch, previousState) => {
-        let { objective, point, climate, traits, region } = state
+        let { objective, point, climate, region } = state
+        let { traits } = store.getState().runConfiguration
 
         if (!(pointIsValid(point) && !!region)) {
             return
@@ -43,32 +44,40 @@ export default store => {
             traits = traits.filter(item => item.value === null)
         }
 
-        traits.forEach((item, i) => {
+        traits.forEach(item => {
             dispatch(setTraitValue(item.index, null))
 
-            let config = functions.find(item => item.name === item.name)
+            let config = functions.find(fn => item.name === fn.name)
             let variables = getNames(config.fn)
             Promise.all(variables.map(variable => {
-                let serviceName = getServiceName(variable, objective, climate, region)
-                let url = '/arcgis/rest/services/' + serviceName + '/MapServer/identify/?' + urlEncode({
-                    f: 'json',
-                    tolerance: 2,
-                    imageDisplay: '1600,1031,96',
-                    geometryType: 'esriGeometryPoint',
-                    mapExtent: '0,0,0,0',
-                    geometry: JSON.stringify(point)
-                })
-                return (
-                    io
-                        .get(url)
-                        .then(response => response.json())
-                        .then(json => [variable, json.results[0].attributes['Pixel value']])
-                )
+                if (variable === 'LAT') {
+                    return Promise.resolve([variable, point.y])
+                }
+                else {
+                    let serviceName = getServiceName(variable, objective, climate, region)
+                    let url = '/arcgis/rest/services/' + serviceName + '/MapServer/identify/?' + urlEncode({
+                        f: 'json',
+                        tolerance: 2,
+                        imageDisplay: '1600,1031,96',
+                        geometryType: 'esriGeometryPoint',
+                        mapExtent: '0,0,0,0',
+                        geometry: JSON.stringify(point)
+                    })
+                    return (
+                        io
+                            .get(url)
+                            .then(response => response.json())
+                            .then(json => [variable, json.results[0].attributes['Pixel value']])
+                    )
+                }
             })).then(values => {
                 let context = {}
                 values.forEach(([variable, value]) => context[variable] = value)
-                dispatch(setTraitValue(i, parser(config.fn, context)))
-            }).catch(() => dispatch(setTraitValue(i, null)))
+                dispatch(setTraitValue(item.index, parser(config.fn, context)))
+            }).catch(err => {
+                console.error(err)
+                dispatch(setTraitValue(item.index, null))
+            })
         })
     })
 }

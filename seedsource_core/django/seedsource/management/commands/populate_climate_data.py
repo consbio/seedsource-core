@@ -1,16 +1,18 @@
 import os
+
 import numpy
 import pyproj
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from ncdjango.models import Service, Variable
+from netCDF4 import Dataset
 from trefoil.geometry.bbox import BBox
 from trefoil.render.renderers.stretched import StretchedRenderer
 from trefoil.utilities.color import Color
-from django.db import transaction
-from django.core.management.base import BaseCommand
-from ncdjango.models import Service, Variable
-from netCDF4 import Dataset
 
 VARS = (
-    'MAT', 'MWMT', 'MCMT', 'TD', 'MAP', 'MSP', 'AHM', 'SHM', 'DD_0', 'DD5', 'FFP', 'PAS', 'EMT', 'EXT', 'Eref', 'CMD'
+    'MAT', 'MWMT', 'MCMT', 'TD', 'MAP', 'MSP', 'AHM', 'SHM', 'DD_0', 'DD5', 'DD_18', 'bFFP', 'FFP', 'PAS', 'EMT',
+    'EXT', 'Eref', 'CMD', 'PPT_sm', 'eFFP', 'Tave_wt', 'Tave_sm', 'PPT_wt'
 )
 YEARS = ('1961_1990', '1981_2010', 'rcp45_2025', 'rcp45_2055', 'rcp45_2085', 'rcp85_2025', 'rcp85_2055', 'rcp85_2085')
 WGS84 = '+proj=latlong +datum=WGS84 +no_defs'
@@ -45,9 +47,11 @@ class Command(BaseCommand):
             print('Adding {}'.format(name))
             print('---')
             print('elevation')
-            service_name = '{}_dem'.format(name)
-            if not Service.objects.filter(name__iexact=service_name).exists():
 
+            service_name = '{}_dem'.format(name)
+            if Service.objects.filter(name__iexact=service_name).exists():
+                print('{} already exists, skipping.'.format(service_name))
+            else:
                 dem_service = Service.objects.create(
                     name=service_name,
                     data_path='regions/{name}/{name}_dem.nc'.format(name=name),
@@ -59,7 +63,7 @@ class Command(BaseCommand):
                     v_min = numpy.nanmin(ds.variables['elevation'][:]).item()
                     v_max = numpy.nanmax(ds.variables['elevation'][:]).item()
                     renderer = StretchedRenderer([(v_min, Color(0, 0, 0)), (v_max, Color(255, 255, 255))])
-                    variable = Variable.objects.create(
+                    Variable.objects.create(
                         service=dem_service,
                         index=0,
                         variable='elevation',
@@ -70,8 +74,6 @@ class Command(BaseCommand):
                         renderer=renderer,
                         full_extent=extent
                     )
-            else:
-                print('{} already exists, skipping.'.format(service_name))
 
         # Generate ClimateNA services
         with transaction.atomic():
@@ -85,11 +87,17 @@ class Command(BaseCommand):
 
                     service_name = '{}_{}Y_{}'.format(name, year, var)
                     if not Service.objects.filter(name__iexact=service_name).exists():
+                        data_path = 'regions/{name}/{year}Y/{name}_{year}Y_{var}.nc'.format(
+                            name=name, year=year, var=var
+                        )
+
+                        if not os.path.exists(os.path.join(BASE_DIR, data_path)):
+                            print('{} does not exist, skipping.'.format(service_name))
+                            continue
+
                         service = Service.objects.create(
                             name=service_name,
-                            data_path='regions/{name}/{year}Y/{name}_{year}Y_{var}.nc'.format(
-                                name=name, year=year, var=var
-                            ),
+                            data_path=data_path,
                             projection=WGS84,
                             full_extent=extent,
                             initial_extent=extent

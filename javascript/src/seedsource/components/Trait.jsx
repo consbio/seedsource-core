@@ -21,7 +21,7 @@ export default ({ trait, traitConfig, onRemove, onTransferChange }) => {
             <strong>{name}</strong>
         </td>
         <td>
-            {value !== null ? value : '--'}
+            {value !== null ? value.toFixed(2) : '--'}
         </td>
         <td>
             {

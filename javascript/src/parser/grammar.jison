@@ -10,7 +10,7 @@
 '^'						return 'POWER';
 '('						return 'LPAREN';
 ')'						return 'RPAREN';
-[a-zA-Z][a-zA-Z0-9]*	return 'ID';
+[a-zA-Z_][a-zA-Z0-9_]*	return 'ID';
 
 /lex
 

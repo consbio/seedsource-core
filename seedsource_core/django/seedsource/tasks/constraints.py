@@ -34,11 +34,7 @@ class Constraint(object):
             'longitude': LongitudeConstraint,
             'distance': DistanceConstraint,
             'shapefile': GeometryConstraint,
-            'pico': RasterConstraint,
-            'pisi': RasterConstraint,
-            'psme': RasterConstraint,
-            'pipo': RasterConstraint,
-            'pien': RasterConstraint
+            'raster': RasterConstraint
         }[constraint]
 
     def apply_constraint(self, **kwargs):
@@ -362,7 +358,7 @@ class RasterConstraint(Constraint):
             }
 
             with WarpedVRT(dataset, **vrt_options) as vrt:
-                return vrt.read(1)
+                return vrt.read(1, masked=True)
 
     def get_mask(self, **kwargs):
         try:
@@ -377,4 +373,4 @@ class RasterConstraint(Constraint):
 
         raster = self.warp_to_grid(os.path.join(settings.NC_SERVICE_DATA_ROOT, service.data_path))
 
-        return raster != 1
+        return raster < 1

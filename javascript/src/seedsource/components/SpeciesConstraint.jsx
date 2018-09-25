@@ -3,20 +3,7 @@ import PropTypes from 'prop-types'
 import ShapefileConstraint from './ShapefileConstraint'
 import { formatClimate } from '../../utils'
 
-const speciesLabels = {
-    pico: 'Lodgepole Pine',
-    pisi: 'Sitka Spruce',
-    psme: 'Douglas-fir',
-    pipo: 'Ponderosa Pine',
-    pien: 'Engelmann Spruce'
-}
-
-const modelLabels = {
-    rcp45: 'RCP 4.5',
-    rcp85: 'RCP 8.5'
-}
-
-const SpeciesConstraint = ({ index, species, model, year, onRemove }) => {
+const SpeciesConstraint = ({ index, label, model, year, onRemove }) => {
     return (
         <tr className="constraint">
             <td>
@@ -28,7 +15,7 @@ const SpeciesConstraint = ({ index, species, model, year, onRemove }) => {
                     }}
                 ></a>
             </td>
-            <td><strong>{speciesLabels[species]}</strong></td>
+            <td><strong>{label}</strong></td>
             <td colSpan="2">
                 {formatClimate(year, model)}
             </td>

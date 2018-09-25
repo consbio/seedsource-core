@@ -70,7 +70,8 @@ export const runJob = configuration => {
                 }
             }),
             constraints: constraints.map(({ type, values }) => {
-                return {name: type, args: constraintsConfig.objects[type].serialize(configuration, values)}
+                let { constraint, serialize } = constraintsConfig.objects[type]
+                return {name: constraint, args: serialize(configuration, values)}
             }),
             region
         }

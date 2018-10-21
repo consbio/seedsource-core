@@ -19,11 +19,9 @@ export default (state = [], action) => {
                 .slice(0, action.index)
                 .concat([morph(state[action.index], {transfer: action.transfer}), ...state.slice(action.index+1)])
         case SELECT_SPECIES:
-            return state.filter(t =>
-                config.functions
-                    .filter(f => f.species.includes(action.species)).map(f => f.name)
-                    .includes(t)
-            )
+            return config.functions
+                .filter(f => f.species.includes(action.species))
+                .map(f => ({name: f.name, value: null, transfer: null}))
         case SELECT_METHOD:
             return []
         default:

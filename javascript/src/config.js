@@ -1,4 +1,7 @@
 import { morph } from './utils'
+import config from 'seedsource/config'
+
+let { apiRoot } = config
 
 export const collapsibleSteps = false
 
@@ -393,12 +396,12 @@ export const reports = [
     {
         name: 'pdf',
         label: 'PDF',
-        url: '/sst/create-pdf/'
+        url: `${apiRoot}create-pdf/`
     },
     {
         name: 'pptx',
         label: 'PPT',
-        url: '/sst/create-ppt/'
+        url: `${apiRoot}create-ppt/`
     }
 ]
 

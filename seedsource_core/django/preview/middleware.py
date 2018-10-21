@@ -20,7 +20,9 @@ class PreviewAccessMiddleware(object):
         if PREVIEW_EXPIRES:
             expired = now() >= PREVIEW_EXPIRES
 
-        if not PREVIEW_MODE or request.session.get('authorized_for_preview', False) or expired:
+        is_tile = request.path.startswith('/tiles/')
+
+        if not PREVIEW_MODE or request.session.get('authorized_for_preview', False) or expired or is_tile:
             return
         elif request.POST.get("password") == PREVIEW_PASSWORD and PREVIEW_PASSWORD:
             request.session['authorized_for_preview'] = True

@@ -17,7 +17,7 @@ class Layers extends React.Component {
     componentDidMount() {
         let { mbtileserverRoot } = config
         if (mbtileserverRoot && mbtileserverRoot !== '') {
-            get(config.mbtileserverRoot + 'services')
+            get(mbtileserverRoot + 'services')
                 .then(response => response.json())
                 .then(json => {
                     let tileSets = json.map(service => {

@@ -17,6 +17,7 @@ const config = {
         objects: {
             elevation: {
                 component: ElevationConstraint,
+                constraint: 'elevation',
                 values: {range: 0},
                 serialize: (configuration, values) => {
                     let { elevation } = configuration.point
@@ -27,6 +28,7 @@ const config = {
             },
             photoperiod: {
                 component: PhotoperiodConstraint,
+                constraint: 'photoperiod',
                 values: {
                     hours: 0,
                     month: 1,
@@ -40,6 +42,7 @@ const config = {
             },
             latitude: {
                 component: LatitudeConstraint,
+                constraint: 'latitude',
                 values: {range: 0},
                 serialize: (configuration, { range }) => {
                     let { y } = configuration.point
@@ -48,6 +51,7 @@ const config = {
             },
             longitude: {
                 component: LongitudeConstraint,
+                constraint: 'longitude',
                 values: {range: 0},
                 serialize: (configuration, { range }) => {
                     let { x } = configuration.point
@@ -56,6 +60,7 @@ const config = {
             },
             distance: {
                 component: DistanceConstraint,
+                constraint: 'distance',
                 values: {range: 0},
                 serialize: (configuration, { range }) => {
                     let { x, y } = configuration.point
@@ -64,6 +69,7 @@ const config = {
             },
             shapefile: {
                 component: ShapefileConstraint,
+                constraint: 'shapefile',
                 values: {
                     geoJSON: null,
                     filename: null

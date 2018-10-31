@@ -30,18 +30,24 @@ export default (state = [], action) => {
                 if (!action.tiles.length) {
                     return state
                 }
-                let newState =  action.tiles.map(tileset => {
-                    index = labels.findIndex(label => label.serviceName === tileset.name)
-                    if (index !== -1 && index !== null) {
-                        let correctLabel = labels.splice(index, 1)
-                        return morph(tileset, {name: correctLabel[0].label, style: correctLabel[0].style})
-                    } else {
-                        return tileset
+                let newState = action.tiles.map(tileset => {
+                    let serviceInfo = labels.find(label => label.serviceName === tileset.name)
+                    if (serviceInfo !== undefined) {
+                        return morph(tileset, {
+                            name: serviceInfo.serviceName,
+                            label: serviceInfo.label,
+                            style: serviceInfo.style
+                        })
+                    }
+                    else {
+                        return morph(tileset, {label: tileset.name})
                     }
                 })
-                if (labels.length) {
+
+                let unused = labels.filter(label => newState.findIndex(item => item.name === label.serviceName) < 0)
+                if (unused.length) {
                     console.log("The following hard-coded layer labels/styles were not used:\n",
-                        labels.map(i => i.label).join("\n"))
+                        unused.map(i => i.label).join("\n"))
                 }
                 return newState
 

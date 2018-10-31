@@ -1,12 +1,13 @@
 import React from 'react'
 import EditableLabel from 'seedsource/components/EditableLabel'
+import ReactTooltip from "react-tooltip"
 
 export default ({ trait, traitConfig, onRemove, onTransferChange }) => {
     let { name, value } = trait
-    let { customTransfer } = traitConfig
+    let { customTransfer, label, description = null } = traitConfig
     let transfer = trait.transfer === null ? traitConfig.transfer : trait.transfer
 
-    return <tr>
+    return <tr data-tip data-for={name + "_Tooltip"}>
         <td>
             <a
                 type="button"
@@ -17,8 +18,8 @@ export default ({ trait, traitConfig, onRemove, onTransferChange }) => {
                 }}
             ></a>
         </td>
-        <td>
-            <strong>{name}</strong>
+        <td className="trait-label">
+            <strong>{label}</strong>
         </td>
         <td>
             {value !== null ? value.toFixed(2) : '--'}
@@ -28,6 +29,19 @@ export default ({ trait, traitConfig, onRemove, onTransferChange }) => {
                 customTransfer ?
                 <EditableLabel value={transfer} onChange={value => onTransferChange(value)}/> : transfer
             }
+
+            <ReactTooltip id={name + "_Tooltip"} className="variable-tooltip" place="right" effect="solid">
+                <h5 className="title is-5 margin-bottom-5">{label}</h5>
+                {description !== null ? <div className="is-size-7 has-text-grey-lighter">{description}</div> : null}
+                <div>
+                    <span className="tooltip-label">Value at point:</span>
+                    <strong>{value !== null ? value.toFixed(2) : '--'}</strong>
+                </div>
+                <div>
+                    <span className="tooltip-label">Transfer limit (+/-):</span>
+                    <strong>{transfer}</strong>
+                </div>
+            </ReactTooltip>
         </td>
     </tr>
 }

@@ -364,6 +364,13 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
   margin-right: 8px;
 }
 
+.trait-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 155px;
+}
+
 .editable-label {
   border-bottom: 1.5px dashed blue;
   cursor: pointer;

@@ -21,8 +21,8 @@ const ConstraintStep = ({ number, constraints, onChange }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {constraints.map(({ type, values }, i) => {
-                        let ConstraintTag = constraintsConfig.objects[type].component
+                    {constraints.map(({ type, name, values }, i) => {
+                        let ConstraintTag = constraintsConfig.objects[name].component
                         return <ConstraintTag index={i} values={values} key={type + '_' + i} />
                     })}
                 </tbody>

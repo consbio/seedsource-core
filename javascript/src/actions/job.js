@@ -69,8 +69,8 @@ export const runJob = configuration => {
                     limit: {min: value-transfer, max: value+transfer}
                 }
             }),
-            constraints: constraints.map(({ type, values }) => {
-                let { constraint, serialize } = constraintsConfig.objects[type]
+            constraints: constraints.map(({ type, name, values }) => {
+                let { constraint, serialize } = constraintsConfig.objects[name]
                 return {name: constraint, args: serialize(configuration, values)}
             }),
             region

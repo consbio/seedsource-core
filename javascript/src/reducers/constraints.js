@@ -8,7 +8,11 @@ export default (state = [], action) => {
     switch (action.type) {
         case ADD_CONSTRAINT:
             let { constraint } = action
-            return [...state, {type: constraints.objects[constraint].constraint, values: constraints.objects[constraint].values}]
+            return [...state, {
+                type: constraints.objects[constraint].constraint,
+                name: constraint,
+                values: constraints.objects[constraint].values
+            }]
 
         case REMOVE_CONSTRAINT:
             return state.filter((constraint, i) => i !== action.index)

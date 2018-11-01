@@ -327,7 +327,7 @@ class Map extends React.Component {
                     this.opacityControl = L.control.range({iconClass: 'icon-contrast-16'})
                     this.map.addControl(this.opacityControl)
 
-                    this.opacityControl.on('input', e => {
+                    this.opacityControl.on('change input', e => {
                         this.props.onOpacityChange(e.value / 100)
                     })
                 }

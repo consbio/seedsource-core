@@ -3,7 +3,6 @@ import {
     ADD_VARIABLE, REMOVE_VARIABLE, MODIFY_VARIABLE, RESET_TRANSFER, REQUEST_VALUE, RECEIVE_VALUE, SELECT_METHOD,
     REQUEST_TRANSFER, RECEIVE_TRANSFER
 } from '../actions/variables'
-import { TOGGLE_LAYER } from "../actions/layers"
 import { SET_LATITUDE, SET_LONGITUDE, SET_POINT } from '../actions/point'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
 import { SELECT_CLIMATE_YEAR, SELECT_CLIMATE_MODEL } from '../actions/climate'
@@ -83,13 +82,18 @@ export default (state = [], action) => {
         
         case SELECT_ZONE:
         case SELECT_METHOD:
-            return state.map(item => morph(item, {
-                isFetchingTransfer: false,
-                defaultTransfer: null,
-                avgTransfer: null,
-                zoneCenter: null,
-                transfer: item.transferIsModified ? item.transfer : null
-            }))
+            if (action.method === 'function') {
+                return []
+            }
+            else {
+                return state.map(item => morph(item, {
+                    isFetchingTransfer: false,
+                    defaultTransfer: null,
+                    avgTransfer: null,
+                    zoneCenter: null,
+                    transfer: item.transferIsModified ? item.transfer : null
+                }))
+            }
 
         case REQUEST_TRANSFER:
             return updateVariable(action.variable, {isFetchingTransfer: true})

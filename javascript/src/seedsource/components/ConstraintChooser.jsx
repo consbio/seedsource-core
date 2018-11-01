@@ -12,26 +12,23 @@ class ConstraintChooser extends React.Component {
 
     render() {
         let { selections } = this.state
-        let selection = selections[selections.length-1]
-        let constraint = selection === null ? null : constraints.objects[selection]
         let { onAdd } = this.props
 
         return <div>
             <ConstraintChooserItem
                 constraints={constraints.categories}
                 selections={selections}
-                onSelect={selections => this.setState({selections})}
-            />
-            {constraint === null ? null : <React.Fragment>
-                <div className="constraint-arrow"></div>
-                <button
-                    className="button is-fullwidth is-primary"
-                    onClick={() => {
+                onSelect={selections => {
+                    let selection = selections[selections.length-1]
+                    if (selection !== null) {
                         onAdd(selection)
                         this.setState({selections: [null]})
-                    }}
-                >+ Add {constraint.label} Constraint</button>
-            </React.Fragment>}
+                    }
+                    else {
+                        return this.setState({selections})
+                    }
+                }}
+            />
         </div>
     }
 }

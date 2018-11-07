@@ -132,9 +132,5 @@ CONSTRAINT_CONFIG = {
     'longitude': Constraint('Longitude', format_longitude_value, format_longitude_range),
     'distance': Constraint('Distance', format_photoperiod_value, format_distance_range),
     'shapefile': Constraint('Shapefile', None, None),
-    'pico': Constraint('Lodgepole Pine', None, None),
-    'pisi': Constraint('Sitka Spruce', None, None),
-    'psme': Constraint('Douglas-fir', None, None),
-    'pipo': Constraint('Ponderosa Pine', None, None),
-    'pien': Constraint('Engelmann Spruce', None, None)
+    'raster': Constraint('Raster', None, None),
 }

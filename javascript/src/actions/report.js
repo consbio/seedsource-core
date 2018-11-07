@@ -2,6 +2,9 @@ import { post, executeGPTask } from '../io'
 import { setError } from './error'
 import { dumpConfiguration } from './saves'
 import { reports } from '../config'
+import config from 'seedsource/config'
+
+let { species = [] } = config
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -41,6 +44,11 @@ export const createReport = name => {
             zoom,
             center,
             opacity
+        }
+
+        let speciesConfig = species.find(item => item.name === data.configuration.species)
+        if (speciesConfig !== undefined) {
+            data.configuration.species = speciesConfig.label
         }
 
         dispatch(requestReport(name))

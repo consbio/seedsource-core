@@ -34,17 +34,6 @@ PORT = getattr(settings, 'PORT', 80)
 TILE_SIZE = (256, 256)
 IMAGE_SIZE = (645, 430)
 
-SPECIES_LABELS = {
-    'generic': 'Generic',
-    'psme': 'Douglas-fir',
-    'pico': 'Lodgepole pine',
-    'piba': 'Jack pine',
-    'pipo': 'Ponderosa pine',
-    'pima': 'Black spruce',
-    'thpl': 'Western redcedar',
-    'pimo': 'Western white pine'
-}
-
 YEAR_LABELS = {
     '1961_1990': '1961-1990',
     '1981_2010': '1981-2010',
@@ -120,6 +109,12 @@ class Report(object):
                     'type': name,
                     'label': config.label,
                     'filename': values['filename']
+                })
+            elif name == 'raster':
+                label = values['label']
+                constraints.append({
+                    'type': name,
+                    'label': label
                 })
             else:
                 constraints.append({
@@ -217,7 +212,7 @@ class Report(object):
             'site_model': self.get_model(climates['site']),
             'method': method,
             'center': self.configuration['center'],
-            'species': SPECIES_LABELS[self.configuration['species']] if method == 'seedzone' else None,
+            'species': self.configuration['species'] if method == 'seedzone' else None,
             'zone': getattr(zone, 'name', None),
             'band': band,
             'variables': self.get_context_variables(),

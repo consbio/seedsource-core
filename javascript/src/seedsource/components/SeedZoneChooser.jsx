@@ -8,7 +8,10 @@ const getZoneLabel = zone => {
 
     let label = zone.name
 
-    if (zone.elevation_band) {
+    if (zone.elevation_band && zone.elevation_band.length > 2) {
+        label += ' ' + zone.elevation_band[2]
+    }
+    else if (zone.elevation_band) {
         label += ", " + zone.elevation_band[0] + "' - " + zone.elevation_band[1] + "'"
     }
 

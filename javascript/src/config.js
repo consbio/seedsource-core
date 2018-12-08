@@ -197,37 +197,11 @@ export const variables = [
 export const species = [
     {
         name: 'psme',
-        label: 'Douglas-fir',
-        transfers: {
-            MAT: 20,
-            MWMT: 20,
-            MCMT: 20,
-            TD: 20,
-            EMT: 20,
-            EXT: 20,
-            MAP: 200,
-            MSP: 50,
-            FFP: 20,
-            AHM: 30,
-            SHM: 20
-        }
+        label: 'Douglas-fir'
     },
     {
         name: 'pico',
-        label: 'Lodgepole pine',
-        transfers: {
-            MAT: 20,
-            MWMT: 20,
-            MCMT: 20,
-            TD: 20,
-            EMT: 20,
-            EXT: 20,
-            MAP: 200,
-            MSP: 50,
-            FFP: 20,
-            AHM: 30,
-            SHM: 20
-        }
+        label: 'Lodgepole pine'
     },
     {
         name: 'piba',
@@ -235,20 +209,7 @@ export const species = [
     },
     {
         name: 'pipo',
-        label: 'Ponderosa pine',
-        transfers: {
-            MAT: 25,
-            MWMT: 25,
-            MCMT: 25,
-            TD: 25,
-            EMT: 25,
-            EXT: 25,
-            MAP: 200,
-            MSP: 50,
-            FFP: 30,
-            AHM: 30,
-            SHM: 20
-        }
+        label: 'Ponderosa pine'
     },
     {
         name: 'pima',
@@ -256,37 +217,79 @@ export const species = [
     },
     {
         name: 'thpl',
-        label: 'Western red cedar',
-        transfers: {
-            MAT: 30,
-            MWMT: 30,
-            MCMT: 30,
-            TD: 30,
-            EMT: 30,
-            EXT: 30,
-            MAP: 200,
-            MSP: 50,
-            FFP: 50,
-            AHM: 30,
-            SHM: 20
-        }
+        label: 'Western red cedar'
     },
     {
         name: 'pimo',
-        label: 'Western white pine',
-        transfers: {
-            MAT: 30,
-            MWMT: 30,
-            MCMT: 30,
-            TD: 30,
-            EMT: 30,
-            EXT: 30,
-            MAP: 200,
-            MSP: 50,
-            FFP: 50,
-            AHM: 30,
-            SHM: 20
-        }
+        label: 'Western white pine'
+    },
+    {
+        name: 'abam',
+        label: 'Pacific silver fir',
+    },
+    {
+        name: 'abco',
+        label: 'White fir',
+    },
+    {
+        name: 'abgr',
+        label: 'Grand fir'
+    },
+    {
+        name: 'abpr',
+        label: 'Grand fir'
+    },
+    {
+        name: 'absh',
+        label: 'Shasta red fir'
+    },
+    {
+        name: 'alru2',
+        label: 'Red alder'
+    },
+    {
+        name: 'cade27',
+        label: 'Incense cedar'
+    },
+    {
+        name: 'chla',
+        label: 'Port orford cedar'
+    },
+    {
+        name: 'chno',
+        label: 'Alaska yellow cedar'
+    },
+    {
+        name: 'laoc',
+        label: 'Western larch'
+    },
+    {
+        name: 'pial',
+        label: 'Whitebark pine'
+    },
+    {
+        name: 'pien',
+        label: 'Engelmann spruce'
+    },
+    {
+        name: 'pije',
+        label: 'Jeffrey pine'
+    },
+    {
+        name: 'pila',
+        label: 'Sugar pine'
+    },
+    {
+        name: 'tabr2',
+        label: 'Pacific yew'
+    },
+    {
+        name: 'tshe',
+        label: 'Western red cedar'
+    },
+    {
+        name: 'tsme',
+        label: 'Mountain hemlock'
     }
 ]
 

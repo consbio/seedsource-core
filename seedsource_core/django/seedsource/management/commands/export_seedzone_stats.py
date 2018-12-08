@@ -6,8 +6,6 @@ import time
 from csv import DictWriter
 
 import numpy
-from trefoil.geometry.bbox import BBox
-from trefoil.netcdf.variable import SpatialCoordinateVariables
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
 from django.core.management import BaseCommand
@@ -15,9 +13,10 @@ from ncdjango.models import Service
 from netCDF4 import Dataset
 from pyproj import Proj
 from rasterio.features import rasterize
-
-from seedsource_core.django.seedsource.models import SeedZone, Region
-from .calculate_zone_transfers import get_bands_fn
+from seedsource_core.django.seedsource.management.utils import ZoneConfig
+from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
+from trefoil.geometry.bbox import BBox
+from trefoil.netcdf.variable import SpatialCoordinateVariables
 
 VARIABLES = (
     'AHM', 'CMD', 'DD5', 'DD_0', 'EMT', 'Eref', 'EXT', 'FFP', 'MAP', 'MAT', 'MCMT', 'MSP', 'MWMT', 'PAS', 'SHM', 'TD'
@@ -38,7 +37,7 @@ class Command(BaseCommand):
 
         return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_bbox(bbox)
 
-    def _write_row(self, writer, variable, zone_file, zone_id, masked_data, low, high):
+    def _write_row(self, writer, variable, zone_file, zone_id, masked_data, band):
         min_value = numpy.nanmin(masked_data)
         max_value = numpy.nanmax(masked_data)
         transfer = (max_value - min_value) / 2.0
@@ -51,6 +50,11 @@ class Command(BaseCommand):
         p_transfer = (p95 - p5) / 2.0
         p_center = p95 - p_transfer
 
+        low, high = band[:2]
+        label = None
+        if len(band) > 2:
+            label = band[2]
+
         writer.writerow({
             'samples': os.path.join(
                 '{}_samples'.format(variable), '{}_zone_{}_{}_{}.txt'.format(zone_file, zone_id, low, high)
@@ -59,6 +63,7 @@ class Command(BaseCommand):
             'zone': zone_id,
             'band_low': low,
             'band_high': high,
+            'band_label': label,
             'median': float(numpy.ma.median(masked_data)),
             'mean': numpy.nanmean(masked_data),
             'min': min_value,
@@ -104,69 +109,68 @@ class Command(BaseCommand):
             with open(os.path.join(output_directory, '{}.csv'.format(variable)), 'w') as f_out:
                 writer = DictWriter(
                     f_out, fieldnames=[
-                        'samples', 'zone_file', 'zone', 'band_low', 'band_high', 'median', 'mean', 'min', 'max',
-                        'transfer',
-                        'center', 'p5', 'p95', 'p_transfer', 'p_center'
+                        'samples', 'zone_file', 'zone', 'band_low', 'band_high', 'band_label', 'median', 'mean', 'min',
+                        'max', 'transfer', 'center', 'p5', 'p95', 'p_transfer', 'p_center'
                     ])
                 writer.writeheader()
 
-                last_zone_set = None
                 last_region = None
 
-                for zone in SeedZone.objects.all().order_by('source'):
-                    if zone.source != last_zone_set:
-                        last_zone_set = zone.source
-                        region = Region.objects.filter(
-                            polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
-                        ).first()
+                for source in ZoneSource.objects.all():
+                    with ZoneConfig(source.name) as config:
+                        for zone in source.seedzone_set.all():
+                            region = Region.objects.filter(
+                                polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
+                            ).first()
 
-                        if region != last_region:
-                            last_region = region
+                            if region != last_region:
+                                last_region = region
 
-                            print('Loading region {}'.format(region.name))
+                                print('Loading region {}'.format(region.name))
 
-                            elevation_service = Service.objects.get(name='{}_dem'.format(region.name))
-                            dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, elevation_service.data_path)
+                                elevation_service = Service.objects.get(name='{}_dem'.format(region.name))
+                                dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, elevation_service.data_path)
 
-                            with Dataset(dataset_path) as ds:
-                                coords = SpatialCoordinateVariables.from_dataset(
-                                    ds, x_name='lon', y_name='lat', projection=Proj(elevation_service.projection)
+                                with Dataset(dataset_path) as ds:
+                                    coords = SpatialCoordinateVariables.from_dataset(
+                                        ds, x_name='lon', y_name='lat', projection=Proj(elevation_service.projection)
+                                    )
+                                    elevation = ds.variables['elevation'][:]
+
+                                variable_service = Service.objects.get(
+                                    name='{}_1961_1990Y_{}'.format(region.name, variable)
                                 )
-                                elevation = ds.variables['elevation'][:]
+                                dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
+                                with Dataset(dataset_path) as ds:
+                                    data = ds.variables[variable][:]
 
-                            variable_service = Service.objects.get(
-                                name='{}_1961_1990Y_{}'.format(region.name, variable)
+                            clipped_elevation, clipped_data, clipped_coords = self._get_subsets(
+                                elevation, data, coords, BBox(zone.polygon.extent)
                             )
-                            dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
-                            with Dataset(dataset_path) as ds:
-                                data = ds.variables[variable][:]
 
-                    clipped_elevation, clipped_data, clipped_coords = self._get_subsets(
-                        elevation, data, coords, BBox(zone.polygon.extent)
-                    )
+                            zone_mask = rasterize(
+                                ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
+                                transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8')
+                            )
 
-                    zone_mask = rasterize(
-                        ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
-                        transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8')
-                    )
+                            masked_dem = numpy.ma.masked_where(zone_mask == 0, clipped_elevation)
+                            min_elevation = max(math.floor(numpy.nanmin(masked_dem) / 0.3048), 0)
+                            max_elevation = math.ceil(numpy.nanmax(masked_dem) / 0.3048)
 
-                    masked_dem = numpy.ma.masked_where(zone_mask == 0, clipped_elevation)
-                    min_elevation = max(math.floor(numpy.nanmin(masked_dem) / 0.3048), 0)
-                    max_elevation = math.ceil(numpy.nanmax(masked_dem) / 0.3048)
-                    bands = list(get_bands_fn(zone.bands_fn)(zone.zone_id, min_elevation, max_elevation))
+                            bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
+                            if bands is None:
+                                continue
 
-                    if bands is None:
-                        continue
+                            for band in bands:
+                                low, high = band[:2]
 
-                    for band in bands:
-                        low, high = band
+                                # Elevation bands are represented in feet
+                                masked_data = numpy.ma.masked_where(
+                                    (zone_mask == 0) | (clipped_elevation < low * 0.3048) |
+                                    (clipped_elevation > high * 0.3048),
+                                    clipped_data
+                                )
 
-                        # Elevation bands are represented in feet
-                        masked_data = numpy.ma.masked_where(
-                            (zone_mask == 0) | (clipped_elevation < low * 0.3048) |
-                            (clipped_elevation >= high * 0.3048),
-                            clipped_data
-                        )
-
-                        self._write_row(writer, variable, zone.name, zone.zone_id, masked_data, low, high)
-                        self._write_sample(output_directory, variable, zone.name, zone.zone_id, masked_data, low, high)
+                                self._write_row(writer, variable, zone.name, zone.zone_id, masked_data, band)
+                                self._write_sample(output_directory, variable, zone.name, zone.zone_id, masked_data, low,
+                                                   high)

@@ -10,7 +10,7 @@ import ShapefileConstraint from 'seedsource/containers/ShapefileConstraint'
 const config = {
     logo,
     labels: [],
-    functions: null,
+    functions: [],
     species: [],
     text: {},
     constraints: {

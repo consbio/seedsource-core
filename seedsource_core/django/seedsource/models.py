@@ -16,14 +16,18 @@ class RunConfiguration(models.Model):
         index_together = [['owner', 'created'], ['owner', 'title']]
 
 
+class ZoneSource(models.Model):
+    name = models.CharField(max_length=100)
+
+
 class SeedZone(gis_models.Model):
     source = models.CharField(max_length=100)
+    zone_source = models.ForeignKey('ZoneSource', null=True)
     name = models.CharField(max_length=256)
     species = models.CharField(max_length=10)
-    zone_id = models.IntegerField(null=True)
+    zone_id = models.CharField(max_length=100, null=True)
     zone_uid = models.CharField(max_length=50, unique=True, null=True)
     polygon = gis_models.GeometryField(geography=True)
-    bands_fn = models.CharField(max_length=30, null=True)
 
 
 class TransferLimit(models.Model):
@@ -35,6 +39,7 @@ class TransferLimit(models.Model):
     transfer = models.FloatField()
     avg_transfer = models.FloatField(default=0)
     center = models.FloatField()
+    label = models.CharField(max_length=100, null=True)
 
 
 class Region(gis_models.Model):

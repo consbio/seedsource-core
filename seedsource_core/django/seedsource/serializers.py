@@ -57,7 +57,12 @@ class SeedZoneSerializer(serializers.ModelSerializer):
         except TransferLimit.DoesNotExist:
             return None
 
-        return [0 if transfer.low == -1 else transfer.low, transfer.high]
+        band = [0 if transfer.low == -1 else transfer.low, transfer.high]
+
+        if transfer.label is not None:
+            band.append(transfer.label)
+
+        return band
 
 
 class TransferLimitSerializer(serializers.ModelSerializer):
@@ -65,7 +70,7 @@ class TransferLimitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TransferLimit
-        fields = ('variable', 'zone', 'transfer', 'avg_transfer', 'center', 'low', 'high', 'time_period')
+        fields = ('variable', 'zone', 'transfer', 'avg_transfer', 'center', 'low', 'high', 'time_period', 'label')
 
 
 class GenerateReportSerializer(serializers.Serializer):

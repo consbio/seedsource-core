@@ -389,7 +389,11 @@ export const regions = [
     },
     {
         name: 'useast1',
-        label: "Eastern US"
+        label: 'Eastern US'
+    },
+    {
+        name: 'mexico1',
+        label: 'Mexico'
     }
 ]
 

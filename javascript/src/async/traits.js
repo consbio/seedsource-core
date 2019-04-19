@@ -9,7 +9,7 @@ import { urlEncode } from "../io"
 const { functions } = config
 
 const valueSelect = ({ runConfiguration }) => {
-    let { objective, point, climate, traits, region } = runConfiguration
+    let { objective, point, climate, traits, region, species } = runConfiguration
 
     if (point) {
         point = {x: point.x, y: point.y}
@@ -21,7 +21,8 @@ const valueSelect = ({ runConfiguration }) => {
         point,
         climate,
         traits: traits.map(item => item.name),
-        region
+        region,
+        species
     }
 }
 

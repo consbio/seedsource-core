@@ -14,7 +14,7 @@ const mapStateToProps = ({ runConfiguration }) => {
             functionSpecies = functions[0].species
         }
         else {
-            functionSpecies = functions.reduce((a, b) => [...a.species, ...b.species])
+            functionSpecies = functions.reduce((arr, func) => [...arr, ...func.species], [])
         }
         availableSpecies = speciesList.filter(item => functionSpecies.includes(item.name)).map(item => item.name)
     }

@@ -72,7 +72,7 @@ export default (state = defaultConfiguration, action) => {
                         functionSpecies = config.functions[0].species
                     }
                     else {
-                        functionSpecies = config.functions.reduce((a, b) => [...a.species, ...b.species])
+                        functionSpecies = config.functions.reduce((arr, func) => [...arr, ...func.species], [])
                     }
                     if (!functionSpecies.includes(state.species)) {
                         newState.species = functionSpecies[0]

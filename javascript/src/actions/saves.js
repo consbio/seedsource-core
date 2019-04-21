@@ -1,5 +1,6 @@
 import { get, post, put, ioDelete } from '../io'
 import { setError } from './error'
+import config from 'seedsource/config'
 
 export const SHOW_SAVE_MODAL = 'SHOW_SAVE_MODAL'
 export const HIDE_SAVE_MODAL = 'HIDE_SAVE_MODAL'
@@ -74,7 +75,7 @@ export const createSave = (configuration, title) => {
 
         dispatch(requestSave())
 
-        return post('/sst/run-configurations/', data).then(response => {
+        return post(`${config.apiRoot}run-configurations/`, data).then(response => {
             let { status } = response
 
             if (status >= 200 && status < 300) {
@@ -110,7 +111,7 @@ export const updateSave = (configuration, lastSave) => {
 
         dispatch(requestSave())
 
-        let url = '/sst/run-configurations/' + lastSave.saveId + '/'
+        let url = `${config.apiRoot}run-configurations/` + lastSave.saveId + '/'
 
         return put(url, data).then(response => {
             let { status } = response
@@ -172,7 +173,7 @@ export const fetchSaves = () => {
         if (isLoggedIn) {
             dispatch(requestSaves())
 
-            return get('/sst/run-configurations/').then(response => {
+            return get(`${config.apiRoot}run-configurations/`).then(response => {
                 let {status} = response
 
                 if (status >= 200 && status < 300) {
@@ -198,7 +199,7 @@ export const removeSave = uuid => {
 
 export const deleteSave = uuid => {
     return dispatch => {
-        let url = '/sst/run-configurations/' + uuid + '/'
+        let url = `${config.apiRoot}run-configurations/${uuid}/`
 
         return ioDelete(url).then(response => {
             let { status } = response

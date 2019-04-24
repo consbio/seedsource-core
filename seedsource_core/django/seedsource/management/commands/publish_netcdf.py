@@ -1,6 +1,7 @@
 import glob
 import os
 import shutil
+from pathlib import Path
 
 from django.conf import settings
 from django.core.management import BaseCommand, CommandError
@@ -24,14 +25,19 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('datasets',  nargs='+', type=str)
+        parser.add_argument('-d', '--directory', default=None, type=str)
         parser.add_argument('--overwrite', action='store_true', dest='overwrite')
 
-    def handle(self, datasets, overwrite, *args, **options):
+    def handle(self, datasets, directory, overwrite, *args, **options):
         old_files = []
 
         for dataset in datasets:
             filename = os.path.basename(dataset)
             name = os.path.splitext(filename)[0]
+
+            if directory is not None:
+                filename = '{}/{}'.format(directory.strip('/'), filename)
+                name = '{}/{}'.format(directory.strip('/'), name)
 
             with transaction.atomic():
                 existing = Service.objects.filter(name__iexact=name)
@@ -92,4 +98,7 @@ class Command(BaseCommand):
                 os.remove(path)
 
         for dataset in datasets:
-            shutil.copy(dataset, SERVICE_DIR)
+            target_dir = Path(SERVICE_DIR) / (directory or '')
+            if not os.path.exists(target_dir):
+                os.makedirs(target_dir)
+            shutil.copy(dataset, target_dir)

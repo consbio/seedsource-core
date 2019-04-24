@@ -6,14 +6,19 @@ const mapStateToProps = ({ runConfiguration }, { index }) => {
     let { climate, constraints, objective } = runConfiguration
     let { time, model } = (objective === 'seedlots' ? climate.seedlot : climate.site)
     let constraint = constraints[index]
-    let { species, label } = constraint.values
+    let { species, label, isRegion } = constraint.values
 
-    return {
-        year: time,
-        model,
+    const props = {
         species,
         label
     }
+
+    if (!isRegion) {  // Region constrains don't vary by time or model
+        props.year = time
+        props.model = model
+    }
+
+    return props
 }
 
 const mapDispatchToProps = dispatch => {

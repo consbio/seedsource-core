@@ -440,7 +440,11 @@ class Map extends React.Component {
                 }
             }
 
-            const elevationBand = `${zoneConfig.elevation_band[0]}-${zoneConfig.elevation_band[1]}`
+            let elevationBand = ''
+            if (zoneConfig.elevation_band !== null) {
+                elevationBand = `${zoneConfig.elevation_band[0]}-${zoneConfig.elevation_band[1]}`
+            }
+
             if (elevationBand !== this.zoneElevationBand && this.zoneElevationLayer !== null) {
                 this.map.removeLayer(this.zoneElevationLayer)
                 this.zoneElevationLayer = null

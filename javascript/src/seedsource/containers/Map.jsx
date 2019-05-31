@@ -464,10 +464,18 @@ class Map extends React.Component {
                     .tileLayer(`/tiles/${zoneConfig.elevation_service}/{z}/{x}/{y}.png`, {zIndex: 1, opacity: .5})
                     .addTo(this.map)
             }
-        } else if (this.zoneLayer !== null) {
-            this.map.removeLayer(this.zoneLayer)
-            this.zoneLayer = null
-            this.currentZone = null
+        }
+        else {
+            if (this.zoneLayer !== null) {
+                this.map.removeLayer(this.zoneLayer)
+                this.zoneLayer = null
+                this.currentZone = null
+            }
+
+            if (this.zoneElevationLayer !== null) {
+                this.map.removeLayer(this.zoneElevationLayer)
+                this.zoneElevationLayer = null
+            }
         }
     }
 

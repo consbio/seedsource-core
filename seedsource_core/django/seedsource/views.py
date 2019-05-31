@@ -24,6 +24,7 @@ from .utils import get_elevation_at_point, get_regions_for_point
 SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'seedsource-core')
 MBTILESERVER_ROOT = getattr(settings, 'MBTILESERVER_ROOT', None)
 
+
 class ToolView(TemplateView):
     template_name = 'seedsource.html'
 

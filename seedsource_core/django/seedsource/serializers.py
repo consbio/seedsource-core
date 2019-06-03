@@ -20,9 +20,6 @@ class SeedZoneSerializer(serializers.ModelSerializer):
     elevation_band = serializers.SerializerMethodField()
     elevation_service = serializers.SerializerMethodField()
 
-    _elevation = None
-    _transfer = None
-
     class Meta:
         model = SeedZone
         fields = (
@@ -31,32 +28,26 @@ class SeedZoneSerializer(serializers.ModelSerializer):
 
     @property
     def _elevation_at_point(self):
-        if self._elevation is None:
-            request = self.context['request']
+        request = self.context['request']
 
-            if not request.query_params.get('point'):
-                return None
-            else:
-                try:
-                    x, y = [float(x) for x in request.query_params['point'].split(',')]
-                except ValueError:
-                    raise ParseError()
+        if not request.query_params.get('point'):
+            return None
+        else:
+            try:
+                x, y = [float(x) for x in request.query_params['point'].split(',')]
+            except ValueError:
+                raise ParseError()
 
-                point = Point(x, y)
-                self._elevation = get_elevation_at_point(point)
-
-        return self._elevation
+            point = Point(x, y)
+            return get_elevation_at_point(point)
 
     def _transfer_limit(self, obj):
-        if self._transfer is None:
-            if self._elevation_at_point is None:
-                return None
+        if self._elevation_at_point is None:
+            return None
 
-            elevation = self._elevation_at_point / 0.3048  # Elevation bands are stored in feet, elevation is in meters
+        elevation = self._elevation_at_point / 0.3048  # Elevation bands are stored in feet, elevation is in meters
 
-            self._transfer = obj.transferlimit_set.filter(low__lt=elevation, high__gte=elevation).first()
-
-        return self._transfer
+        return obj.transferlimit_set.filter(low__lt=elevation, high__gte=elevation).first()
 
     def get_elevation_at_point(self, obj):
         return self._elevation_at_point

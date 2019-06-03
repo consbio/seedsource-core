@@ -48,7 +48,7 @@ class Map extends React.Component {
         this.legend = null
         this.zoneLayer = null
         this.zoneElevationLayer = null
-        this.zoneElevationBand = ''
+        this.zoneElevationService = null
         this.currentZone = null
         this.opacityControl = null
         this.visibilityButton = null
@@ -440,16 +440,11 @@ class Map extends React.Component {
                 }
             }
 
-            let elevationBand = ''
-            if (zoneConfig.elevation_band !== null) {
-                elevationBand = `${zoneConfig.elevation_band[0]}-${zoneConfig.elevation_band[1]}`
-            }
-
-            if (elevationBand !== this.zoneElevationBand && this.zoneElevationLayer !== null) {
+            if (zoneConfig.elevation_service !== this.zoneElevationService && this.zoneElevationLayer !== null) {
                 this.map.removeLayer(this.zoneElevationLayer)
                 this.zoneElevationLayer = null
             }
-            this.zoneElevationBand = elevationBand
+            this.zoneElevationService = zoneConfig.elevation_service
 
             if (this.zoneLayer === null) {
                 this.zoneLayer = L.geoJson(geometry, {style: () => {

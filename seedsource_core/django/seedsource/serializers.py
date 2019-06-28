@@ -18,43 +18,43 @@ class RunConfigurationSerializer(serializers.ModelSerializer):
 class SeedZoneSerializer(serializers.ModelSerializer):
     elevation_at_point = serializers.SerializerMethodField()
     elevation_band = serializers.SerializerMethodField()
-
-    _elevation = None
+    elevation_service = serializers.SerializerMethodField()
 
     class Meta:
         model = SeedZone
-        fields = ('id', 'name', 'species', 'zone_id', 'zone_uid', 'elevation_at_point', 'elevation_band')
+        fields = (
+            'id', 'name', 'species', 'zone_id', 'zone_uid', 'elevation_at_point', 'elevation_band', 'elevation_service'
+        )
 
     @property
     def _elevation_at_point(self):
-        if self._elevation is None:
-            request = self.context['request']
+        request = self.context['request']
 
-            if not request.query_params.get('point'):
-                return None
-            else:
-                try:
-                    x, y = [float(x) for x in request.query_params['point'].split(',')]
-                except ValueError:
-                    raise ParseError()
+        if not request.query_params.get('point'):
+            return None
+        else:
+            try:
+                x, y = [float(x) for x in request.query_params['point'].split(',')]
+            except ValueError:
+                raise ParseError()
 
-                point = Point(x, y)
-                self._elevation = get_elevation_at_point(point)
+            point = Point(x, y)
+            return get_elevation_at_point(point)
 
-        return self._elevation
-
-    def get_elevation_at_point(self, obj):
-        return self._elevation_at_point
-
-    def get_elevation_band(self, obj: SeedZone):
+    def _transfer_limit(self, obj):
         if self._elevation_at_point is None:
             return None
 
         elevation = self._elevation_at_point / 0.3048  # Elevation bands are stored in feet, elevation is in meters
 
-        try:
-            transfer = obj.transferlimit_set.filter(low__lt=elevation, high__gte=elevation)[:1].get()
-        except TransferLimit.DoesNotExist:
+        return obj.transferlimit_set.filter(low__lt=elevation, high__gte=elevation).first()
+
+    def get_elevation_at_point(self, obj):
+        return self._elevation_at_point
+
+    def get_elevation_band(self, obj: SeedZone):
+        transfer = self._transfer_limit(obj)
+        if transfer is None:
             return None
 
         band = [0 if transfer.low == -1 else transfer.low, transfer.high]
@@ -64,13 +64,27 @@ class SeedZoneSerializer(serializers.ModelSerializer):
 
         return band
 
+    def get_elevation_service(self, obj):
+        transfer = self._transfer_limit(obj)
+        if transfer is None:
+            return None
+
+        return transfer.elevation.name if transfer.elevation else None
+
 
 class TransferLimitSerializer(serializers.ModelSerializer):
     zone = SeedZoneSerializer()
+    elevation_service = serializers.SerializerMethodField()
 
     class Meta:
         model = TransferLimit
-        fields = ('variable', 'zone', 'transfer', 'avg_transfer', 'center', 'low', 'high', 'time_period', 'label')
+        fields = (
+            'variable', 'zone', 'transfer', 'avg_transfer', 'center', 'low', 'high', 'time_period', 'label',
+            'elevation_service'
+        )
+
+    def get_elevation_service(self, obj: TransferLimit):
+        return obj.elevation.name if obj.elevation else None
 
 
 class GenerateReportSerializer(serializers.Serializer):

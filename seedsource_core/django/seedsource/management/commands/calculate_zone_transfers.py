@@ -8,13 +8,17 @@ from django.conf import settings
 from django.contrib.gis.geos import Polygon
 from django.core.management import BaseCommand
 from django.db import transaction
-from ncdjango.models import Service
+from ncdjango.models import Service, SERVICE_DATA_ROOT, Variable
 from netCDF4 import Dataset
 from pyproj import Proj
 from rasterio.features import rasterize
 from seedsource_core.django.seedsource.models import TransferLimit, Region, ZoneSource
 from trefoil.geometry.bbox import BBox
+from trefoil.netcdf.crs import set_crs
 from trefoil.netcdf.variable import SpatialCoordinateVariables
+from trefoil.render.renderers.stretched import StretchedRenderer
+from trefoil.utilities.color import Color
+from trefoil.utilities.window import Window
 
 from ..utils import ZoneConfig
 
@@ -40,7 +44,7 @@ class Command(BaseCommand):
         x_slice = slice(*coords.x.indices_for_range(bbox.xmin, bbox.xmax))
         y_slice = slice(*coords.y.indices_for_range(bbox.ymin, bbox.ymax))
 
-        return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_bbox(bbox)
+        return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_window(Window(y_slice, x_slice))
 
     def _write_limit(self, variable, time_period, zone, masked_data, low=None, high=None, label=None):
         min_value = numpy.nanmin(masked_data)
@@ -54,7 +58,7 @@ class Command(BaseCommand):
             ))
             return
 
-        TransferLimit.objects.create(
+        tl = TransferLimit.objects.create(
             variable=variable, time_period=time_period, zone=zone, transfer=transfer, center=center, low=low,
             high=high, label=label
         )
@@ -62,6 +66,8 @@ class Command(BaseCommand):
         transfers_by_variable = self.transfers_by_source.get(zone.zone_source.name, {})
         transfers_by_variable[variable] = transfers_by_variable.get(variable, []) + [transfer]
         self.transfers_by_source[zone.zone_source.name] = transfers_by_variable
+
+        return tl
 
     def handle(self, source_name, *args, **options):
         if source_name == 'all':
@@ -158,7 +164,7 @@ class Command(BaseCommand):
                                         y_end += 1
 
                                     clipped_elevation = elevation[y_start:y_end, x_start:x_end]
-                                    clipped_data = elevation[y_start:y_end, x_start:x_end]
+                                    clipped_data = data[y_start:y_end, x_start:x_end]
 
                                     zone_mask = numpy.ones(clipped_elevation.shape)
 
@@ -185,13 +191,74 @@ class Command(BaseCommand):
                                         label = band[2]
 
                                     # Elevation bands are represented in feet
-                                    masked_data = numpy.ma.masked_where(
-                                        (zone_mask == 0) | (clipped_elevation < low * 0.3048) |
-                                        (clipped_elevation > high * 0.3048),
-                                        clipped_data
+                                    elevation_mask = (
+                                        (clipped_elevation < low * 0.3048) | (clipped_elevation > high * 0.3048)
                                     )
 
-                                    self._write_limit(variable, time_period, zone, masked_data, low, high, label)
+                                    masked_data = numpy.ma.masked_where(
+                                        (zone_mask == 0) | elevation_mask, clipped_data
+                                    )
+
+                                    limit = self._write_limit(
+                                        variable, time_period, zone, masked_data, low, high, label
+                                    )
+
+                                    if limit is None:
+                                        continue
+
+                                    elevation_service_name = 'zones/elevation/{}_{}_{}'.format(zone.zone_uid, low, high)
+                                    if Service.objects.filter(name=elevation_service_name).exists():
+                                        limit.elevation = Service.objects.get(name=elevation_service_name)
+                                    else:
+                                        masked_elevation = numpy.ma.masked_where(
+                                            (zone_mask == 0) | elevation_mask, clipped_elevation
+                                        )
+
+                                        rel_path = elevation_service_name + '.nc'
+                                        abs_path = os.path.join(SERVICE_DATA_ROOT, rel_path)
+
+                                        if not os.path.exists(os.path.dirname(abs_path)):
+                                            os.makedirs(os.path.dirname(abs_path))
+
+                                        with Dataset(abs_path, 'w', format='NETCDF4') as ds:
+                                            clipped_coords.add_to_dataset(ds, 'longitude', 'latitude')
+                                            data_var = ds.createVariable(
+                                                'data', masked_elevation.dtype, dimensions=('latitude', 'longitude'),
+                                                fill_value=masked_elevation.fill_value
+                                            )
+                                            data_var[:] = masked_elevation
+                                            set_crs(
+                                                ds, 'data', Proj('+init=epsg:4326')
+                                            )
+
+                                        renderer = StretchedRenderer([
+                                            (numpy.min(masked_elevation).item(), Color(46, 173, 60)),
+                                            (numpy.max(masked_elevation).item(), Color(46, 173, 60))
+                                        ])
+
+                                        service = Service.objects.create(
+                                            name=elevation_service_name,
+                                            description='Elevation for zone {}, {} - {}'.format(zone.name, low, high),
+                                            data_path=rel_path,
+                                            projection='+init=epsg:4326',
+                                            full_extent=clipped_coords.bbox,
+                                            initial_extent=clipped_coords.bbox
+                                        )
+                                        Variable.objects.create(
+                                            service=service,
+                                            index=0,
+                                            variable='data',
+                                            projection='+init=epsg:4326',
+                                            x_dimension='longitude',
+                                            y_dimension='latitude',
+                                            name='data',
+                                            renderer=renderer,
+                                            full_extent=clipped_coords.bbox
+                                        )
+
+                                        limit.elevation = service
+
+                                    limit.save()
 
             for source_name, transfers_by_variable in self.transfers_by_source.items():
                 for variable, transfers in transfers_by_variable.items():

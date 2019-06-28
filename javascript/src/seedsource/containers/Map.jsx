@@ -47,6 +47,8 @@ class Map extends React.Component {
         this.pointMarker = null
         this.legend = null
         this.zoneLayer = null
+        this.zoneElevationLayer = null
+        this.zoneElevationService = null
         this.currentZone = null
         this.opacityControl = null
         this.visibilityButton = null
@@ -425,24 +427,50 @@ class Map extends React.Component {
         }
     }
 
-    updateZoneLayer(method, zone, geometry) {
+    updateZoneLayer(method, zone, zoneConfig, geometry) {
         if (method === 'seedzone' && geometry !== null) {
-            if (zone !== this.currentZone && this.zoneLayer !== null) {
-                this.map.removeLayer(this.zoneLayer)
-                this.zoneLayer = null
+            if (zone !== this.currentZone) {
+                if (this.zoneLayer !== null) {
+                    this.map.removeLayer(this.zoneLayer)
+                    this.zoneLayer = null
+                }
+                if (this.zoneElevationLayer !== null) {
+                    this.map.removeLayer(this.zoneElevationLayer)
+                    this.zoneElevationLayer = null
+                }
             }
+
+            if (zoneConfig.elevation_service !== this.zoneElevationService && this.zoneElevationLayer !== null) {
+                this.map.removeLayer(this.zoneElevationLayer)
+                this.zoneElevationLayer = null
+            }
+            this.zoneElevationService = zoneConfig.elevation_service
 
             if (this.zoneLayer === null) {
                 this.zoneLayer = L.geoJson(geometry, {style: () => {
-                    return {color: '#0F0', fill: false}
+                    return {color: '#0E630B', fill: false}
                 }}).addTo(this.map)
             }
 
             this.currentZone = zone
-        } else if (this.zoneLayer !== null) {
-            this.map.removeLayer(this.zoneLayer)
-            this.zoneLayer = null
-            this.currentZone = null
+
+            if (this.zoneElevationLayer === null && zoneConfig.elevation_service !== null) {
+                this.zoneElevationLayer = L
+                    .tileLayer(`/tiles/${zoneConfig.elevation_service}/{z}/{x}/{y}.png`, {zIndex: 1, opacity: .5})
+                    .addTo(this.map)
+            }
+        }
+        else {
+            if (this.zoneLayer !== null) {
+                this.map.removeLayer(this.zoneLayer)
+                this.zoneLayer = null
+                this.currentZone = null
+            }
+
+            if (this.zoneElevationLayer !== null) {
+                this.map.removeLayer(this.zoneElevationLayer)
+                this.zoneElevationLayer = null
+            }
         }
     }
 
@@ -650,8 +678,8 @@ class Map extends React.Component {
 
         if (this.map !== null) {
             let {
-                objective, point, climate, opacity, legends, popup, unit, method,
-                zone, geometry, center, region, shapefileConstraints, layers, zoom
+                objective, point, climate, opacity, legends, popup, unit, method, zone, zoneConfig, geometry, center,
+                region, shapefileConstraints, layers, zoom
             } = this.props
 
             this.updateLayers(layers)
@@ -660,7 +688,7 @@ class Map extends React.Component {
             this.updateVisibilityButton(layers)
             this.updateOpacity(opacity)
             this.updateLegends(legends, layers, unit)
-            this.updateZoneLayer(method, zone, geometry)
+            this.updateZoneLayer(method, zone, zoneConfig, geometry)
             this.updatePopup(popup, unit)
             this.updateMapCenter(center)
             this.updateMapZoom(zoom)
@@ -697,14 +725,15 @@ const mapStateToProps = state => {
     let { runConfiguration, map, job, legends, popup, lastRun, layers } = state
     let { opacity, center, zoom } = map
     let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
-    let { geometry } = zones
-    let zone = zones.selected
+    let { geometry, selected: zone, matched } = zones
     let resultRegion = lastRun ? lastRun.region : null
     let shapefileConstraints = constraints.filter(item => item.type === 'shapefile')
 
+    let zoneConfig = matched.find(item => item.zone_uid === zone)
+
     return {
-        objective, point, climate, opacity, job, legends, popup, unit, method, geometry,
-        zone, center, zoom, region, regionMethod, resultRegion, shapefileConstraints, layers
+        objective, point, climate, opacity, job, legends, popup, unit, method, geometry, zone, zoneConfig, center,
+        zoom, region, regionMethod, resultRegion, shapefileConstraints, layers
     }
 }
 

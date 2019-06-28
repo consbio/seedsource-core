@@ -40,6 +40,7 @@ class TransferLimit(models.Model):
     avg_transfer = models.FloatField(default=0)
     center = models.FloatField()
     label = models.CharField(max_length=100, null=True)
+    elevation = models.ForeignKey('ncdjango.Service', null=True)
 
 
 class Region(gis_models.Model):

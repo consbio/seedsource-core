@@ -246,14 +246,14 @@ class Map extends React.Component {
     addBoundaryToMap(region, color, showFill = true) {
         let fillOpacity = showFill ? 0.3 : 0
         this.regionsBoundaries.setStyle(f =>
-            f.properties.region === region ? {opacity: 1, fillColor: color, fillOpacity, color, weight: 2} : undefined
+            f.properties.region === region ? {opacity: 1, fillColor: color, fillOpacity, color, weight: 2} : {}
         )
     }
 
     removeBoundaryFromMap(region) {
         let style = {opacity: 0, fillColor: 'transparent', fillOpacity: 0}
         if (region) {
-            this.regionsBoundaries.setStyle(f => f.properties.region === region ? style : undefined)
+            this.regionsBoundaries.setStyle(f => f.properties.region === region ? style : {})
         } else {
             this.regionsBoundaries.setStyle(style)
         }

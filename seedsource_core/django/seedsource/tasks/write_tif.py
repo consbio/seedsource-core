@@ -36,7 +36,10 @@ class WriteTIF(Task):
         y_step = (ex.ymax - ex.ymin) / height
         transform = Affine.from_gdal(ex.xmin, x_step, 0, ex.ymax, 0, -y_step)
         dtype = np.uint8
-        nodata = data.fill_value
+        nodata = 128
+
+        if not settings.DATASET_DOWNLOAD_DIR.exists():
+            settings.DATASET_DOWNLOAD_DIR.mkdir()
 
         fd, filename = tempfile.mkstemp(dir=settings.DATASET_DOWNLOAD_DIR, suffix='.zip')
         os.close(fd)

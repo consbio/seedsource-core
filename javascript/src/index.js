@@ -14,7 +14,7 @@ import popup from './async/popup'
 import traits from './async/traits'
 
 
-const store = createStore(reducers, applyMiddleware(thunkMiddleware))
+export const store = createStore(reducers, applyMiddleware(thunkMiddleware))
 
 render(
     <Provider store={store}>

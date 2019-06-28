@@ -10,6 +10,8 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
 from pptx.util import Inches, Pt
 
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
+
 
 class PPTCreator(object):
     def __init__(self):
@@ -111,9 +113,7 @@ class PPTCreator(object):
         method_text = self.get_transfer_method_text(method, center)
 
         slide = self.add_slide()
-        self.add_title_text(slide, 'Seedlot Selection Tool Report - {}'.format(
-            datetime.datetime.today().strftime('%m/%d/%Y')
-        ))
+        self.add_title_text(slide, '{} - {}'.format(SEEDSOURCE_TITLE, datetime.datetime.today().strftime('%m/%d/%Y')))
 
         # Body
         shape = slide.shapes.add_textbox(Inches(.65), Inches(.73), Inches(8.69), Inches(6.19))

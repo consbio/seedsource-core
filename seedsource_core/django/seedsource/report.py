@@ -30,6 +30,7 @@ from .utils import get_elevation_at_point
 ALLOWED_HOSTS = getattr(settings, 'ALLOWED_HOSTS')
 BASE_DIR = settings.BASE_DIR
 PORT = getattr(settings, 'PORT', 80)
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
 
 TILE_SIZE = (256, 256)
 IMAGE_SIZE = (645, 430)
@@ -216,7 +217,8 @@ class Report(object):
             'zone': getattr(zone, 'name', None),
             'band': band,
             'variables': self.get_context_variables(),
-            'constraints': self.get_context_constraints()
+            'constraints': self.get_context_constraints(),
+            'title': SEEDSOURCE_TITLE
         }
 
     def get_pdf_data(self) -> BytesIO:

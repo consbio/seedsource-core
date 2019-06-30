@@ -24,7 +24,7 @@ from weasyprint import HTML
 
 from .models import SeedZone, TransferLimit, Region
 from .ppt import PPTCreator
-from .report_config import VARIABLE_CONFIG, CONSTRAINT_CONFIG
+from .report_config import VARIABLE_CONFIG, TRAIT_CONFIG, CONSTRAINT_CONFIG
 from .utils import get_elevation_at_point
 
 ALLOWED_HOSTS = getattr(settings, 'ALLOWED_HOSTS')
@@ -96,6 +96,24 @@ class Report(object):
             })
 
         return variables
+
+    def get_context_traits(self):
+        traits = []
+        is_imperial = self.configuration['unit'] == 'imperial'
+
+        for trait in self.configuration['traits']:
+            name, value, transfer = trait['name'], trait['value'], trait['transfer']
+            config = TRAIT_CONFIG[name]
+
+            traits.append({
+                'label': config.label,
+                'value': config.format_value(value, is_imperial),
+                'limit': config.format_transfer(transfer, is_imperial),
+                'units': config.imperial_label if is_imperial else config.metric_label,
+                'modified': transfer != trait['defaultTransfer']
+            })
+
+        return traits
 
     def get_context_constraints(self):
         constraints = []
@@ -217,6 +235,7 @@ class Report(object):
             'zone': getattr(zone, 'name', None),
             'band': band,
             'variables': self.get_context_variables(),
+            'traits': self.get_context_traits(),
             'constraints': self.get_context_constraints(),
             'title': SEEDSOURCE_TITLE
         }

@@ -38,8 +38,23 @@ export const createReport = name => {
 
         let resultsLayer = '/tiles/' + job.serviceId + '/{z}/{x}/{y}.png'
 
+        let configuration = dumpConfiguration(lastRun)
+        configuration = Object.assign(configuration, {
+            traits: configuration.traits
+                .map(trait => {
+                    let traitConfig = config.functions.find(fn => fn.name === trait.name)
+                    if (!traitConfig) {
+                        return trait
+                    }
+                    return Object.assign(trait, {
+                        transfer: trait.transfer || traitConfig.transfer,
+                        defaultTransfer: traitConfig.transfer
+                    })
+                })
+        })
+
         let data = {
-            configuration: dumpConfiguration(lastRun),
+            configuration: configuration,
             tile_layers: [basemap, resultsLayer],
             zoom,
             center,

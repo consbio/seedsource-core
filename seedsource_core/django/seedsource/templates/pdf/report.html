@@ -193,7 +193,7 @@
         {% endif %}
     </div>
 
-    {% if method == "Seed Zone" %}
+    {% if method == "seedzone" %}
         <div>&nbsp;</div>
 
         <div><strong>Species:</strong> {{ species }}</div>
@@ -203,30 +203,57 @@
         <div><strong>Seed zone:</strong> {{ zone }}{% if band %}, {{ band.0 }}' - {{ band.1 }}'{% endif %}</div>
     {% endif %}
 
-    <h3>Climate variables</h3>
-    <div>
-        <table class="variables">
-            <thead>
-                <tr>
-                    <th>Variable</th>
-                    <th>Center</th>
-                    <th>Transfer limit (+/-)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for variable in variables %}
+    {% if method == "function" %}
+        <h3>Traits</h3>
+        <div>
+            <table class="variables">
+                <thead>
                     <tr>
-                        <td>{{ variable.label }}</td>
-                        <td>{{ variable.value }} {{ variable.units|safe }}</td>
-                        <td>
-                            {{ variable.limit }} {{ variable.units|safe }}
-                            {% if variable.modified %}(modified){% endif %}
-                        </td>
+                        <th>Trait</th>
+                        <th>Center</th>
+                        <th>Transfer limit (+/-)</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    {% for trait in traits %}
+                        <tr>
+                            <td>{{ trait.label }}</td>
+                            <td>{{ trait.value }} {{ trait.units|safe }}</td>
+                            <td>
+                                {{ trait.limit }} {{ trait.units|safe }}
+                                {% if trait.modified %}(modified{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <h3>Climate variables</h3>
+        <div>
+            <table class="variables">
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Center</th>
+                        <th>Transfer limit (+/-)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variable in variables %}
+                        <tr>
+                            <td>{{ variable.label }}</td>
+                            <td>{{ variable.value }} {{ variable.units|safe }}</td>
+                            <td>
+                                {{ variable.limit }} {{ variable.units|safe }}
+                                {% if variable.modified %}(modified){% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 
     {% if constraints %}
         <h3>Constraints</h3>

@@ -51,6 +51,10 @@ def format_whole_value(value, is_imperial):
     return str(round(value))
 
 
+def format_no_units(value, is_imperial):
+    return '{:.1f}'.format(round(value, 1))
+
+
 VARIABLE_CONFIG = {
     'MAT': Variable(
         'Mean annual temperature', 10, format_temperature_value, format_temperature_transfer, '&deg;C', '&deg;F'
@@ -85,6 +89,12 @@ VARIABLE_CONFIG = {
     ),
     'Eref': Variable('Hargreaves reference evaporation', 1, format_precip_value, format_precip_value, 'mm', 'in'),
     'CMD': Variable('Hargreaves climatic moisture deficit', 1, format_precip_value, format_precip_value, 'mm', 'in')
+}
+
+
+TRAIT_CONFIG = {
+    'FD': Variable('Flower Date', 1, format_temperature_value, format_temperature_value, 'days', 'days'),
+    'S': Variable('Survival', 1, format_no_units, format_no_units, '', '')
 }
 
 

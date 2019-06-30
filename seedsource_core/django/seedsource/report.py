@@ -31,6 +31,7 @@ ALLOWED_HOSTS = getattr(settings, 'ALLOWED_HOSTS')
 BASE_DIR = settings.BASE_DIR
 PORT = getattr(settings, 'PORT', 80)
 SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
+PDF_TEMPLATE = getattr(settings, 'REPORT_PDF_TEMPLATE', 'pdf/report.html')
 
 TILE_SIZE = (256, 256)
 IMAGE_SIZE = (645, 430)
@@ -231,7 +232,7 @@ class Report(object):
             'site_model': self.get_model(climates['site']),
             'method': method,
             'center': self.configuration['center'],
-            'species': self.configuration['species'] if method == 'seedzone' else None,
+            'species': self.configuration.get('species') if method in ('seedzone', 'function') else None,
             'zone': getattr(zone, 'name', None),
             'band': band,
             'variables': self.get_context_variables(),
@@ -244,7 +245,7 @@ class Report(object):
         pdf_data = BytesIO()
 
         HTML(
-            BytesIO(render_to_string('pdf/report.html', self.get_context()).encode())
+            BytesIO(render_to_string(PDF_TEMPLATE, self.get_context()).encode())
         ).write_pdf(pdf_data)
 
         return pdf_data

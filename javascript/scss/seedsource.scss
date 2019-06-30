@@ -531,11 +531,19 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 .layers-tab {
   margin: 0 10px;
   font-size: 1rem;
-}
 
-.layers-tab .title {
-  margin: 10px 0px;
-  font-size: 1.25rem;
+  .title {
+    margin: 10px 0px;
+    font-size: 1.25rem;
+  }
+
+  .menu-list li ul {
+    border-left: none;
+  }
+
+  .layer-list {
+    padding: .5rem 0;
+  }
 }
 
 .preview-map {
@@ -546,8 +554,4 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 
 .report-preview .modal-card-foot {
   justify-content: flex-end;
-}
-
-.layer-list {
-  padding: .5rem 0;
 }

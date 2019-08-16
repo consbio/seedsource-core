@@ -14,7 +14,7 @@ setup(
         'aiohttp',
         'trefoil',
         'django<2',
-        'djangorestframework',
+        'djangorestframework<3.8',
         'gdal==2.2.*',
         'geopy',
         'mercantile',

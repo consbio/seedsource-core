@@ -46,11 +46,12 @@ export const runJob = configuration => {
         * planting site climate.
         */
         let selectedClimate = objective === 'seedlots' ? climate.seedlot : climate.site
+        let { time: year } = selectedClimate
 
         let inputs = {
             region: region,
             year: selectedClimate.time,
-            model: selectedClimate.model === null ? undefined : selectedClimate.model,
+            model: (year === '1961_1990' || year === '1981_2010') ? undefined : selectedClimate.model,
             variables: variables.map(item => {
                 let { name, value, transfer } = item
                 return {

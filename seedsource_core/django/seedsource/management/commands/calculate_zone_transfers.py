@@ -15,7 +15,7 @@ from rasterio.features import rasterize
 from seedsource_core.django.seedsource.models import TransferLimit, Region, ZoneSource
 from trefoil.geometry.bbox import BBox
 from trefoil.netcdf.crs import set_crs
-from trefoil.netcdf.variable import SpatialCoordinateVariables
+from trefoil.netcdf.variable import SpatialCoordinateVariables, SpatialCoordinateVariable
 from trefoil.render.renderers.stretched import StretchedRenderer
 from trefoil.utilities.color import Color
 from trefoil.utilities.window import Window
@@ -43,6 +43,11 @@ class Command(BaseCommand):
 
         x_slice = slice(*coords.x.indices_for_range(bbox.xmin, bbox.xmax))
         y_slice = slice(*coords.y.indices_for_range(bbox.ymin, bbox.ymax))
+
+        if x_slice.stop - x_slice.start < 2:
+            x_slice = slice(x_slice.start, x_slice.start + 2)
+        if y_slice.stop - y_slice.start < 2:
+            y_slice = slice(y_slice.start, y_slice.start + 2)
 
         return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_window(Window(y_slice, x_slice))
 

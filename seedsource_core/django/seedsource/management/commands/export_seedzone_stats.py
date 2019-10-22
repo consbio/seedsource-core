@@ -17,6 +17,7 @@ from seedsource_core.django.seedsource.management.utils import ZoneConfig
 from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
 from trefoil.geometry.bbox import BBox
 from trefoil.netcdf.variable import SpatialCoordinateVariables
+from trefoil.utilities.window import Window
 
 VARIABLES = (
     'AHM', 'CMD', 'DD5', 'DD_0', 'EMT', 'Eref', 'EXT', 'FFP', 'MAP', 'MAT', 'MCMT', 'MSP', 'MWMT', 'PAS', 'SHM', 'TD'
@@ -40,7 +41,7 @@ class Command(BaseCommand):
         if y_slice.stop - y_slice.start < 1:
             y_slice = slice(y_slice.start, y_slice.start + 1)
 
-        return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_bbox(bbox)
+        return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_window(Window(y_slice, x_slice))
 
     def _write_row(self, writer, variable, zone_file, zone_id, masked_data, band):
         min_value = numpy.nanmin(masked_data)

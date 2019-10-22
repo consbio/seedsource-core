@@ -35,6 +35,11 @@ class Command(BaseCommand):
         x_slice = slice(*coords.x.indices_for_range(bbox.xmin, bbox.xmax))
         y_slice = slice(*coords.y.indices_for_range(bbox.ymin, bbox.ymax))
 
+        if x_slice.stop - x_slice.start < 1:
+            x_slice = slice(x_slice.start, x_slice.start + 1)
+        if y_slice.stop - y_slice.start < 1:
+            y_slice = slice(y_slice.start, y_slice.start + 1)
+
         return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_bbox(bbox)
 
     def _write_row(self, writer, variable, zone_file, zone_id, masked_data, band):

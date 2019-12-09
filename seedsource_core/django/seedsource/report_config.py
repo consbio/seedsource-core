@@ -94,7 +94,11 @@ VARIABLE_CONFIG = {
 
 TRAIT_CONFIG = {
     'FD': Variable('Flower Date', 1, format_temperature_value, format_temperature_value, 'days', 'days'),
-    'S': Variable('Survival', 1, format_no_units, format_no_units, '', '')
+    'S': Variable('Survival', 1, format_no_units, format_no_units, '', ''),
+    'S-atva': Variable('Survival', 1, format_no_units, format_no_units, '', ''),
+    'PC1': Variable('PC1', 1, format_no_units, format_no_units, '', ''),
+    'PC2': Variable('PC2', 1, format_no_units, format_no_units, '', ''),
+    'PC3': Variable('PC3', 1, format_no_units, format_no_units, '', '')
 }
 
 

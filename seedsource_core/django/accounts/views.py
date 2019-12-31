@@ -102,11 +102,11 @@ class LostPasswordView(GenericAPIView):
         )
 
         body = get_template('emails/password_reset.txt').render({
-            'email': email,
+            'email': user.email,
             'url': request.build_absolute_uri(reverse('reset_password', args=(token.token,)))
         })
 
-        send_mail('Seedlot Selection Tool: Reset Password', body, 'donotreply@seedlotselectiontool.org', [email])
+        send_mail('Seedlot Selection Tool: Reset Password', body, 'donotreply@seedlotselectiontool.org', [user.email])
 
         return Response()
 

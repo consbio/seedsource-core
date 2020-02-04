@@ -95,13 +95,13 @@ class Command(BaseCommand):
             for source in sources:
                 TransferLimit.objects.filter(zone__source=source).delete()
 
-                last_region = None
-
                 with ZoneConfig(source.name) as config:
                     zones = source.seedzone_set.all()
                     for time_period in ('1961_1990', '1981_2010'):
                         for variable in VARIABLES:
                             self.stdout.write('Processing {} for {}...'.format(variable, time_period))
+
+                            last_region = None
 
                             for zone in zones:
                                 self.stdout.write(zone.name)

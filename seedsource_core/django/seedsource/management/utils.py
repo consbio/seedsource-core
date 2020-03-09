@@ -89,8 +89,8 @@ class ZoneConfig:
 
                 else:
                     warnings.warn(
-                        UserWarning,
                         f"{src_filename} is not in WGS84 coordinates, it will be reprojected on the fly, which may be slow!",
+                        UserWarning,
                     )
 
                 for feature in Bar(f"Processing {self.name}", max=len(shp)).iter(shp):

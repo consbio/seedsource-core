@@ -89,7 +89,9 @@ class ZoneConfig:
 
                 else:
                     warnings.warn(
-                        f"{src_filename} is not in WGS84 coordinates, it will be reprojected on the fly, which may be slow!",
+                        "{} is not in WGS84 coordinates, it will be reprojected on the fly, which may be slow!".format(
+                            src_filename
+                        ),
                         UserWarning,
                     )
 

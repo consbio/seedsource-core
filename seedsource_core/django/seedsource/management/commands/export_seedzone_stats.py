@@ -10,7 +10,7 @@ import numpy
 from progress.bar import Bar
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
-from django.contrib.gis.db.models.functions import Area
+from django.contrib.gis.db.models.functions import Area, Intersection, MakeValid
 from django.core.management import BaseCommand, CommandError
 from ncdjango.models import Service
 from netCDF4 import Dataset
@@ -47,6 +47,8 @@ HEADER = [
     "samples",
     "zone_file",
     "zone",
+    "zone_acres",
+    "zone_band_pixels",
     "band_low",
     "band_high",
     "band_label",
@@ -56,12 +58,14 @@ HEADER = [
     "max",
     "transfer",
     "center",
+    "p1",
     "p5",
     "p95",
-    "p_transfer",
-    "p_center",
-    "zone_band_pixels",
-    "zone_acres",
+    "p99",
+    "p5_95_transfer",
+    "p5_95_center",
+    "p1_99_transfer",
+    "p1_99_center",
 ]
 
 
@@ -138,18 +142,21 @@ class Command(BaseCommand):
 
         return (y_slice, x_slice), transform
 
-    def _write_row(
-        self, writer, variable, zone_file, zone_id, masked_data, band, acres
-    ):
-        min_value = numpy.nanmin(masked_data)
-        max_value = numpy.nanmax(masked_data)
+    def _write_row(self, writer, variable, zone_file, zone_id, data, band, acres):
+        data = data[data != numpy.nan]
+
+        min_value = data.min()
+        max_value = data.max()
         transfer = (max_value - min_value) / 2.0
         center = max_value - transfer
 
-        p5 = numpy.nanpercentile(masked_data, 5)
-        p95 = numpy.nanpercentile(masked_data, 95)
-        p_transfer = (p95 - p5) / 2.0
-        p_center = p95 - p_transfer
+        p1, p5, p50, p95, p99 = numpy.percentile(data, [1, 5, 50, 95, 99])
+
+        p5_95_transfer = (p95 - p5) / 2.0
+        p5_95_center = p95 - p5_95_transfer
+
+        p1_99_transfer = (p99 - p1) / 2.0
+        p1_99_center = p99 - p1_99_transfer
 
         low, high = band[:2]
         label = None
@@ -163,29 +170,33 @@ class Command(BaseCommand):
             ),
             "zone_file": zone_file,
             "zone": zone_id,
+            "zone_acres": acres,
+            "zone_band_pixels": len(data),
             "band_low": low,
             "band_high": high,
             "band_label": label,
-            "median": float(numpy.ma.median(masked_data)),
-            "mean": numpy.nanmean(masked_data),
+            "median": p50,
+            "mean": data.mean(),
             "min": min_value,
             "max": max_value,
             "transfer": transfer,
             "center": center,
+            "p1": p1,
             "p5": p5,
             "p95": p95,
-            "p_transfer": p_transfer,
-            "p_center": p_center,
-            "zone_band_pixels": (masked_data != numpy.nan).sum(),
-            "zone_acres": acres,
+            "p99": p99,
+            "p5_95_transfer": p5_95_transfer,
+            "p5_95_center": p5_95_center,
+            "p1_99_transfer": p1_99_transfer,
+            "p1_99_center": p1_99_center,
         }
 
         writer.writerow(results)
 
     def _write_sample(
-        self, output_directory, variable, zone_file, zone_id, masked_data, low, high
+        self, output_directory, variable, zone_file, zone_id, data, low, high
     ):
-        sample = masked_data.copy()
+        sample = data.copy()
         numpy.random.shuffle(sample)
         sample = sample[:1000]
 
@@ -221,7 +232,6 @@ class Command(BaseCommand):
             variables = VARIABLES
 
         else:
-            print("user variables", variables)
             variables = [v for v in variables.split(",") if v in set(VARIABLES)]
             if len(variables) == 0:
                 raise CommandError(
@@ -266,10 +276,21 @@ class Command(BaseCommand):
 
                     acres = round(zone.area_meters.sq_m * 0.000247105, 1)
 
-                    # TODO: tune this to get region with highest overlap
-                    region = Region.objects.filter(
-                        polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
-                    ).first()
+                    extent = Polygon.from_bbox(zone.polygon.extent)
+                    regions = Region.objects.filter(polygons__intersects=extent)
+
+                    if len(regions) == 1:
+                        region = regions.first()
+                    else:
+                        # calculate amount of overlap
+                        region = (
+                            regions.annotate(
+                                overlap=Area(Intersection("polygons", extent))
+                            )
+                            .order_by("-overlap")
+                            .first()
+                        )
+                        # print("region", region.name)
 
                     if region != last_region:
                         last_region = region

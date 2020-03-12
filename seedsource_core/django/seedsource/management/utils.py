@@ -1,122 +1,36 @@
-import importlib
-import os
-import shutil
-import tempfile
-import warnings
-from zipfile import ZipFile
+from django.contrib.gis.geos import Polygon
+from django.contrib.gis.db.models.functions import Area, Intersection
 
-import fiona
-from django.conf import settings
-from progress.bar import Bar
-
-from django.contrib.gis.geos import MultiPolygon, Polygon, LinearRing
-from django.core.management import CommandError
-from rasterio.warp import transform_geom
-
-SEEDZONES_LOCATION = getattr(settings, "SEEDZONES_LOCATION", "data/seedzones")
+from seedsource_core.django.seedsource.models import Region
 
 
-class ZoneConfig:
-    def __init__(self, name):
-        self.name = name
-        self.dir = None
-        self.is_tmp = False
-        self.config = None
+def get_region_for_zone(zone):
+    """Returns the best region for the zone based on amount of overlap with the zone's bounding box.
 
-    def __enter__(self):
-        if os.path.exists(os.path.join(SEEDZONES_LOCATION, self.name)):
-            self.dir = os.path.join(SEEDZONES_LOCATION, self.name)
-            self.is_tmp = False
-        elif os.path.exists(
-            os.path.join(SEEDZONES_LOCATION, "{}.zip".format(self.name))
-        ):
-            self.is_tmp = True
-            self.dir = tempfile.mkdtemp()
-            try:
-                with ZipFile(
-                    os.path.join(SEEDZONES_LOCATION, "{}.zip".format(self.name))
-                ) as zf:
-                    zf.extractall(self.dir)
-            except:
-                try:
-                    shutil.rmtree(self.dir)
-                except OSError:
-                    pass
-                raise
-        else:
-            raise CommandError("Could not find data for zone {}".format(self.name))
+    If the zone only falls within one region, that region is returned.
 
-        config_src_path = os.path.join(self.dir, "config.py")
-        if os.path.exists(config_src_path):
-            spec = importlib.util.spec_from_file_location(
-                "{}.config".format(self.name), config_src_path
-            )
-            config = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(config)
+    Otherwise, this calculates the amount of overlap between the zone's bounding box and the region
+    and returns the one with the highest amount of overlap, as an approximation of the region that
+    contains most or all of the zone polygon.
 
-            self.config = config.Config()
-            return self
-        else:
-            raise CommandError("Could not find `config.py` in zone directory")
+    Parameters
+    ----------
+    extent : SeedZone instance
 
-    def __exit__(self, *args):
-        if self.is_tmp:
-            try:
-                shutil.rmtree(self.dir)
-            except OSError:
-                pass
+    Returns
+    -------
+    Region instance
+    """
+    extent = Polygon.from_bbox(zone.polygon.extent)
+    regions = Region.objects.filter(polygons__intersects=extent)
 
-    @property
-    def source(self):
-        return self.config.source
+    if len(regions) == 1:
+        return regions.first()
 
-    @property
-    def label(self):
-        return self.config.label
+    # calculate amount of overlap and return one with highest overlap with extent
+    return (
+        regions.annotate(overlap=Area(Intersection("polygons", extent)))
+        .order_by("-overlap")
+        .first()
+    )
 
-    def get_zones(self):
-        for file in self.config.files:
-            src_filename = os.path.join(self.dir, file)
-
-            with fiona.open(src_filename) as shp:
-                reproject = True
-                if (
-                    shp.crs
-                    and "init" in shp.crs
-                    and shp.crs["init"].lower() == "epsg:4326"
-                ):
-                    reproject = False
-
-                else:
-                    warnings.warn(
-                        "{} is not in WGS84 coordinates, it will be reprojected on the fly, which may be slow!".format(
-                            src_filename
-                        ),
-                        UserWarning,
-                    )
-
-                for feature in Bar(f"Processing {self.name}", max=len(shp)).iter(shp):
-                    geometry = feature["geometry"]
-                    if reproject:
-                        geometry = transform_geom(
-                            shp.crs, {"init": "EPSG:4326"}, geometry
-                        )
-
-                    if feature["geometry"]["type"] == "MultiPolygon":
-                        polygon = MultiPolygon(
-                            *[
-                                Polygon(*[LinearRing(x) for x in g])
-                                for g in geometry["coordinates"]
-                            ]
-                        )
-                    else:
-                        polygon = Polygon(
-                            *[LinearRing(x) for x in geometry["coordinates"]]
-                        )
-
-                    info = self.config.get_zone_info(feature, file)
-                    if info is not None:
-                        yield polygon, info
-
-    def get_elevation_bands(self, zone, low, high):
-        return self.config.get_elevation_bands(zone, low, high)

@@ -4,7 +4,7 @@ from django.core.management import BaseCommand, CommandError
 from django.db import transaction
 from seedsource_core.django.seedsource.models import SeedZone, ZoneSource
 
-from ..utils import ZoneConfig
+from ..zoneconfig import ZoneConfig
 
 SEEDZONES_LOCATION = getattr(settings, "SEEDZONES_LOCATION", "data/seedzones")
 

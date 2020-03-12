@@ -44,14 +44,15 @@ VARIABLES = (
 VARIABLE_NAME = "{}_1961_1990Y_{}"
 
 HEADER = [
-    "samples",
-    "zone_file",
+    "id",
+    "source",
+    "species",
     "zone",
     "zone_acres",
-    "zone_band_pixels",
     "band_low",
     "band_high",
     "band_label",
+    "zone_band_pixels",
     "median",
     "mean",
     "min",
@@ -66,6 +67,7 @@ HEADER = [
     "p5_95_center",
     "p1_99_transfer",
     "p1_99_center",
+    "samples",
 ]
 
 
@@ -132,17 +134,20 @@ class Command(BaseCommand):
         x_slice = slice(*coords.x.indices_for_range(bbox.xmin, bbox.xmax))
         y_slice = slice(*coords.y.indices_for_range(bbox.ymin, bbox.ymax))
 
-        if x_slice.stop - x_slice.start < 1:
-            x_slice = slice(x_slice.start, x_slice.start + 1)
-        if y_slice.stop - y_slice.start < 1:
-            y_slice = slice(y_slice.start, y_slice.start + 1)
+        # make sure that we read at least one pixel
+        if x_slice.stop - x_slice.start <= 1:
+            x_slice = slice(x_slice.start, x_slice.start + 2)
+        if y_slice.stop - y_slice.start <= 1:
+            y_slice = slice(y_slice.start, y_slice.start + 2)
 
         # get transform object for the slices
         transform = coords.slice_by_window(Window(y_slice, x_slice)).affine
 
         return (y_slice, x_slice), transform
 
-    def _write_row(self, writer, variable, zone_file, zone_id, data, band, acres):
+    def _write_row(
+        self, writer, variable, id, source, species, zone_id, data, band, acres
+    ):
         data = data[data != numpy.nan]
 
         min_value = data.min()
@@ -163,18 +168,18 @@ class Command(BaseCommand):
         if len(band) > 2:
             label = band[2]
 
+        band_id = "{}_{}_{}".format(id, low, high)
+
         results = {
-            "samples": os.path.join(
-                "{}_samples".format(variable),
-                "{}_zone_{}_{}_{}.txt".format(zone_file, zone_id, low, high),
-            ),
-            "zone_file": zone_file,
+            "id": band_id,
+            "source": source,
+            "species": species,
             "zone": zone_id,
             "zone_acres": acres,
-            "zone_band_pixels": len(data),
             "band_low": low,
             "band_high": high,
             "band_label": label,
+            "zone_band_pixels": len(data),
             "median": p50,
             "mean": data.mean(),
             "min": min_value,
@@ -189,20 +194,17 @@ class Command(BaseCommand):
             "p5_95_center": p5_95_center,
             "p1_99_transfer": p1_99_transfer,
             "p1_99_center": p1_99_center,
+            "samples": os.path.join("{}.txt".format(band_id)),
         }
 
         writer.writerow(results)
 
-    def _write_sample(
-        self, output_directory, variable, zone_file, zone_id, data, low, high
-    ):
+    def _write_sample(self, output_directory, variable, id, zone_id, data, low, high):
         sample = data.copy()
         numpy.random.shuffle(sample)
         sample = sample[:1000]
 
-        filename = "{}_zone_{}_{}_{}.txt".format(zone_file, zone_id, low, high).replace(
-            "/", "_"
-        )
+        filename = "{}_{}_{}.txt".format(id, low, high)
 
         with open(
             os.path.join(output_directory, "{}_samples".format(variable), filename), "w"
@@ -217,12 +219,14 @@ class Command(BaseCommand):
             os.makedirs(output_directory)
 
         if zoneset is None or zoneset.strip() == "":
-            sources = ZoneSource.objects.all()
+            sources = ZoneSource.objects.all().order_by("name")
             if len(sources) == 0:
                 raise CommandError("No zonesets available to analyze")
 
         else:
-            sources = ZoneSource.objects.filter(name__in=zoneset.split(","))
+            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by(
+                "name"
+            )
             if len(sources) == 0:
                 raise CommandError(
                     "No zonesets available to analyze that match --zones values"
@@ -268,7 +272,6 @@ class Command(BaseCommand):
             zones = source.seedzone_set.annotate(area_meters=Area("polygon")).all()
 
             with ZoneConfig(source.name) as config:
-                # for zone in source.seedzone_set.all():
                 for zone in Bar(
                     "Processing {} zones".format(source.name),
                     max=source.seedzone_set.count(),
@@ -321,6 +324,10 @@ class Command(BaseCommand):
                     # extract all data not masked out as nodata or outside zone
                     masked_dem = clipped_elevation[~mask]
 
+                    # if there are no pixels in the mask, skip this zone
+                    if len(masked_dem) == 0:
+                        continue
+
                     min_elevation = max(math.floor(numpy.nanmin(masked_dem)), 0)
                     max_elevation = math.ceil(numpy.nanmax(masked_dem))
 
@@ -355,14 +362,14 @@ class Command(BaseCommand):
                             self._write_row(
                                 writers[variable],
                                 variable,
-                                zone.name,
+                                zone.zone_uid,
+                                zone.source,
+                                zone.species,
                                 zone.zone_id,
                                 masked_data,
                                 band,
                                 acres,
                             )
-
-                            # results[variable].append(result)
 
                             sample_dir = os.path.join(
                                 output_directory, "{}_samples".format(variable)
@@ -371,7 +378,7 @@ class Command(BaseCommand):
                             self._write_sample(
                                 output_directory,
                                 variable,
-                                zone.name,
+                                zone.zone_uid,
                                 zone.zone_id,
                                 masked_data,
                                 low,

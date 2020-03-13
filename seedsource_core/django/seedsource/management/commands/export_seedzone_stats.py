@@ -130,17 +130,20 @@ class Command(BaseCommand):
 
                         # calculate area of zone polygon in acres
                         poly_acres = round(zone.area_meters.sq_m * 0.000247105, 1)
+                        zone_xmin, zone_ymin, zone_xmax, zone_ymax = zone.polygon.extent
+                        zone_ctr_x = round(((zone_xmax - zone_xmin) / 2) + zone_xmin, 5)
+                        zone_ctr_y = round(((zone_ymax - zone_ymin) / 2) + zone_ymin, 5)
 
                         region = get_region_for_zone(zone)
                         elevation_ds.load_region(region.name)
                         climate.load_region(region.name)
 
-                        window, transform = elevation_ds.get_read_window(
+                        window, coords = elevation_ds.get_read_window(
                             zone.polygon.extent
                         )
+                        transform = coords.affine
 
-                        # Convert elevation from meters to feet
-                        elevation = elevation_ds.data[window] / 0.3048
+                        elevation = elevation_ds.data[window]
 
                         # calculate pixel area based on UTM centered on window
                         pixel_area = round(
@@ -164,10 +167,11 @@ class Command(BaseCommand):
                         mask = nodata_mask | zone_mask
 
                         # extract all data not masked out as nodata or outside zone
-                        elevation = elevation[~mask]
+                        # convert to feet
+                        elevation = elevation[~mask] / 0.3048
 
                         # if there are no pixels in the mask, skip this zone
-                        if len(elevation) == 0:
+                        if elevation.size == 0:
                             continue
 
                         min_elevation = max(math.floor(numpy.nanmin(elevation)), 0)
@@ -196,7 +200,7 @@ class Command(BaseCommand):
                                 # then apply variable's nodata mask
                                 band_data = band_data[band_data != ds.nodata_value]
 
-                                if not len(band_data):
+                                if not band_data.size:
                                     continue
 
                                 writer.write_row(
@@ -213,6 +217,12 @@ class Command(BaseCommand):
                                     zone_pixels=elevation.size,
                                     zone_acres=elevation.size * pixel_area,
                                     zone_band_acres=band_data.size * pixel_area,
+                                    zone_ctr_x=zone_ctr_x,
+                                    zone_ctr_y=zone_ctr_y,
+                                    zone_xmin=round(zone_xmin, 5),
+                                    zone_ymin=round(zone_ymin, 5),
+                                    zone_xmax=round(zone_xmax, 5),
+                                    zone_ymax=round(zone_ymax, 5),
                                 )
 
                                 self._write_sample(

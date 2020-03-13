@@ -40,6 +40,7 @@ class DatasetWrapper(object):
     def close(self):
         if self.dataset is not None:
             self.dataset.close()
+            self.dataset = None
 
 
 class ElevationDataset(DatasetWrapper):

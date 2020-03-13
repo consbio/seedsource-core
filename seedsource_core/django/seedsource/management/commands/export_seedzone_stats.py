@@ -13,7 +13,10 @@ from django.core.management import BaseCommand, CommandError
 from django.contrib.gis.db.models.functions import Area
 from rasterio.features import rasterize
 from seedsource_core.django.seedsource.management.constants import VARIABLES
-from seedsource_core.django.seedsource.management.utils import get_region_for_zone
+from seedsource_core.django.seedsource.management.utils import (
+    get_region_for_zone,
+    calculate_pixel_area,
+)
 from seedsource_core.django.seedsource.management.dataset import (
     ElevationDataset,
     ClimateDatasets,
@@ -109,7 +112,11 @@ class Command(BaseCommand):
 
         with StatsWriters(output_directory, variables) as writer:
             for source in sources:
-                zones = source.seedzone_set.annotate(area_meters=Area("polygon")).all()
+                zones = (
+                    source.seedzone_set.annotate(area_meters=Area("polygon"))
+                    .all()
+                    .order_by("zone_id")
+                )
 
                 with ZoneConfig(
                     source.name
@@ -122,7 +129,7 @@ class Command(BaseCommand):
                     ).iter(zones):
 
                         # calculate area of zone polygon in acres
-                        acres = round(zone.area_meters.sq_m * 0.000247105, 1)
+                        poly_acres = round(zone.area_meters.sq_m * 0.000247105, 1)
 
                         region = get_region_for_zone(zone)
                         elevation_ds.load_region(region.name)
@@ -134,6 +141,15 @@ class Command(BaseCommand):
 
                         # Convert elevation from meters to feet
                         elevation = elevation_ds.data[window] / 0.3048
+
+                        # calculate pixel area based on UTM centered on window
+                        pixel_area = round(
+                            calculate_pixel_area(
+                                transform, elevation.shape[1], elevation.shape[0]
+                            )
+                            * 0.000247105,
+                            1,
+                        )
 
                         zone_mask = rasterize(
                             (json.loads(zone.polygon.geojson),),
@@ -189,9 +205,14 @@ class Command(BaseCommand):
                                     band,
                                     band_data,
                                     source=zone.source,
-                                    species=zone.species,
+                                    species=zone.species.upper()
+                                    if zone.species != "generic"
+                                    else zone.species,
                                     zone=zone.zone_id,
-                                    zone_acres=acres,
+                                    zone_poly_acres=poly_acres,
+                                    zone_pixels=elevation.size,
+                                    zone_acres=elevation.size * pixel_area,
+                                    zone_band_acres=band_data.size * pixel_area,
                                 )
 
                                 self._write_sample(

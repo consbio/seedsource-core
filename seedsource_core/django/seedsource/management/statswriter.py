@@ -10,15 +10,19 @@ HEADER = [
     "source",
     "species",
     "zone",
+    "zone_poly_acres",
     "zone_acres",
+    "zone_pixels",
     "band_low",
     "band_high",
     "band_label",
+    "zone_band_acres",
     "zone_band_pixels",
     "median",
     "mean",
     "min",
     "max",
+    "range",
     "transfer",
     "center",
     "p1",
@@ -27,8 +31,10 @@ HEADER = [
     "p99",
     "p5_95_transfer",
     "p5_95_center",
+    "p5_95_range",
     "p1_99_transfer",
     "p1_99_center",
+    "p1_99_range",
     "samples",
 ]
 
@@ -89,9 +95,11 @@ class StatsWriter(object):
 
         p5_95_transfer = (p95 - p5) / 2.0
         p5_95_center = p95 - p5_95_transfer
+        p5_95_range = p95 - p5
 
         p1_99_transfer = (p99 - p1) / 2.0
         p1_99_center = p99 - p1_99_transfer
+        p1_99_range = p99 - p1
 
         low, high = band[:2]
         label = None
@@ -110,6 +118,7 @@ class StatsWriter(object):
             "mean": data.mean(),
             "min": min_value,
             "max": max_value,
+            "range": max_value - min_value,
             "transfer": transfer,
             "center": center,
             "p1": p1,
@@ -118,8 +127,10 @@ class StatsWriter(object):
             "p99": p99,
             "p5_95_transfer": p5_95_transfer,
             "p5_95_center": p5_95_center,
+            "p5_95_range": p5_95_range,
             "p1_99_transfer": p1_99_transfer,
             "p1_99_center": p1_99_center,
+            "p1_99_range": p1_99_range,
             "samples": os.path.join("{}.txt".format(band_id)),
         }
 

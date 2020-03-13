@@ -103,7 +103,7 @@ class ElevationDataset(DatasetWrapper):
 
         Returns
         -------
-        (y_slice, x_slice), transform
+        (y_slice, x_slice), SpatialCoordinateVariables
         """
         # Calculate indexes to slice based on extent
         bbox = BBox(extent)
@@ -116,10 +116,10 @@ class ElevationDataset(DatasetWrapper):
         if y_slice.stop - y_slice.start <= 1:
             y_slice = slice(y_slice.start, y_slice.start + 2)
 
-        # get transform object for the slices
-        transform = self.coords.slice_by_window(Window(y_slice, x_slice)).affine
+        # get updated coords for the slices
+        coords = self.coords.slice_by_window(Window(y_slice, x_slice))
 
-        return (y_slice, x_slice), transform
+        return (y_slice, x_slice), coords
 
 
 class ClimateDataset(DatasetWrapper):

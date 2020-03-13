@@ -50,7 +50,6 @@ class Command(BaseCommand):
                 "Deleting all zone sets and zones.  This might take a while..."
             )
             ZoneSource.objects.all().delete()
-            # SeedZone.objects.all().delete()
 
         if zone_name:
             zone_names = [zone_name]

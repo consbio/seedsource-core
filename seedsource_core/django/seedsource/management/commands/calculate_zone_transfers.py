@@ -34,9 +34,6 @@ from seedsource_core.django.seedsource.management.dataset import (
 from seedsource_core.django.seedsource.management.zoneconfig import ZoneConfig
 
 
-from trefoil.netcdf.conversion import netcdf_to_raster
-
-
 PERIODS = ("1961_1990", "1981_2010")
 
 

@@ -82,115 +82,130 @@ class Command(BaseCommand):
             elevation_ds.load_region(region.name)
 
             for source in sources:
-                zones = source.seedzone_set.all().order_by("zone_id")
+                all_species = [
+                    e["species"]
+                    for e in source.seedzone_set.values("species").distinct()
+                ]
 
-                out_index = 0
-                ids = []
-                out = numpy.empty(shape=elevation_ds.data.shape, dtype="uint16")
-                out.fill(NODATA)
+                for species in all_species:
+                    zones = source.seedzone_set.filter(species=species).order_by(
+                        "zone_id"
+                    )
 
-                with ZoneConfig(source.name) as config:
-                    for zone in Bar(
-                        "Processing {} zones".format(source.name),
-                        max=source.seedzone_set.count(),
-                    ).iter(zones):
+                    out_index = 0
+                    ids = []
+                    out = numpy.empty(shape=elevation_ds.data.shape, dtype="uint16")
+                    out.fill(NODATA)
 
-                        source_name = zone.source
+                    with ZoneConfig(source.name) as config:
+                        for zone in Bar(
+                            "Processing {} - {} zones".format(source.name, species),
+                            max=source.seedzone_set.count(),
+                        ).iter(zones):
 
-                        window, coords = elevation_ds.get_read_window(
-                            zone.polygon.extent
-                        )
-                        transform = coords.affine
+                            source_name = zone.source
 
-                        elevation = elevation_ds.data[window]
-
-                        zone_mask = rasterize(
-                            (json.loads(zone.polygon.geojson),),
-                            out_shape=elevation.shape,
-                            transform=transform,
-                            fill=1,  # mask is True OUTSIDE the zone
-                            default_value=0,
-                            dtype=numpy.dtype("uint8"),
-                        ).astype("bool")
-
-                        nodata_mask = elevation == elevation_ds.nodata_value
-                        mask = nodata_mask | zone_mask
-
-                        # Create a 2D array for extracting to new dataset, in feet
-                        elevation = numpy.where(
-                            ~mask, elevation / 0.3048, elevation_ds.nodata_value
-                        )
-
-                        # if there are no pixels in the mask, skip this zone
-                        if elevation.size == 0:
-                            continue
-
-                        elevation_data = elevation[
-                            elevation != elevation_ds.nodata_value
-                        ]
-                        min_elevation = max(math.floor(elevation_data.min()), 0)
-                        max_elevation = math.ceil(elevation_data.max())
-
-                        bands = list(
-                            config.get_elevation_bands(
-                                zone, min_elevation, max_elevation
+                            window, coords = elevation_ds.get_read_window(
+                                zone.polygon.extent
                             )
-                        )
+                            transform = coords.affine
 
-                        for band in bands:
-                            low, high = band[:2]
-                            band_mask = (elevation >= low) & (elevation <= high)
+                            elevation = elevation_ds.data[window]
 
-                            if not numpy.any(band_mask):
+                            zone_mask = rasterize(
+                                (json.loads(zone.polygon.geojson),),
+                                out_shape=elevation.shape,
+                                transform=transform,
+                                fill=1,  # mask is True OUTSIDE the zone
+                                default_value=0,
+                                dtype=numpy.dtype("uint8"),
+                                all_touched=True,
+                            ).astype("bool")
+
+                            nodata_mask = elevation == elevation_ds.nodata_value
+                            mask = nodata_mask | zone_mask
+
+                            # Create a 2D array for extracting to new dataset, in feet
+                            elevation = numpy.where(
+                                ~mask, elevation / 0.3048, elevation_ds.nodata_value
+                            )
+
+                            # if there are no pixels in the mask, skip this zone
+                            if elevation.size == 0:
                                 continue
 
-                            # extract 2D version of elevation within the band
-                            value = numpy.where(
-                                (elevation != elevation_ds.nodata_value) & band_mask,
-                                out_index,
-                                out[window],
+                            elevation_data = elevation[
+                                elevation != elevation_ds.nodata_value
+                            ]
+                            min_elevation = max(math.floor(elevation_data.min()), 0)
+                            max_elevation = math.ceil(elevation_data.max())
+
+                            bands = list(
+                                config.get_elevation_bands(
+                                    zone, min_elevation, max_elevation
+                                )
                             )
 
-                            out[window] = value
-                            ids.append("{}_{}_{}".format(zone.zone_uid, low, high))
+                            if not bands:
+                                # min / max elevation outside defined bands
+                                continue
 
-                            out_index += 1
+                            for band in bands:
+                                low, high = band[:2]
+                                band_mask = (elevation >= low) & (elevation <= high)
 
-                if out_index > NODATA - 1:
-                    raise ValueError("Too many zone / band combinations for uint16")
+                                if not numpy.any(band_mask):
+                                    continue
 
-                # Find the data window of the zones
-                data_window = (
-                    windows.get_data_window(out, NODATA)
-                    .round_offsets(op="floor")
-                    .round_lengths(op="ceil")
-                )
-                out = out[data_window.toslices()]
-                data_coords = elevation_ds.coords.slice_by_window(
-                    Window(*data_window.toslices())
-                )
+                                # extract 2D version of elevation within the band
+                                value = numpy.where(
+                                    (elevation != elevation_ds.nodata_value)
+                                    & band_mask,
+                                    out_index,
+                                    out[window],
+                                )
 
-                filename = os.path.join(
-                    output_directory, "{}_zones.nc".format(source_name)
-                )
-                with Dataset(filename, "w", format="NETCDF4") as ds:
-                    # create ID variable
-                    ds.createDimension("id", len(ids))
-                    id_var = ds.createVariable("id", str, dimensions=("id",))
-                    id_var[:] = numpy.array(ids)
+                                out[window] = value
+                                ids.append("{}_{}_{}".format(zone.zone_uid, low, high))
 
-                    data_coords.add_to_dataset(ds, "longitude", "latitude")
-                    data_var = ds.createVariable(
-                        "zones",
-                        "uint16",
-                        dimensions=("latitude", "longitude"),
-                        fill_value=NODATA,
+                                out_index += 1
+
+                    if out_index > NODATA - 1:
+                        raise ValueError("Too many zone / band combinations for uint16")
+
+                    # Find the data window of the zones
+                    data_window = (
+                        windows.get_data_window(out, NODATA)
+                        .round_offsets(op="floor")
+                        .round_lengths(op="ceil")
                     )
-                    data_var[:] = out
-                    set_crs(ds, "zones", Proj({"init": "EPSG:4326"}))
+                    out = out[data_window.toslices()]
+                    data_coords = elevation_ds.coords.slice_by_window(
+                        Window(*data_window.toslices())
+                    )
 
-                with open(filename.replace(".nc", ".csv"), "w") as fp:
-                    writer = csv.writer(fp)
-                    writer.writerow(["value", "id"])
-                    writer.writerows([[i, id] for i, id in enumerate(ids)])
+                    filename = os.path.join(
+                        output_directory, "{}_{}_zones.nc".format(source_name, species)
+                    )
+
+                    with Dataset(filename, "w", format="NETCDF4") as ds:
+                        # create ID variable
+                        ds.createDimension("id", len(ids))
+                        id_var = ds.createVariable("id", str, dimensions=("id",))
+                        id_var[:] = numpy.array(ids)
+
+                        data_coords.add_to_dataset(ds, "longitude", "latitude")
+                        data_var = ds.createVariable(
+                            "zones",
+                            "uint16",
+                            dimensions=("latitude", "longitude"),
+                            fill_value=NODATA,
+                        )
+                        data_var[:] = out
+                        set_crs(ds, "zones", Proj({"init": "EPSG:4326"}))
+
+                    with open(filename.replace(".nc", ".csv"), "w") as fp:
+                        writer = csv.writer(fp)
+                        writer.writerow(["value", "id"])
+                        writer.writerows([[i, id] for i, id in enumerate(ids)])
 

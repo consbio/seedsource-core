@@ -183,6 +183,10 @@ class Command(BaseCommand):
                             )
                         )
 
+                        if not bands:
+                            # min / max elevation outside defined bands
+                            continue
+
                         for variable, ds in climate.items():
                             # extract data with same shape as elevation above
                             data = ds.data[window][~mask]

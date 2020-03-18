@@ -288,6 +288,10 @@ class Command(BaseCommand):
                             )
                         )
 
+                        if not bands:
+                            # min / max elevation outside defined bands
+                            continue
+
                         for band in bands:
                             low, high = band[:2]
                             band_data_mask = (elevation >= low) & (elevation <= high)

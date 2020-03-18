@@ -110,11 +110,10 @@ class ElevationDataset(DatasetWrapper):
         x_slice = slice(*self.coords.x.indices_for_range(bbox.xmin, bbox.xmax))
         y_slice = slice(*self.coords.y.indices_for_range(bbox.ymin, bbox.ymax))
 
-        # make sure that we read at least one pixel
-        if x_slice.stop - x_slice.start <= 1:
-            x_slice = slice(x_slice.start, x_slice.start + 2)
-        if y_slice.stop - y_slice.start <= 1:
-            y_slice = slice(y_slice.start, y_slice.start + 2)
+        # expand by 1px in all directions to make sure something isn't getting cut off
+        # if bounds fall very close to pixel edges
+        x_slice = slice(x_slice.start - 1, x_slice.stop + 1, x_slice.step)
+        y_slice = slice(y_slice.start - 1, y_slice.stop + 1, y_slice.step)
 
         # get updated coords for the slices
         coords = self.coords.slice_by_window(Window(y_slice, x_slice))

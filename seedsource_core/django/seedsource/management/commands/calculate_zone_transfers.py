@@ -22,16 +22,16 @@ from trefoil.render.renderers.stretched import StretchedRenderer
 from trefoil.utilities.color import Color
 from trefoil.utilities.window import Window
 
-from seedsource_core.django.seedsource.management.constants import VARIABLES
-from seedsource_core.django.seedsource.management.utils import (
+from ..constants import VARIABLES
+from ..utils import (
     get_region_for_zone,
     calculate_pixel_area,
 )
-from seedsource_core.django.seedsource.management.dataset import (
+from ..dataset import (
     ElevationDataset,
     ClimateDatasets,
 )
-from seedsource_core.django.seedsource.management.zoneconfig import ZoneConfig
+from ..zoneconfig import ZoneConfig
 
 
 PERIODS = ("1961_1990", "1981_2010")
@@ -69,11 +69,30 @@ class Command(BaseCommand):
             help="If True, will automatically delete all transfer limits before calculating new ones",
         )
 
-    def _write_limit(
-        self, variable, time_period, zone, masked_data, band, elevation_service
-    ):
-        min_value = masked_data.min()
-        max_value = masked_data.max()
+    def _write_limit(self, variable, time_period, zone, data, band, elevation_service):
+        """Write the transfer limit to the database for this zone and elevation band.
+
+        NOTE: data must be extracted in advance to only contain non-masked values.
+
+        Parameters
+        ----------
+        variable : str
+            Climate variable
+        time_period : str
+            time period for the transfer limit
+        zone : str
+            zone ID
+        data : ndarray
+            Contains data used to calculate transfer limit stats; must be an
+            ndarray of valid values NOT a masked array
+        band : list-like
+            [min elevation, max elevation, <optional> ]
+        elevation_service : Service
+            elevation service
+
+        """
+        min_value = data.min()
+        max_value = data.max()
         transfer = (max_value - min_value) / 2.0
         center = max_value - transfer
 
@@ -94,20 +113,9 @@ class Command(BaseCommand):
             elevation=elevation_service,
         )
 
-        # # store stransfer limits so that we can calculate averages
-        # transfers_by_variable = self.transfers_by_source.get(zone.zone_source.name, {})
-        # transfers_by_variable[variable] = transfers_by_variable.get(variable, []) + [
-        #     transfer
-        # ]
-        # self.transfers_by_source[zone.zone_source.name] = transfers_by_variable
-
-        # return tl
-
     def _create_elevation_service(self, zone, band, data, nodata_value, coords):
         low, high = band[:2]
-        elevation_service_name = "zones/elevation/{}_{}_{}".format(
-            zone.zone_uid, low, high
-        )
+        elevation_service_name = "zones/elevation/{}_{}_{}".format(zone.zone_uid, low, high)
 
         bbox = coords.bbox
 
@@ -125,10 +133,7 @@ class Command(BaseCommand):
         with Dataset(abs_path, "w", format="NETCDF4") as ds:
             coords.add_to_dataset(ds, "longitude", "latitude")
             data_var = ds.createVariable(
-                "data",
-                data.dtype,
-                dimensions=("latitude", "longitude"),
-                fill_value=nodata_value,
+                "data", data.dtype, dimensions=("latitude", "longitude"), fill_value=nodata_value,
             )
             data_var[:] = data
             set_crs(ds, "data", Proj("+init=epsg:4326"))
@@ -136,10 +141,7 @@ class Command(BaseCommand):
         # extract out unmasked data
         masked_data = data[data != nodata_value]
         renderer = StretchedRenderer(
-            [
-                (masked_data.min().item(), Color(46, 173, 60),),
-                (masked_data.max().item(), Color(46, 173, 60),),
-            ]
+            [(masked_data.min().item(), Color(46, 173, 60),), (masked_data.max().item(), Color(46, 173, 60),),]
         )
 
         service = Service.objects.create(
@@ -172,13 +174,9 @@ class Command(BaseCommand):
                 raise CommandError("No zonesets available to analyze")
 
         else:
-            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by(
-                "name"
-            )
+            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by("name")
             if len(sources) == 0:
-                raise CommandError(
-                    "No zonesets available to analyze that match --zones values"
-                )
+                raise CommandError("No zonesets available to analyze that match --zones values")
 
         if variables is None:
             variables = VARIABLES
@@ -186,13 +184,9 @@ class Command(BaseCommand):
         else:
             variables = [v for v in variables.split(",") if v in set(VARIABLES)]
             if len(variables) == 0:
-                raise CommandError(
-                    "No variables available to analyze that match --variables values"
-                )
+                raise CommandError("No variables available to analyze that match --variables values")
 
-        existing_limits = TransferLimit.objects.filter(
-            zone__zone_source__in=[s.id for s in sources]
-        )
+        existing_limits = TransferLimit.objects.filter(zone__zone_source__in=[s.id for s in sources])
 
         if clear:
             message = "WARNING: This will replace ALL transfer limits. Do you want to continue? [y/n]"
@@ -216,24 +210,19 @@ class Command(BaseCommand):
             for source in sources:
                 zones = source.seedzone_set.all().order_by("zone_id")
 
-                with ZoneConfig(
-                    source.name
-                ) as config, ElevationDataset() as elevation_ds, ClimateDatasets(
+                with ZoneConfig(source.name) as config, ElevationDataset() as elevation_ds, ClimateDatasets(
                     period=time_period, variables=variables
                 ) as climate:
 
                     for zone in Bar(
-                        "Processing {} zones for {}".format(source.name, time_period),
-                        max=source.seedzone_set.count(),
+                        "Processing {} zones for {}".format(source.name, time_period), max=source.seedzone_set.count(),
                     ).iter(zones):
 
                         region = get_region_for_zone(zone)
                         elevation_ds.load_region(region.name)
                         climate.load_region(region.name)
 
-                        window, coords = elevation_ds.get_read_window(
-                            zone.polygon.extent
-                        )
+                        window, coords = elevation_ds.get_read_window(zone.polygon.extent)
                         transform = coords.affine
 
                         elevation = elevation_ds.data[window]
@@ -268,9 +257,7 @@ class Command(BaseCommand):
                         mask = nodata_mask | zone_mask
 
                         # Create a 2D array for extracting to new dataset, in feet
-                        elevation2d = numpy.where(
-                            ~mask, elevation / 0.3048, elevation_ds.nodata_value
-                        )
+                        elevation2d = numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value)
 
                         # Create a 1D array for quantitative analysis, in feet
                         elevation = elevation[~mask] / 0.3048
@@ -282,11 +269,7 @@ class Command(BaseCommand):
                         min_elevation = max(math.floor(numpy.nanmin(elevation)), 0)
                         max_elevation = math.ceil(numpy.nanmax(elevation))
 
-                        bands = list(
-                            config.get_elevation_bands(
-                                zone, min_elevation, max_elevation
-                            )
-                        )
+                        bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
 
                         if not bands:
                             # min / max elevation outside defined bands
@@ -310,30 +293,20 @@ class Command(BaseCommand):
 
                             # extract data window for a smaller output dataset
                             band_window = (
-                                windows.get_data_window(
-                                    band_elevation2d, elevation_ds.nodata_value
-                                )
+                                windows.get_data_window(band_elevation2d, elevation_ds.nodata_value)
                                 .round_offsets(op="floor")
                                 .round_lengths(op="ceil")
                             )
 
                             if band_window.height > 1 and band_window.width > 1:
-                                band_elevation2d = band_elevation2d[
-                                    band_window.toslices()
-                                ]
-                                band_coords = coords.slice_by_window(
-                                    Window(*band_window.toslices())
-                                )
+                                band_elevation2d = band_elevation2d[band_window.toslices()]
+                                band_coords = coords.slice_by_window(Window(*band_window.toslices()))
                             else:
                                 # if band is too small, just use the original mask
                                 band_coords = coords
 
                             elevation_service = self._create_elevation_service(
-                                zone,
-                                band,
-                                band_elevation2d,
-                                elevation_ds.nodata_value,
-                                band_coords,
+                                zone, band, band_elevation2d, elevation_ds.nodata_value, band_coords,
                             )
 
                             for variable, ds in climate.items():
@@ -351,25 +324,15 @@ class Command(BaseCommand):
                                     continue
 
                                 self._write_limit(
-                                    variable,
-                                    time_period,
-                                    zone,
-                                    band_data,
-                                    band,
-                                    elevation_service,
+                                    variable, time_period, zone, band_data, band, elevation_service,
                                 )
 
                 # Calculate average transfer limit across zones in source
                 for variable in variables:
                     transfers = TransferLimit.objects.filter(
-                        zone__zone_source=source,
-                        variable=variable,
-                        time_period=time_period,
+                        zone__zone_source=source, variable=variable, time_period=time_period,
                     ).all()
 
-                    avg_transfer = transfers.aggregate(avg_transfer=Avg("transfer"))[
-                        "avg_transfer"
-                    ]
+                    avg_transfer = transfers.aggregate(avg_transfer=Avg("transfer"))["avg_transfer"]
 
                     transfers.update(avg_transfer=avg_transfer)
-

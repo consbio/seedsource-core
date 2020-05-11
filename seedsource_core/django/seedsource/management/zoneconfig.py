@@ -26,15 +26,11 @@ class ZoneConfig:
         if os.path.exists(os.path.join(SEEDZONES_LOCATION, self.name)):
             self.dir = os.path.join(SEEDZONES_LOCATION, self.name)
             self.is_tmp = False
-        elif os.path.exists(
-            os.path.join(SEEDZONES_LOCATION, "{}.zip".format(self.name))
-        ):
+        elif os.path.exists(os.path.join(SEEDZONES_LOCATION, "{}.zip".format(self.name))):
             self.is_tmp = True
             self.dir = tempfile.mkdtemp()
             try:
-                with ZipFile(
-                    os.path.join(SEEDZONES_LOCATION, "{}.zip".format(self.name))
-                ) as zf:
+                with ZipFile(os.path.join(SEEDZONES_LOCATION, "{}.zip".format(self.name))) as zf:
                     zf.extractall(self.dir)
             except:
                 try:
@@ -47,9 +43,7 @@ class ZoneConfig:
 
         config_src_path = os.path.join(self.dir, "config.py")
         if os.path.exists(config_src_path):
-            spec = importlib.util.spec_from_file_location(
-                "{}.config".format(self.name), config_src_path
-            )
+            spec = importlib.util.spec_from_file_location("{}.config".format(self.name), config_src_path)
             config = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(config)
 
@@ -79,11 +73,7 @@ class ZoneConfig:
 
             with fiona.open(src_filename) as shp:
                 reproject = True
-                if (
-                    shp.crs
-                    and "init" in shp.crs
-                    and shp.crs["init"].lower() == "epsg:4326"
-                ):
+                if shp.crs and "init" in shp.crs and shp.crs["init"].lower() == "epsg:4326":
                     reproject = False
 
                 else:
@@ -97,21 +87,12 @@ class ZoneConfig:
                 for feature in Bar(f"Processing {self.name}", max=len(shp)).iter(shp):
                     geometry = feature["geometry"]
                     if reproject:
-                        geometry = transform_geom(
-                            shp.crs, {"init": "EPSG:4326"}, geometry
-                        )
+                        geometry = transform_geom(shp.crs, {"init": "EPSG:4326"}, geometry)
 
                     if feature["geometry"]["type"] == "MultiPolygon":
-                        polygon = MultiPolygon(
-                            *[
-                                Polygon(*[LinearRing(x) for x in g])
-                                for g in geometry["coordinates"]
-                            ]
-                        )
+                        polygon = MultiPolygon(*[Polygon(*[LinearRing(x) for x in g]) for g in geometry["coordinates"]])
                     else:
-                        polygon = Polygon(
-                            *[LinearRing(x) for x in geometry["coordinates"]]
-                        )
+                        polygon = Polygon(*[LinearRing(x) for x in geometry["coordinates"]])
 
                     info = self.config.get_zone_info(feature, file)
                     if info is not None:

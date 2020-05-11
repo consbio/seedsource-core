@@ -12,18 +12,20 @@ from django.conf import settings
 from django.core.management import BaseCommand, CommandError
 from django.contrib.gis.db.models.functions import Area
 from rasterio.features import rasterize
-from seedsource_core.django.seedsource.management.constants import VARIABLES
-from seedsource_core.django.seedsource.management.utils import (
+
+from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
+
+from ..constants import VARIABLES
+from ..utils import (
     get_region_for_zone,
     calculate_pixel_area,
 )
-from seedsource_core.django.seedsource.management.dataset import (
+from ..dataset import (
     ElevationDataset,
     ClimateDatasets,
 )
-from seedsource_core.django.seedsource.management.statswriter import StatsWriters
-from seedsource_core.django.seedsource.management.zoneconfig import ZoneConfig
-from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
+from ..statswriter import StatsWriters
+from ..zoneconfig import ZoneConfig
 
 
 class Command(BaseCommand):
@@ -61,9 +63,7 @@ class Command(BaseCommand):
 
         filename = "{}_{}_{}.txt".format(id, low, high)
 
-        with open(
-            os.path.join(output_directory, "{}_samples".format(variable), filename), "w"
-        ) as f:
+        with open(os.path.join(output_directory, "{}_samples".format(variable), filename), "w") as f:
             f.write(",".join(str(x) for x in sample))
             f.write(os.linesep)
 
@@ -76,13 +76,9 @@ class Command(BaseCommand):
                 raise CommandError("No zonesets available to analyze")
 
         else:
-            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by(
-                "name"
-            )
+            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by("name")
             if len(sources) == 0:
-                raise CommandError(
-                    "No zonesets available to analyze that match --zones values"
-                )
+                raise CommandError("No zonesets available to analyze that match --zones values")
 
         if variables is None:
             variables = VARIABLES
@@ -90,9 +86,7 @@ class Command(BaseCommand):
         else:
             variables = [v for v in variables.split(",") if v in set(VARIABLES)]
             if len(variables) == 0:
-                raise CommandError(
-                    "No variables available to analyze that match --variables values"
-                )
+                raise CommandError("No variables available to analyze that match --variables values")
 
         ### Initialize random seed
         if seed is None:
@@ -112,21 +106,14 @@ class Command(BaseCommand):
 
         with StatsWriters(output_directory, variables) as writer:
             for source in sources:
-                zones = (
-                    source.seedzone_set.annotate(area_meters=Area("polygon"))
-                    .all()
-                    .order_by("zone_id")
-                )
+                zones = source.seedzone_set.annotate(area_meters=Area("polygon")).all().order_by("zone_id")
 
-                with ZoneConfig(
-                    source.name
-                ) as config, ElevationDataset() as elevation_ds, ClimateDatasets(
+                with ZoneConfig(source.name) as config, ElevationDataset() as elevation_ds, ClimateDatasets(
                     period="1961_1990", variables=variables
                 ) as climate:
-                    for zone in Bar(
-                        "Processing {} zones".format(source.name),
-                        max=source.seedzone_set.count(),
-                    ).iter(zones):
+                    for zone in Bar("Processing {} zones".format(source.name), max=source.seedzone_set.count(),).iter(
+                        zones
+                    ):
 
                         # calculate area of zone polygon in acres
                         poly_acres = round(zone.area_meters.sq_m * 0.000247105, 1)
@@ -138,20 +125,14 @@ class Command(BaseCommand):
                         elevation_ds.load_region(region.name)
                         climate.load_region(region.name)
 
-                        window, coords = elevation_ds.get_read_window(
-                            zone.polygon.extent
-                        )
+                        window, coords = elevation_ds.get_read_window(zone.polygon.extent)
                         transform = coords.affine
 
                         elevation = elevation_ds.data[window]
 
                         # calculate pixel area based on UTM centered on window
                         pixel_area = round(
-                            calculate_pixel_area(
-                                transform, elevation.shape[1], elevation.shape[0]
-                            )
-                            * 0.000247105,
-                            1,
+                            calculate_pixel_area(transform, elevation.shape[1], elevation.shape[0]) * 0.000247105, 1,
                         )
 
                         zone_mask = rasterize(
@@ -177,11 +158,7 @@ class Command(BaseCommand):
                         min_elevation = max(math.floor(numpy.nanmin(elevation)), 0)
                         max_elevation = math.ceil(numpy.nanmax(elevation))
 
-                        bands = list(
-                            config.get_elevation_bands(
-                                zone, min_elevation, max_elevation
-                            )
-                        )
+                        bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
 
                         if not bands:
                             # min / max elevation outside defined bands
@@ -213,9 +190,7 @@ class Command(BaseCommand):
                                     band,
                                     band_data,
                                     source=zone.source,
-                                    species=zone.species.upper()
-                                    if zone.species != "generic"
-                                    else zone.species,
+                                    species=zone.species.upper() if zone.species != "generic" else zone.species,
                                     zone=zone.zone_id,
                                     zone_poly_acres=poly_acres,
                                     zone_pixels=elevation.size,
@@ -230,11 +205,5 @@ class Command(BaseCommand):
                                 )
 
                                 self._write_sample(
-                                    output_directory,
-                                    variable,
-                                    zone.zone_uid,
-                                    zone.zone_id,
-                                    band_data,
-                                    low,
-                                    high,
+                                    output_directory, variable, zone.zone_uid, zone.zone_id, band_data, low, high,
                                 )

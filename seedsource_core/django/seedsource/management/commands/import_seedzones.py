@@ -46,9 +46,7 @@ class Command(BaseCommand):
             if input(message).lower() not in {"y", "yes"}:
                 return
 
-            self.stdout.write(
-                "Deleting all zone sets and zones.  This might take a while..."
-            )
+            self.stdout.write("Deleting all zone sets and zones.  This might take a while...")
             ZoneSource.objects.all().delete()
 
         if zone_name:
@@ -56,11 +54,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write("Importing all zones in {}".format(SEEDZONES_LOCATION))
             zone_names = sorted(
-                [
-                    p.stem
-                    for p in Path(SEEDZONES_LOCATION).iterdir()
-                    if p.is_dir and len(list(p.glob("config.py")))
-                ]
+                [p.stem for p in Path(SEEDZONES_LOCATION).iterdir() if p.is_dir and len(list(p.glob("config.py")))]
             )
 
         for zone_name in zone_names:
@@ -80,16 +74,12 @@ class Command(BaseCommand):
                 with transaction.atomic():
                     source.seedzone_set.all().delete()
                     for polygon, info in config.get_zones():
-                        zone_uid = "{}_{}_{}".format(
-                            config.source, info["species"], info["zone_id"]
-                        )
+                        zone_uid = "{}_{}_{}".format(config.source, info["species"], info["zone_id"])
 
                         if SeedZone.objects.filter(zone_uid=zone_uid).exists():
                             raise CommandError(
                                 "ERROR: multiple zones in {} have the same zone_id value."
-                                "Check the inputs and dissolve if needed.".format(
-                                    zone_name
-                                )
+                                "Check the inputs and dissolve if needed.".format(zone_name)
                             )
 
                         SeedZone.objects.create(

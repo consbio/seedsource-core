@@ -29,11 +29,7 @@ def get_region_for_zone(zone):
         return regions.first()
 
     # calculate amount of overlap and return one with highest overlap with extent
-    return (
-        regions.annotate(overlap=Area(Intersection("polygons", extent)))
-        .order_by("-overlap")
-        .first()
-    )
+    return regions.annotate(overlap=Area(Intersection("polygons", extent))).order_by("-overlap").first()
 
 
 def calculate_pixel_area(transform, width, height):
@@ -69,9 +65,7 @@ def calculate_pixel_area(transform, width, height):
     ### to use UTM
     # UTM zones start numbered at 1 at -180 degrees, in 6 degree bands
     zone = int(round((center_x - -180) / 6.0)) + 1
-    dst_crs = "+proj=utm +zone={} +ellps=GRS80 +datum=NAD83 +units=m +no_defs".format(
-        zone
-    )
+    dst_crs = "+proj=utm +zone={} +ellps=GRS80 +datum=NAD83 +units=m +no_defs".format(zone)
 
     ### to use a custom Albers
     # inset = (ymax - ymin) / 6.0

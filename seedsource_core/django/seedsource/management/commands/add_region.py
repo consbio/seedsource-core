@@ -50,9 +50,7 @@ class Command(BaseCommand):
 
             with fiona.open(file, "r") as shp:
                 for feature in shp:
-                    geometry = transform_geom(
-                        shp.crs, {"init": "EPSG:4326"}, feature["geometry"]
-                    )
+                    geometry = transform_geom(shp.crs, {"init": "EPSG:4326"}, feature["geometry"])
 
                     if geometry["type"] == "MultiPolygon":
                         coordinate_set = geometry["coordinates"]
@@ -65,9 +63,7 @@ class Command(BaseCommand):
             with transaction.atomic():
                 Region.objects.filter(name__iexact=name).delete()
                 # Buffer by 0 to make polygons valid
-                Region.objects.create(
-                    name=name, polygons=MultiPolygon(polygons).buffer(0)
-                )
+                Region.objects.create(name=name, polygons=MultiPolygon(polygons).buffer(0))
 
         finally:
             if temp_dir is not None:
@@ -75,4 +71,3 @@ class Command(BaseCommand):
                     shutil.rmtree(temp_dir)
                 except OSError:
                     pass
-

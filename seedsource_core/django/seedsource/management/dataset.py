@@ -153,9 +153,7 @@ class ClimateDataset(DatasetWrapper):
 
         self.close()
 
-        variable_service = Service.objects.get(
-            name="{}_{}Y_{}".format(region_name, self.period, self.variable)
-        )
+        variable_service = Service.objects.get(name="{}_{}Y_{}".format(region_name, self.period, self.variable))
 
         self.dataset = Dataset(DATA_PATH / variable_service.data_path)
         self.data = self.dataset.variables[self.variable]
@@ -214,4 +212,3 @@ class ClimateDatasets(object):
         for dataset in self.variables.values():
             dataset.load_region(region_name)
         self.region = region_name
-

@@ -18,18 +18,19 @@ from rasterio import windows
 from trefoil.netcdf.crs import set_crs
 from trefoil.utilities.window import Window
 
-from seedsource_core.django.seedsource.management.constants import VARIABLES
-from seedsource_core.django.seedsource.management.utils import (
+from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
+
+from ..constants import VARIABLES
+from ..utils import (
     get_region_for_zone,
     calculate_pixel_area,
 )
-from seedsource_core.django.seedsource.management.dataset import (
+from ..dataset import (
     ElevationDataset,
     ClimateDatasets,
 )
-from seedsource_core.django.seedsource.management.statswriter import StatsWriters
-from seedsource_core.django.seedsource.management.zoneconfig import ZoneConfig
-from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
+from ..statswriter import StatsWriters
+from ..zoneconfig import ZoneConfig
 
 
 NODATA = 65535
@@ -60,13 +61,9 @@ class Command(BaseCommand):
                 raise CommandError("No zonesets available")
 
         else:
-            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by(
-                "name"
-            )
+            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by("name")
             if len(sources) == 0:
-                raise CommandError(
-                    "No zonesets available to analyze that match --zones values"
-                )
+                raise CommandError("No zonesets available to analyze that match --zones values")
 
         region = Region.objects.filter(name=region_name)
         if not region.exists():
@@ -82,15 +79,10 @@ class Command(BaseCommand):
             elevation_ds.load_region(region.name)
 
             for source in sources:
-                all_species = [
-                    e["species"]
-                    for e in source.seedzone_set.values("species").distinct()
-                ]
+                all_species = [e["species"] for e in source.seedzone_set.values("species").distinct()]
 
                 for species in all_species:
-                    zones = source.seedzone_set.filter(species=species).order_by(
-                        "zone_id"
-                    )
+                    zones = source.seedzone_set.filter(species=species).order_by("zone_id")
 
                     out_index = 0
                     ids = []
@@ -99,15 +91,12 @@ class Command(BaseCommand):
 
                     with ZoneConfig(source.name) as config:
                         for zone in Bar(
-                            "Processing {} - {} zones".format(source.name, species),
-                            max=source.seedzone_set.count(),
+                            "Processing {} - {} zones".format(source.name, species), max=source.seedzone_set.count(),
                         ).iter(zones):
 
                             source_name = zone.source
 
-                            window, coords = elevation_ds.get_read_window(
-                                zone.polygon.extent
-                            )
+                            window, coords = elevation_ds.get_read_window(zone.polygon.extent)
                             transform = coords.affine
 
                             elevation = elevation_ds.data[window]
@@ -126,25 +115,17 @@ class Command(BaseCommand):
                             mask = nodata_mask | zone_mask
 
                             # Create a 2D array for extracting to new dataset, in feet
-                            elevation = numpy.where(
-                                ~mask, elevation / 0.3048, elevation_ds.nodata_value
-                            )
+                            elevation = numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value)
 
                             # if there are no pixels in the mask, skip this zone
                             if elevation.size == 0:
                                 continue
 
-                            elevation_data = elevation[
-                                elevation != elevation_ds.nodata_value
-                            ]
+                            elevation_data = elevation[elevation != elevation_ds.nodata_value]
                             min_elevation = max(math.floor(elevation_data.min()), 0)
                             max_elevation = math.ceil(elevation_data.max())
 
-                            bands = list(
-                                config.get_elevation_bands(
-                                    zone, min_elevation, max_elevation
-                                )
-                            )
+                            bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
 
                             if not bands:
                                 # min / max elevation outside defined bands
@@ -159,11 +140,12 @@ class Command(BaseCommand):
 
                                 # extract 2D version of elevation within the band
                                 value = numpy.where(
-                                    (elevation != elevation_ds.nodata_value)
-                                    & band_mask,
-                                    out_index,
-                                    out[window],
+                                    (elevation != elevation_ds.nodata_value) & band_mask, out_index, out[window],
                                 )
+
+                                if not numpy.any(value == out_index):
+                                    print("No data ", out_index)
+                                    continue
 
                                 out[window] = value
                                 ids.append("{}_{}_{}".format(zone.zone_uid, low, high))
@@ -175,18 +157,12 @@ class Command(BaseCommand):
 
                     # Find the data window of the zones
                     data_window = (
-                        windows.get_data_window(out, NODATA)
-                        .round_offsets(op="floor")
-                        .round_lengths(op="ceil")
+                        windows.get_data_window(out, NODATA).round_offsets(op="floor").round_lengths(op="ceil")
                     )
                     out = out[data_window.toslices()]
-                    data_coords = elevation_ds.coords.slice_by_window(
-                        Window(*data_window.toslices())
-                    )
+                    data_coords = elevation_ds.coords.slice_by_window(Window(*data_window.toslices()))
 
-                    filename = os.path.join(
-                        output_directory, "{}_{}_zones.nc".format(source_name, species)
-                    )
+                    filename = os.path.join(output_directory, "{}_{}_zones.nc".format(source_name, species))
 
                     with Dataset(filename, "w", format="NETCDF4") as ds:
                         # create ID variable
@@ -196,10 +172,7 @@ class Command(BaseCommand):
 
                         data_coords.add_to_dataset(ds, "longitude", "latitude")
                         data_var = ds.createVariable(
-                            "zones",
-                            "uint16",
-                            dimensions=("latitude", "longitude"),
-                            fill_value=NODATA,
+                            "zones", "uint16", dimensions=("latitude", "longitude"), fill_value=NODATA,
                         )
                         data_var[:] = out
                         set_crs(ds, "zones", Proj({"init": "EPSG:4326"}))
@@ -208,4 +181,3 @@ class Command(BaseCommand):
                         writer = csv.writer(fp)
                         writer.writerow(["value", "id"])
                         writer.writerows([[i, id] for i, id in enumerate(ids)])
-

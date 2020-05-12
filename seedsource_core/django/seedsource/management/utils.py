@@ -1,4 +1,5 @@
 import importlib
+import json
 import os
 import shutil
 import tempfile
@@ -7,7 +8,7 @@ from zipfile import ZipFile
 import fiona
 from django.conf import settings
 
-from django.contrib.gis.geos import MultiPolygon, Polygon, LinearRing
+from django.contrib.gis.geos import MultiPolygon, Polygon, LinearRing, GEOSGeometry
 from django.core.management import CommandError
 from rasterio.warp import transform_geom
 
@@ -70,18 +71,13 @@ class ZoneConfig:
         for file in self.config.files:
             with fiona.open(os.path.join(self.dir, file)) as shp:
                 for feature in shp:
-                    geometry = transform_geom(shp.crs, {'init': 'EPSG:4326'}, feature['geometry'])
-
-                    if feature['geometry']['type'] == 'MultiPolygon':
-                        polygon = MultiPolygon(
-                            *[Polygon(*[LinearRing(x) for x in g]) for g in geometry['coordinates']]
-                        )
-                    else:
-                        polygon = Polygon(*[LinearRing(x) for x in geometry['coordinates']])
+                    geometry = GEOSGeometry(
+                        json.dumps(transform_geom(shp.crs, {'init': 'EPSG:4326'}, feature['geometry']))
+                    )
 
                     info = self.config.get_zone_info(feature, file)
                     if info is not None:
-                        yield polygon, info
+                        yield geometry, info
 
     def get_elevation_bands(self, zone, low, high):
         return self.config.get_elevation_bands(zone, low, high)

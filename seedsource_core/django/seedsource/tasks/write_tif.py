@@ -41,7 +41,7 @@ class WriteTIF(Task):
         if not settings.DATASET_DOWNLOAD_DIR.exists():
             settings.DATASET_DOWNLOAD_DIR.mkdir()
 
-        fd, filename = tempfile.mkstemp(dir=settings.DATASET_DOWNLOAD_DIR, suffix='.zip')
+        fd, filename = tempfile.mkstemp(dir=str(settings.DATASET_DOWNLOAD_DIR), suffix='.zip')
         os.close(fd)
         os.chmod(filename, S_IRUSR | S_IWUSR | S_IRGRP)
 

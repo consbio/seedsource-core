@@ -81,3 +81,39 @@ def calculate_pixel_area(transform, width, height):
     area = abs(x1 - x2) * abs(y1 - y2)
 
     return area
+
+
+def generate_bands(low, high, increment):
+    """Returns a list of bands within low-high based on the increment.
+    If low is not at an even increment (e.g., 1378), the first band is between
+    low and the next even increment, e.g., [1378, 1500].
+
+    Parameters
+    ----------
+    low : int
+        lower elevation limit of bands (must be 1 ft greater than previous band upper limit)
+    high : int
+        upper elevation limit of bands
+    increment : int
+        elevation range of each band
+
+    Returns
+    -------
+    list
+        [[band_low, band_high, ], ...]
+    """
+
+    if high < low:
+        return []
+
+    if (low + increment) > high:
+        return [[low, high]]
+
+    # coerce most bands into even multiples of increments
+    start = low - (low % increment)
+    if start <= low:
+        start = start + increment
+
+    bands = [[low, start]]
+
+    return bands + [[x + 1, x + increment] for i, x in enumerate(range(start + 1, high, increment))]

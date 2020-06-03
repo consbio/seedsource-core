@@ -95,8 +95,12 @@ class ZoneConfig:
                         polygon = Polygon(*[LinearRing(x) for x in geometry["coordinates"]])
 
                     info = self.config.get_zone_info(feature, file)
+
                     if info is not None:
                         yield polygon, info
+
+                    else:
+                        raise ValueError("Zone info is not valid for input feature", feature["properties"])
 
     def get_elevation_bands(self, zone, low, high):
         return self.config.get_elevation_bands(zone, low, high)

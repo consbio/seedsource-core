@@ -5,6 +5,7 @@ import os
 import time
 from collections import defaultdict
 import csv
+import warnings
 
 from django.conf import settings
 from django.core.management import BaseCommand, CommandError
@@ -37,7 +38,7 @@ NODATA = 65535
 
 
 class Command(BaseCommand):
-    help = "Export seed zone / elevation band rasters within a region"
+    help = "Export seed zone / elevation band rasters within a region.  You must manually select the right seedzones for each region"
 
     def add_arguments(self, parser):
         parser.add_argument("output_directory", nargs=1, type=str)
@@ -129,6 +130,11 @@ class Command(BaseCommand):
 
                             if not bands:
                                 # min / max elevation outside defined bands
+                                warnings.warn(
+                                    "\nElevation range {} - {} ft outside defined bands\n".format(
+                                        min_elevation, max_elevation
+                                    )
+                                )
                                 continue
 
                             for band in bands:

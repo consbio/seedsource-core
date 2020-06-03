@@ -6,24 +6,30 @@ import numpy
 
 # Header for output file
 HEADER = [
-    "id",
-    "source",
-    "species",
     "zone",
-    "zone_ctr_x",
-    "zone_ctr_y",
-    "zone_xmin",
-    "zone_ymin",
-    "zone_xmax",
-    "zone_ymax",
-    "zone_poly_acres",
+    "period",
+    "zone_set",
+    "species",
+    "zone_unit",
+    "zone_unit_ctr_x",
+    "zone_unit_ctr_y",
+    "zone_unit_xmin",
+    "zone_unit_ymin",
+    "zone_unit_xmax",
+    "zone_unit_ymax",
+    "zone_unit_poly_acres",
+    "zone_unit_raster_pixels",
+    "zone_unit_raster_acres",
+    "zone_unit_acres",
+    "zone_unit_pixels",
+    "zone_unit_low",
+    "zone_unit_high",
+    "zone_exists",  # if 0, zone (band) does not exist in the zone set
+    "zone_low",
+    "zone_high",
+    "zone_label",
     "zone_acres",
-    "zone_pixels",
-    "band_low",
-    "band_high",
-    "band_label",
-    "zone_band_acres",
-    "zone_band_pixels",
+    "zone_pixels",  # zone band pixels
     "median",
     "mean",
     "min",
@@ -112,14 +118,18 @@ class StatsWriter(object):
         if len(band) > 2:
             label = band[2]
 
+        zone_exists = 1
+        if label and "new:" in label:
+            zone_exists = 0
+
         band_id = "{}_{}_{}".format(id, low, high)
 
         results = {
-            "id": band_id,
-            "band_low": low,
-            "band_high": high,
-            "band_label": label,
-            "zone_band_pixels": len(data),
+            "zone": band_id,
+            "zone_exists": zone_exists,
+            "zone_low": low,
+            "zone_high": high,
+            "zone_label": label,
             "median": p50,
             "mean": data.mean(),
             "min": min_value,

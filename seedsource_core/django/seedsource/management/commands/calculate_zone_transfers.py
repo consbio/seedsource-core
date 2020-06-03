@@ -6,7 +6,7 @@ from statistics import mean
 import numpy
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
-from django.core.management import BaseCommand
+from django.core.management import BaseCommand, CommandError
 from django.db.models import Avg
 from ncdjango.models import Service, SERVICE_DATA_ROOT, Variable
 from netCDF4 import Dataset
@@ -256,11 +256,13 @@ class Command(BaseCommand):
                         nodata_mask = elevation == elevation_ds.nodata_value
                         mask = nodata_mask | zone_mask
 
-                        # Create a 2D array for extracting to new dataset, in feet
-                        elevation2d = numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value)
+                        # Create a 2D array for extracting to new dataset, in integer feet
+                        elevation2d = (
+                            numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value).round().astype("int")
+                        )
 
-                        # Create a 1D array for quantitative analysis, in feet
-                        elevation = elevation[~mask] / 0.3048
+                        # Create a 1D array for quantitative analysis, in integer feet
+                        elevation = (elevation[~mask] / 0.3048).round().astype("int")
 
                         # if there are no pixels in the mask, skip this zone
                         if elevation.size == 0:

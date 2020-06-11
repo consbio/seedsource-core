@@ -17,7 +17,7 @@ from rasterio.features import rasterize
 from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
 
 from ..constants import PERIODS, VARIABLES
-from ..utils import get_region_for_zone, calculate_pixel_area, generate_bands
+from ..utils import get_region_for_zone, calculate_pixel_area, generate_missing_bands
 from ..dataset import (
     ElevationDataset,
     ClimateDatasets,
@@ -187,6 +187,7 @@ class Command(BaseCommand):
                             max_elevation = math.ceil(numpy.nanmax(elevation))
 
                             bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
+                            bands = generate_missing_bands(bands, min_elevation, max_elevation)
 
                             if not bands:
                                 # min / max elevation outside defined bands
@@ -195,20 +196,6 @@ class Command(BaseCommand):
                                         min_elevation, max_elevation
                                     )
                                 )
-
-                            ### Create new bands for stats purposes
-                            # these identify elevation ranges within the zone that may
-                            # be appropriate as bands in the future (esp. at upper range)
-
-                            if min_elevation < bands[0][0]:
-                                # create a band for anything below the lower limit
-                                bands.insert(0, [min_elevation, bands[0][0] - 1, "new: below min band"])
-
-                            if max_elevation > bands[-1][1]:
-                                # create a band for anything above the upper band in 500ft increments
-                                for band in generate_bands(bands[-1][1] + 1, max_elevation, 500):
-                                    band.append("new: above max band")
-                                    bands.append(band)
 
                             ### Extract data for each variable within each band
                             for variable, ds in climate.items():
@@ -226,6 +213,13 @@ class Command(BaseCommand):
                                     if not numpy.any(band_mask):
                                         continue
 
+                                    # extract actual elevation range within the mask as integer feet
+                                    band_elevation = elevation[band_mask]
+                                    band_range = [
+                                        math.floor(numpy.nanmin(band_elevation)),
+                                        math.ceil(numpy.nanmax(band_elevation)),
+                                    ]
+
                                     # extract data within elevation range
                                     band_data = data[band_mask]
 
@@ -239,6 +233,7 @@ class Command(BaseCommand):
                                         variable,
                                         zone.zone_uid,
                                         band,
+                                        band_range,
                                         band_data,
                                         period=period,
                                         zone_set=zone.source,
@@ -262,5 +257,11 @@ class Command(BaseCommand):
                                     )
 
                                     self._write_sample(
-                                        period_dir, variable, zone.zone_uid, zone.zone_id, band_data, low, high,
+                                        period_dir,
+                                        variable,
+                                        zone.zone_uid,
+                                        zone.zone_id,
+                                        band_data,
+                                        *band_range
+                                        # low, high,
                                     )

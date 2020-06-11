@@ -6,7 +6,8 @@ import numpy
 
 # Header for output file
 HEADER = [
-    "zone",
+    "zone",  # zone unique identifier with actual band elevation range
+    "zone_input",  # zone unique identifier with input band elevation range
     "period",
     "zone_set",
     "species",
@@ -25,9 +26,11 @@ HEADER = [
     "zone_unit_low",
     "zone_unit_high",
     "zone_exists",  # if 0, zone (band) does not exist in the zone set
-    "zone_low",
-    "zone_high",
     "zone_label",
+    "zone_input_low",  # band low limit from source
+    "zone_input_high",  # band high limit from source
+    "zone_low",  # band observed low limit from elevation data
+    "zone_high",  # band observed high limit from elevation data
     "zone_acres",
     "zone_pixels",  # zone band pixels
     "median",
@@ -81,7 +84,7 @@ class StatsWriter(object):
     def close(self):
         self._fp.close()
 
-    def write_row(self, id, band, data, **kwargs):
+    def write_row(self, id, band, band_range, data, **kwargs):
         """Writes a row of climate stats to the writer.
 
         Parameters
@@ -90,6 +93,8 @@ class StatsWriter(object):
             zone unit id
         band : list [low, high, label(optional)]
             elevation band
+        band_range : list [low, high]
+            elevation range actually observed within band
         data : ndarray
             data for variable within zone unit and elevation band
 
@@ -118,18 +123,30 @@ class StatsWriter(object):
         if len(band) > 2:
             label = band[2]
 
+        obs_low, obs_high = band_range
+
         zone_exists = 1
         if label and "new:" in label:
-            zone_exists = 0
+            # per guidance from Glenn, if zone was added, code as 0 for below and 2 as above
+            if "new: below min band" in label:
+                zone_exists = 0
+            else:
+                zone_exists = 2
+            label = ""
 
-        band_id = "{}_{}_{}".format(id, low, high)
+        # zone is defined as an elevation band within a zone unit
+        zone_id = "{}_{}_{}".format(id, obs_low, obs_high)
+        zone_input_id = "{}_{}_{}".format(id, low, high)
 
         results = {
-            "zone": band_id,
+            "zone": zone_id,
+            "zone_input": zone_input_id,
             "zone_exists": zone_exists,
-            "zone_low": low,
-            "zone_high": high,
             "zone_label": label,
+            "zone_input_low": low,
+            "zone_input_high": high,
+            "zone_low": obs_low,
+            "zone_high": obs_high,
             "median": p50,
             "mean": data.mean(),
             "min": min_value,
@@ -147,7 +164,7 @@ class StatsWriter(object):
             "p1_99_transfer": p1_99_transfer,
             "p1_99_center": p1_99_center,
             "p1_99_range": p1_99_range,
-            "samples": os.path.join("{}.txt".format(band_id)),
+            "samples": os.path.join("{}.txt".format(zone_id)),
         }
 
         # add in other values

@@ -22,10 +22,7 @@ from trefoil.utilities.window import Window
 from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
 
 from ..constants import VARIABLES
-from ..utils import (
-    get_region_for_zone,
-    calculate_pixel_area,
-)
+from ..utils import get_region_for_zone, calculate_pixel_area, generate_missing_bands
 from ..dataset import (
     ElevationDataset,
     ClimateDatasets,
@@ -115,8 +112,10 @@ class Command(BaseCommand):
                             nodata_mask = elevation == elevation_ds.nodata_value
                             mask = nodata_mask | zone_mask
 
-                            # Create a 2D array for extracting to new dataset, in feet
-                            elevation = numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value)
+                            # Create a 2D array for extracting to new dataset, in integer feet
+                            elevation = (
+                                numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value).round().astype("int")
+                            )
 
                             # if there are no pixels in the mask, skip this zone
                             if elevation.size == 0:
@@ -127,6 +126,7 @@ class Command(BaseCommand):
                             max_elevation = math.ceil(elevation_data.max())
 
                             bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
+                            bands = generate_missing_bands(bands, min_elevation, max_elevation)
 
                             if not bands:
                                 # min / max elevation outside defined bands
@@ -144,6 +144,13 @@ class Command(BaseCommand):
                                 if not numpy.any(band_mask):
                                     continue
 
+                                # extract actual elevation range within the mask as integer feet
+                                band_elevation = elevation.flat[band_mask.flatten()]
+                                band_range = [
+                                    math.floor(numpy.nanmin(band_elevation)),
+                                    math.ceil(numpy.nanmax(band_elevation)),
+                                ]
+
                                 # extract 2D version of elevation within the band
                                 value = numpy.where(
                                     (elevation != elevation_ds.nodata_value) & band_mask, out_index, out[window],
@@ -154,7 +161,8 @@ class Command(BaseCommand):
                                     continue
 
                                 out[window] = value
-                                ids.append("{}_{}_{}".format(zone.zone_uid, low, high))
+                                # zone ids are based on actual elevation range
+                                ids.append("{}_{}_{}".format(zone.zone_uid, *band_range))
 
                                 out_index += 1
 
@@ -172,8 +180,8 @@ class Command(BaseCommand):
 
                     with Dataset(filename, "w", format="NETCDF4") as ds:
                         # create ID variable
-                        ds.createDimension("id", len(ids))
-                        id_var = ds.createVariable("id", str, dimensions=("id",))
+                        ds.createDimension("zone", len(ids))
+                        id_var = ds.createVariable("zone", str, dimensions=("zone",))
                         id_var[:] = numpy.array(ids)
 
                         data_coords.add_to_dataset(ds, "longitude", "latitude")
@@ -185,5 +193,5 @@ class Command(BaseCommand):
 
                     with open(filename.replace(".nc", ".csv"), "w") as fp:
                         writer = csv.writer(fp)
-                        writer.writerow(["value", "id"])
+                        writer.writerow(["value", "zone"])
                         writer.writerows([[i, id] for i, id in enumerate(ids)])

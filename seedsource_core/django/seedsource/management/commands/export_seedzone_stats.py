@@ -257,11 +257,5 @@ class Command(BaseCommand):
                                     )
 
                                     self._write_sample(
-                                        period_dir,
-                                        variable,
-                                        zone.zone_uid,
-                                        zone.zone_id,
-                                        band_data,
-                                        *band_range
-                                        # low, high,
+                                        period_dir, variable, zone.zone_uid, zone.zone_id, band_data, *band_range
                                     )

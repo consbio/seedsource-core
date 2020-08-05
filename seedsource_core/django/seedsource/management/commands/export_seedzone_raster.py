@@ -83,7 +83,8 @@ class Command(BaseCommand):
                     zones = source.seedzone_set.filter(species=species).order_by("zone_id")
 
                     out_index = 0
-                    ids = []
+                    zone_ids = []
+                    zone_input_ids = []
                     out = numpy.empty(shape=elevation_ds.data.shape, dtype="uint16")
                     out.fill(NODATA)
 
@@ -106,7 +107,6 @@ class Command(BaseCommand):
                                 fill=1,  # mask is True OUTSIDE the zone
                                 default_value=0,
                                 dtype=numpy.dtype("uint8"),
-                                all_touched=True,
                             ).astype("bool")
 
                             nodata_mask = elevation == elevation_ds.nodata_value
@@ -122,8 +122,8 @@ class Command(BaseCommand):
                                 continue
 
                             elevation_data = elevation[elevation != elevation_ds.nodata_value]
-                            min_elevation = max(math.floor(elevation_data.min()), 0)
-                            max_elevation = math.ceil(elevation_data.max())
+                            min_elevation = math.floor(numpy.nanmin(elevation))
+                            max_elevation = math.ceil(numpy.nanmax(elevation))
 
                             bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
                             bands = generate_missing_bands(bands, min_elevation, max_elevation)
@@ -152,17 +152,16 @@ class Command(BaseCommand):
                                 ]
 
                                 # extract 2D version of elevation within the band
-                                value = numpy.where(
-                                    (elevation != elevation_ds.nodata_value) & band_mask, out_index, out[window],
-                                )
+                                value = numpy.where((~mask) & band_mask, out_index, out[window],)
 
                                 if not numpy.any(value == out_index):
-                                    print("No data ", out_index)
                                     continue
 
                                 out[window] = value
                                 # zone ids are based on actual elevation range
-                                ids.append("{}_{}_{}".format(zone.zone_uid, *band_range))
+                                zone_ids.append("{}_{}_{}".format(zone.zone_uid, *band_range))
+                                # zone_input is based on input elevation range
+                                zone_input_ids.append("{}_{}_{}".format(zone.zone_uid, low, high))
 
                                 out_index += 1
 
@@ -180,9 +179,9 @@ class Command(BaseCommand):
 
                     with Dataset(filename, "w", format="NETCDF4") as ds:
                         # create ID variable
-                        ds.createDimension("zone", len(ids))
+                        ds.createDimension("zone", len(zone_ids))
                         id_var = ds.createVariable("zone", str, dimensions=("zone",))
-                        id_var[:] = numpy.array(ids)
+                        id_var[:] = numpy.array(zone_ids)
 
                         data_coords.add_to_dataset(ds, "longitude", "latitude")
                         data_var = ds.createVariable(
@@ -193,5 +192,6 @@ class Command(BaseCommand):
 
                     with open(filename.replace(".nc", ".csv"), "w") as fp:
                         writer = csv.writer(fp)
-                        writer.writerow(["value", "zone"])
-                        writer.writerows([[i, id] for i, id in enumerate(ids)])
+                        writer.writerow(["value", "zone", "zone_input"])
+                        writer.writerows([[i, zone_ids[i], zone_input_ids[i]] for i in range(len(zone_ids))])
+

@@ -122,8 +122,8 @@ class Command(BaseCommand):
                                 continue
 
                             elevation_data = elevation[elevation != elevation_ds.nodata_value]
-                            min_elevation = math.floor(numpy.nanmin(elevation))
-                            max_elevation = math.ceil(numpy.nanmax(elevation))
+                            min_elevation = math.floor(numpy.nanmin(elevation_data))
+                            max_elevation = math.ceil(numpy.nanmax(elevation_data))
 
                             bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
                             bands = generate_missing_bands(bands, min_elevation, max_elevation)

@@ -15,12 +15,12 @@ setup(
         'trefoil',
         'django<2',
         'djangorestframework<3.8',
-        'gdal==2.2.*',
+        'gdal',
         'geopy',
         'mercantile',
         'ncdjango==0.5.1',
         'netcdf4',
-        'pyproj',
+        'pyproj==2.3.*',
         'python-pptx',
         'weasyprint'
     ]

@@ -20,7 +20,7 @@ setup(
         'mercantile',
         'ncdjango==0.5.1',
         'netcdf4',
-        'pyproj==2.3.*',
+        'pyproj==1.*',
         'python-pptx',
         'weasyprint'
     ]

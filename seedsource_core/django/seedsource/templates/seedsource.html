@@ -26,10 +26,7 @@
 </head>
 <body>
     <div id="SeedsourceApp"></div>
-
-    {% if not debug %}
-        {% render_bundle 'vendor' 'js' %}
-    {% endif %}
+    
     {% render_bundle 'main' 'js' %}
 </body>
 </html>

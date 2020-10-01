@@ -16,7 +16,7 @@ setup(
         'django<2',
         'djangorestframework<3.8',
         'gdal',
-        'geopy',
+        'geopy==1.*',
         'mercantile',
         'ncdjango==0.5.1',
         'netcdf4',

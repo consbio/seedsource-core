@@ -5,6 +5,7 @@ from statistics import mean
 
 import numpy
 from django.conf import settings
+from django.contrib.gis.db.models.functions import Envelope
 from django.contrib.gis.geos import Polygon
 from django.core.management import BaseCommand
 from django.db import transaction
@@ -104,10 +105,11 @@ class Command(BaseCommand):
                             last_region = None
 
                             for zone in zones:
-                                self.stdout.write(zone.name)
+                                zone_bbox = Polygon.from_bbox(zone.polygon.extent)
                                 region = Region.objects.filter(
-                                    polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
-                                ).first()
+                                    polygons__bbcontains=zone_bbox,
+                                    polygons__intersects=zone_bbox
+                                ).order_by('name').first()
 
                                 if region is None:
                                     self.stderr.write('Could not find region for seed zone ' + zone.name)
@@ -140,6 +142,8 @@ class Command(BaseCommand):
                                     )
                                     with Dataset(dataset_path) as ds:
                                         data = ds.variables[variable][:]
+
+                                self.stdout.write(zone.name)
 
                                 bbox = BBox(zone.polygon.extent)
                                 try:

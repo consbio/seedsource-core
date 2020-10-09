@@ -45,5 +45,5 @@ class TransferLimit(models.Model):
 
 class Region(gis_models.Model):
     name = models.CharField(max_length=20)
-    polygons = gis_models.MultiPolygonField(geography=True)
+    polygons = gis_models.MultiPolygonField(srid=4326)
 

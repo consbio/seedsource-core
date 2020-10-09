@@ -1,5 +1,6 @@
 {% load staticfiles %}
 {% load render_bundle from webpack_loader %}
+{% load waffle_tags %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -20,6 +21,10 @@
             staticRoot: '{% static "/" %}',
             mbtileserverRoot: '{{ mbtileserverRoot|default:"" }}'
         }
+    </script>
+
+    <script>
+        {% wafflejs %}
     </script>
 
     {% include 'snippets/ga.html' with enable_ga=enable_ga ga_id=ga_id %}

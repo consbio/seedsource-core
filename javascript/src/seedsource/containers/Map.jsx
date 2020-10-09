@@ -16,10 +16,10 @@ import 'leaflet-range/L.Control.Range'
 import * as io from '../../io'
 import { getLayerUrl } from '../../utils'
 import { variables as allVariables, timeLabels, regions, regionsBoundariesUrl } from '../../config'
-import { setMapOpacity, setBasemap, setZoom, setMapCenter } from '../../actions/map'
+import { setMapOpacity, setBasemap, setZoom, setMapCenter, setMapMode } from '../../actions/map'
 import { toggleLayer } from '../../actions/layers'
 import { setPopupLocation, resetPopupLocation } from '../../actions/popup'
-import { setPoint } from '../../actions/point'
+import { setPoint, addUserSite } from '../../actions/point'
 import { isClose } from '../../utils'
 import '../../leaflet-controls'
 import 'leaflet.vectorgrid'
@@ -207,6 +207,8 @@ class Map extends React.Component {
                 this.map.setView(this.props.center, this.props.zoom)
             }
         }
+
+        this.userSitesLayer = L.layerGroup().addTo(this.map)
     }
 
     componentWillUnmount() {
@@ -494,6 +496,7 @@ class Map extends React.Component {
     }
 
     updatePopup(popup, unit) {
+        const { mode } = this.props
         let { point, elevation } = popup
 
         if (point !== null) {
@@ -512,17 +515,24 @@ class Map extends React.Component {
                 L.DomUtil.create('div', '', container).innerHTML = '&nbsp;'
 
                 let button = L.DomUtil.create('button', 'button is-primary is-fullwidth', container)
-                button.innerHTML = 'Set Point'
+                button.innerHTML = mode === 'add_sites' ? 'Add Location' : 'Set Point'
 
                 let popup = L.popup({
                     closeOnClick: false
                 }).setLatLng([point.y, point.x]).setContent(container).openOn(this.map)
 
                 L.DomEvent.on(button, 'click', () => {
-                    this.cancelBoundaryPreview()
                     let { point } = this.popup
+                    const { mode } = this.props
+
+                    this.cancelBoundaryPreview()
                     this.map.closePopup(popup)
-                    this.props.onMapClick(point.y, point.x)
+
+                    if (mode === 'add_sites') {
+                        this.props.onAddSite(point.y, point.x)
+                    } else {
+                        this.props.onMapClick(point.y, point.x)
+                    }
                 })
 
                 this.popup = {
@@ -530,7 +540,8 @@ class Map extends React.Component {
                     location,
                     elevationLabel,
                     values,
-                    point
+                    point,
+                    button
                 }
             }
 
@@ -556,6 +567,8 @@ class Map extends React.Component {
             if (elevationLabel !== this.popup.elevationLabel.innerHTML) {
                 this.popup.elevationLabel.innerHTML = elevationLabel
             }
+
+            this.popup.button.innerHTML = mode === 'add_sites' ? 'Add Location' : 'Set Point'
 
             let valueRows = popup.values.map(item => {
                 let variableConfig = allVariables.find(variable => variable.name === item.name)
@@ -673,13 +686,45 @@ class Map extends React.Component {
         this.updateVectorLayers(vectorLayers)
     }
 
+    updateUserSites(userSites, activeSite) {
+        this.userSitesLayer.getLayers().forEach((layer, i) => {
+            if (i >= userSites.length) {
+                this.userSitesLayer.removeLayer(layer)
+            } else {
+                const site = userSites[i]
+                const siteLatLng = L.latLng(site.lat, site.lon)
+
+                layer.setLatLng(siteLatLng)
+                layer.setIcon(L.divIcon({
+                    className: `user-site-layer-icon ${activeSite === i ? 'active' : ''}`,
+                    iconSize: 20
+                }))
+            }
+        })
+
+        const start = this.userSitesLayer.getLayers().length
+        userSites.slice(start).forEach((site, index) => {
+            const siteLatLng = L.latLng(site.lat, site.lon)
+            this
+                .userSitesLayer
+                .addLayer(
+                    L.marker(
+                        siteLatLng,
+                        {icon: L.divIcon({
+                                className: `user-site-layer-icon ${activeSite === start + index ? 'active' : ''}`,
+                                iconSize: 20
+                        })}
+                    ))
+        })
+    }
+
     render() {
         let timeOverlay = null
 
         if (this.map !== null) {
             let {
                 objective, point, climate, opacity, legends, popup, unit, method, zone, zoneConfig, geometry, center,
-                region, shapefileConstraints, layers, zoom
+                region, shapefileConstraints, layers, zoom, userSites, activeUserSite, mode
             } = this.props
 
             this.updateLayers(layers)
@@ -693,6 +738,14 @@ class Map extends React.Component {
             this.updateMapCenter(center)
             this.updateMapZoom(zoom)
             this.updateShapefileLayer(shapefileConstraints)
+            this.updateUserSites(userSites, activeUserSite)
+
+            // Update cursor
+            if (mode === 'add_sites') {
+                L.DomUtil.addClass(this.map._container, 'crosshair')
+            } else {
+                L.DomUtil.removeClass(this.map._container, 'crosshair')
+            }
 
             // Time overlay
             if (layers.find(layer => layer.urlTemplate.includes("{region}_{modelTime}") && layer.displayed === true)) {
@@ -723,8 +776,20 @@ class Map extends React.Component {
 const mapStateToProps = state => {
 
     let { runConfiguration, map, job, legends, popup, lastRun, layers } = state
-    let { opacity, center, zoom } = map
-    let { objective, point, climate, unit, method, zones, region, regionMethod, constraints } = runConfiguration
+    let { opacity, center, zoom, mode } = map
+    let {
+        objective,
+        point,
+        climate,
+        unit,
+        method,
+        zones,
+        region,
+        regionMethod,
+        constraints,
+        userSites,
+        activeUserSite
+    } = runConfiguration
     let { geometry, selected: zone, matched } = zones
     let resultRegion = lastRun ? lastRun.region : null
     let shapefileConstraints = constraints.filter(item => item.type === 'shapefile')
@@ -733,7 +798,7 @@ const mapStateToProps = state => {
 
     return {
         objective, point, climate, opacity, job, legends, popup, unit, method, geometry, zone, zoneConfig, center,
-        zoom, region, regionMethod, resultRegion, shapefileConstraints, layers
+        zoom, region, regionMethod, resultRegion, shapefileConstraints, layers, userSites, activeUserSite, mode
     }
 }
 
@@ -753,6 +818,11 @@ const mapDispatchToProps = dispatch => {
 
         onMapClick: (lat, lon) => {
             dispatch(setPoint(lat, lon))
+        },
+
+        onAddSite: (lat, lon) => {
+            dispatch(addUserSite({lat, lon}))
+            dispatch(setMapMode('normal'))
         },
 
         onPopupLocation: (lat, lon) => {

@@ -22,6 +22,7 @@ setup(
         'netcdf4',
         'pyproj==1.*',
         'python-pptx',
-        'weasyprint'
+        'weasyprint',
+        'django-waffle==1.*'
     ]
 )

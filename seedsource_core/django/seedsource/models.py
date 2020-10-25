@@ -18,6 +18,7 @@ class RunConfiguration(models.Model):
 
 class ZoneSource(models.Model):
     name = models.CharField(max_length=100)
+    order = models.IntegerField(default=0)
 
 
 class SeedZone(gis_models.Model):

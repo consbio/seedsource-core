@@ -17,6 +17,7 @@ class Command(BaseCommand):
     def handle(self, zone_name, *args, **options):
         with ZoneConfig(zone_name) as config:
             source = ZoneSource.objects.get_or_create(name=config.source)[0]
+
             if source.seedzone_set.all().exists():
                 message = (
                     'WARNING: This will replace {} seed zone records and remove associated transfer limits. '
@@ -24,6 +25,9 @@ class Command(BaseCommand):
                 )
                 if input(message).lower() not in {'y', 'yes'}:
                     return
+
+            source.order = getattr(config.config, 'order', 0)
+            source.save()
 
             self.stdout.write('Loading seed zones...')
 

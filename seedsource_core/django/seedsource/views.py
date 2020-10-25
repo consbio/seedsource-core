@@ -65,7 +65,7 @@ class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
                 raise ParseError()
             point = Point(x, y)
 
-            return self.queryset.filter(polygon__intersects=point)
+            return self.queryset.filter(polygon__intersects=point).order_by('zone_source__order')
 
     @detail_route(methods=['get'])
     def geometry(self, *args, **kwargs):

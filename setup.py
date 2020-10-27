@@ -24,5 +24,6 @@ setup(
         "pyproj",
         "python-pptx",
         "weasyprint",
+        "django-waffle==1.*",
     ],
 )

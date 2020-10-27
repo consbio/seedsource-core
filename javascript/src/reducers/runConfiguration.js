@@ -5,7 +5,15 @@ import zones from './zones'
 import climate from './climate'
 import constraints from './constraints'
 import { SELECT_OBJECTIVE } from '../actions/objectives'
-import { SET_LATITUDE, SET_LONGITUDE, SET_POINT, SET_ELEVATION } from '../actions/point'
+import {
+    SET_LATITUDE,
+    SET_LONGITUDE,
+    SET_POINT,
+    SET_ELEVATION,
+    ADD_USER_SITE,
+    REMOVE_USER_SITE,
+    SET_ACTIVE_USER_SITE
+} from '../actions/point'
 import { SELECT_SPECIES, RECEIVE_AVAILABLE_SPECIES } from '../actions/species'
 import { SELECT_UNIT, SELECT_METHOD, SELECT_CENTER } from '../actions/variables'
 import { LOAD_CONFIGURATION, RESET_CONFIGURATION } from '../actions/saves'
@@ -32,7 +40,9 @@ const defaultConfiguration = {
     regionMethod: 'auto',
     variables: [],
     traits: [],
-    constraints: []
+    constraints: [],
+    userSites: [],
+    activeUserSite: null
 }
 
 export default (state = defaultConfiguration, action) => {
@@ -101,6 +111,25 @@ export default (state = defaultConfiguration, action) => {
 
             case RECEIVE_REGIONS:
                 return morph(state, {validRegions: action.regions})
+
+            case ADD_USER_SITE:
+                return {...state, userSites: [action.latlon, ...state.userSites]}
+
+            case REMOVE_USER_SITE:
+                return {
+                    ...state,
+                    userSites: [
+                        ...state.userSites.slice(0, action.index),
+                        ...state.userSites.slice(action.index + 1)
+                    ],
+                    activeUserSite: null
+                }
+
+            case SET_ACTIVE_USER_SITE:
+                return {
+                    ...state,
+                    activeUserSite: action.index
+                }
 
             case RESET_CONFIGURATION:
                 return defaultConfiguration

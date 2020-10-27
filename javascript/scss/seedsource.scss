@@ -177,7 +177,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 }
 
 .badge {
-  border-radius: 10px;
+  border-radius: 50%;
   padding: 3px 7px;
   background-color: #777;
   color: #fff;
@@ -311,8 +311,7 @@ $icons: eye eye-closed crop contrast save load file trash clock chevron-top chev
 }
 
 .point-chooser .input {
-  width: 85px;
-  margin-right: 10px;
+  width: 80px;
   text-align: right;
 }
 
@@ -515,6 +514,25 @@ tr.visible .visibility-toggle, .visibility-toggle:hover {
 
 .leaflet-default-icon-path {
   background-image: url(/images/marker-icon.png);
+}
+
+.leaflet-container.crosshair {
+  cursor: crosshair !important;
+
+  .leaflet-interactive {
+    cursor: crosshair !important;
+  }
+}
+
+.user-site-layer-icon {
+  background-color: $turquoise;
+  border-radius: 50%;
+  border: 2px solid black;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+
+  &.active {
+    background-color: $yellow;
+  }
 }
 
 @include mobile {

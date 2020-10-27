@@ -18,6 +18,7 @@ class RunConfiguration(models.Model):
 
 class ZoneSource(models.Model):
     name = models.CharField(max_length=100)
+    order = models.IntegerField(default=0)
 
 
 class SeedZone(gis_models.Model):
@@ -45,5 +46,5 @@ class TransferLimit(models.Model):
 
 class Region(gis_models.Model):
     name = models.CharField(max_length=20)
-    polygons = gis_models.MultiPolygonField(geography=True)
+    polygons = gis_models.MultiPolygonField(srid=4326)
 

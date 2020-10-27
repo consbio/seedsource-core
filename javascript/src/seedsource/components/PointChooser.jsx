@@ -9,11 +9,16 @@ class PointChooser extends React.Component {
 
     render() {
         let {lat, lon, onBlur} = this.props
+        const flag = window.waffle.flag_is_active('map-seedlots')
 
         return (
-            <div className="point-chooser">
-                <strong>Lat: </strong>
-                <input
+            <div
+                className={`point-chooser ${flag ? 'columns is-mobile' : ''}`}
+                style={flag ? {marginBottom: '0'} : null}
+            >
+                <label className={flag ? 'column is-narrow' : ''}>
+                    {flag ? <div>Lat</div> : <strong>Lat: </strong>}
+                    <input
                     type="text"
                     data-lpignore="true"
                     className="input is-inline is-small"
@@ -34,8 +39,11 @@ class PointChooser extends React.Component {
                         }
                     }}
                 />
-                <strong>Lon: </strong>
-                <input
+                </label>
+
+                <label className={flag ? 'column is-narrow' : ''}>
+                    {flag ? <div>Lon</div> : <strong>Lon: </strong>}
+                    <input
                     type="text"
                     data-lpignore="true"
                     className="input is-inline is-small"
@@ -56,6 +64,7 @@ class PointChooser extends React.Component {
                         }
                     }}
                 />
+                </label>
             </div>
         )
     }

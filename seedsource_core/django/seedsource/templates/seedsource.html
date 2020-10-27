@@ -1,5 +1,6 @@
 {% load staticfiles %}
 {% load render_bundle from webpack_loader %}
+{% load waffle_tags %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -22,14 +23,15 @@
         }
     </script>
 
+    <script>
+        {% wafflejs %}
+    </script>
+
     {% include 'snippets/ga.html' with enable_ga=enable_ga ga_id=ga_id %}
 </head>
 <body>
     <div id="SeedsourceApp"></div>
 
-    {% if not debug %}
-        {% render_bundle 'vendor' 'js' %}
-    {% endif %}
     {% render_bundle 'main' 'js' %}
 </body>
 </html>

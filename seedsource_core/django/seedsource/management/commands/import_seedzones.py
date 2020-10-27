@@ -69,8 +69,8 @@ class Command(BaseCommand):
                         if input(message).lower() not in {"y", "yes"}:
                             return
 
-            source.order = getattr(config.config, "order", 0)
-            source.save()
+                source.order = getattr(config.config, "order", 0)
+                source.save()
 
                 self.stdout.write("Loading seed zones in {}...".format(zone_name))
 

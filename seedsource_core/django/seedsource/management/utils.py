@@ -1,5 +1,4 @@
 from django.contrib.gis.geos import Polygon
-from django.contrib.gis.db.models.functions import Area, Intersection
 from rasterio.warp import transform as transform_coords
 
 from seedsource_core.django.seedsource.models import Region
@@ -23,13 +22,10 @@ def get_region_for_zone(zone):
     Region instance
     """
     extent = Polygon.from_bbox(zone.polygon.extent)
-    regions = Region.objects.filter(polygons__intersects=extent)
-
-    if len(regions) == 1:
-        return regions.first()
-
-    # calculate amount of overlap and return one with highest overlap with extent
-    return regions.annotate(overlap=Area(Intersection("polygons", extent))).order_by("-overlap").first()
+    return Region.objects.filter(
+        polygons__bbcontains=extent,
+        polygons__intersects=extent
+    ).order_by('name').first()
 
 
 def calculate_pixel_area(transform, width, height):

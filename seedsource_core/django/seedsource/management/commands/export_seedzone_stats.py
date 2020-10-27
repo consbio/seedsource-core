@@ -3,180 +3,259 @@ import json
 import math
 import os
 import time
+from collections import defaultdict
 from csv import DictWriter
+import warnings
 
 import numpy
+from progress.bar import Bar
 from django.conf import settings
-from django.contrib.gis.geos import Polygon
-from django.core.management import BaseCommand
-from ncdjango.models import Service
-from netCDF4 import Dataset
-from pyproj import Proj
+from django.core.management import BaseCommand, CommandError
+from django.contrib.gis.db.models.functions import Area
 from rasterio.features import rasterize
-from seedsource_core.django.seedsource.management.utils import ZoneConfig
-from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
-from trefoil.geometry.bbox import BBox
-from trefoil.netcdf.variable import SpatialCoordinateVariables
-from trefoil.utilities.window import Window
 
-VARIABLES = (
-    'AHM', 'CMD', 'DD5', 'DD_0', 'EMT', 'Eref', 'EXT', 'FFP', 'MAP', 'MAT', 'MCMT', 'MSP', 'MWMT', 'PAS', 'SHM', 'TD'
+from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
+
+from ..constants import PERIODS, VARIABLES
+from ..utils import get_region_for_zone, calculate_pixel_area, generate_missing_bands
+from ..dataset import (
+    ElevationDataset,
+    ClimateDatasets,
 )
+from ..statswriter import StatsWriters
+from ..zoneconfig import ZoneConfig
 
 
 class Command(BaseCommand):
-    help = 'Export seed zone statistics and sample data'
+    help = "Export seed zone statistics and sample data"
 
     def add_arguments(self, parser):
-        parser.add_argument('output_directory', nargs=1, type=str)
+        parser.add_argument("output_directory", nargs=1, type=str)
 
-    def _get_subsets(self, elevation, data, coords: SpatialCoordinateVariables, bbox):
-        """ Returns subsets of elevation, data, and coords, clipped to the given bounds """
+        parser.add_argument(
+            "--zones",
+            dest="zoneset",
+            default=None,
+            help="Comma delimited list of zones sets to analyze. (default is to analyze all available zone sets)",
+        )
 
-        x_slice = slice(*coords.x.indices_for_range(bbox.xmin, bbox.xmax))
-        y_slice = slice(*coords.y.indices_for_range(bbox.ymin, bbox.ymax))
-
-        if x_slice.stop - x_slice.start < 1:
-            x_slice = slice(x_slice.start, x_slice.start + 1)
-        if y_slice.stop - y_slice.start < 1:
-            y_slice = slice(y_slice.start, y_slice.start + 1)
-
-        return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_window(Window(y_slice, x_slice))
-
-    def _write_row(self, writer, variable, zone_file, zone_id, masked_data, band):
-        min_value = numpy.nanmin(masked_data)
-        max_value = numpy.nanmax(masked_data)
-        transfer = (max_value - min_value) / 2.0
-        center = max_value - transfer
-
-        nan_data = masked_data.astype(numpy.float32)
-        nan_data[masked_data.mask] = numpy.nan
-        p5 = numpy.nanpercentile(nan_data, 5)
-        p95 = numpy.nanpercentile(nan_data, 95)
-        p_transfer = (p95 - p5) / 2.0
-        p_center = p95 - p_transfer
-
-        low, high = band[:2]
-        label = None
-        if len(band) > 2:
-            label = band[2]
-
-        writer.writerow({
-            'samples': os.path.join(
-                '{}_samples'.format(variable), '{}_zone_{}_{}_{}.txt'.format(zone_file, zone_id, low, high)
+        parser.add_argument(
+            "--variables",
+            dest="variables",
+            default=None,
+            help="Comma delimited list of variables analyze. (default is to analyze all available variables: {})".format(
+                ",".join(VARIABLES)
             ),
-            'zone_file': zone_file,
-            'zone': zone_id,
-            'band_low': low,
-            'band_high': high,
-            'band_label': label,
-            'median': float(numpy.ma.median(masked_data)),
-            'mean': numpy.nanmean(masked_data),
-            'min': min_value,
-            'max': max_value,
-            'transfer': transfer,
-            'center': center,
-            'p5': p5,
-            'p95': p95,
-            'p_transfer': p_transfer,
-            'p_center': p_center
-        })
+        )
 
-    def _write_sample(self, output_directory, variable, zone_file, zone_id, masked_data, low, high):
-        sample = masked_data.compressed()  # Discard masked values
+        parser.add_argument(
+            "--periods",
+            dest="periods",
+            default=None,
+            help="Comma delimited list of time periods analyze. (default is to analyze all available time periods: {})".format(
+                ",".join(PERIODS)
+            ),
+        )
+
+        parser.add_argument(
+            "--seed",
+            dest="seed",
+            default=None,
+            help="Seed for random number generator, to reproduce previous random samples",
+            type=int,
+        )
+
+    def _write_sample(self, output_directory, variable, id, zone_id, data, low, high):
+        sample = data.copy()
         numpy.random.shuffle(sample)
         sample = sample[:1000]
 
-        filename = '{}_zone_{}_{}_{}.txt'.format(zone_file, zone_id, low, high).replace('/', '_')
+        filename = "{}_{}_{}.txt".format(id, low, high)
 
-        with open(os.path.join(output_directory, '{}_samples'.format(variable), filename), 'w') as f:
-            f.write(','.join(str(x) for x in sample))
+        with open(os.path.join(output_directory, "{}_samples".format(variable), filename), "w") as f:
+            f.write(",".join(str(x) for x in sample))
             f.write(os.linesep)
 
-    def handle(self, output_directory, *args, **kwargs):
+    def handle(self, output_directory, zoneset, variables, periods, seed, *args, **kwargs):
         output_directory = output_directory[0]
 
-        seed = input('Enter random seed (leave blank to auto-generate): ')
-        if not seed:
-            seed = int(time.time())
+        if zoneset is None or zoneset.strip() == "":
+            sources = ZoneSource.objects.all().order_by("name")
+            if len(sources) == 0:
+                raise CommandError("No zonesets available to analyze")
 
-        print('Using random seed: {}'.format(int(seed)))
+        else:
+            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by("name")
+            if len(sources) == 0:
+                raise CommandError("No zonesets available to analyze that match --zones values")
+
+        if variables is None:
+            variables = VARIABLES
+
+        else:
+            variables = set(variables.split(","))
+            missing = variables.difference(VARIABLES)
+            if missing:
+                raise CommandError("These variables are not available: {}".format(",".join(missing)))
+
+        if periods is None:
+            periods = PERIODS
+
+        else:
+            periods = set(periods.split(","))
+            missing = periods.difference(PERIODS)
+            if missing:
+                raise CommandError("These periods are not available: {}".format(",".join(missing)))
+
+        ### Initialize random seed
+        if seed is None:
+            seed = int(time.time())
+            print("Using random seed: {}".format(seed))
+
         numpy.random.seed(seed)
 
-        for variable in VARIABLES:
-            print('Processing {}...'.format(variable))
+        ### Create output directories
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
 
-            try:
-                os.mkdir(os.path.join(output_directory, '{}_samples'.format(variable)))
-            except OSError as ex:
-                if ex.errno != errno.EEXIST:
-                    raise
+        for period in periods:
+            print("----------------------\nProcessing period {}\n".format(period))
 
-            with open(os.path.join(output_directory, '{}.csv'.format(variable)), 'w') as f_out:
-                writer = DictWriter(
-                    f_out, fieldnames=[
-                        'samples', 'zone_file', 'zone', 'band_low', 'band_high', 'band_label', 'median', 'mean', 'min',
-                        'max', 'transfer', 'center', 'p5', 'p95', 'p_transfer', 'p_center'
-                    ])
-                writer.writeheader()
+            period_dir = os.path.join(output_directory, period)
 
-                last_region = None
+            for variable in variables:
+                sample_dir = os.path.join(period_dir, "{}_samples".format(variable))
+                if not os.path.exists(sample_dir):
+                    os.makedirs(sample_dir)
 
-                for source in ZoneSource.objects.all():
-                    with ZoneConfig(source.name) as config:
-                        for zone in source.seedzone_set.all():
-                            region = Region.objects.filter(
-                                polygons__intersects=Polygon.from_bbox(zone.polygon.extent)
-                            ).first()
+            with StatsWriters(period_dir, variables) as writer:
+                for source in sources:
+                    zones = source.seedzone_set.annotate(area_meters=Area("polygon")).all().order_by("zone_id")
 
-                            if region != last_region:
-                                last_region = region
+                    with ZoneConfig(source.name) as config, ElevationDataset() as elevation_ds, ClimateDatasets(
+                        period=period, variables=variables
+                    ) as climate:
+                        for zone in Bar(
+                            "Processing {} zones".format(source.name), max=source.seedzone_set.count(),
+                        ).iter(zones):
 
-                                print('Loading region {}'.format(region.name))
+                            # calculate area of zone polygon in acres
+                            poly_acres = round(zone.area_meters.sq_m * 0.000247105, 1)
+                            zone_xmin, zone_ymin, zone_xmax, zone_ymax = zone.polygon.extent
+                            zone_ctr_x = round(((zone_xmax - zone_xmin) / 2) + zone_xmin, 5)
+                            zone_ctr_y = round(((zone_ymax - zone_ymin) / 2) + zone_ymin, 5)
 
-                                elevation_service = Service.objects.get(name='{}_dem'.format(region.name))
-                                dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, elevation_service.data_path)
+                            region = get_region_for_zone(zone)
+                            elevation_ds.load_region(region.name)
+                            climate.load_region(region.name)
 
-                                with Dataset(dataset_path) as ds:
-                                    coords = SpatialCoordinateVariables.from_dataset(
-                                        ds, x_name='lon', y_name='lat', projection=Proj(elevation_service.projection)
-                                    )
-                                    elevation = ds.variables['elevation'][:]
+                            window, coords = elevation_ds.get_read_window(zone.polygon.extent)
+                            transform = coords.affine
 
-                                variable_service = Service.objects.get(
-                                    name='{}_1961_1990Y_{}'.format(region.name, variable)
-                                )
-                                dataset_path = os.path.join(settings.NC_SERVICE_DATA_ROOT, variable_service.data_path)
-                                with Dataset(dataset_path) as ds:
-                                    data = ds.variables[variable][:]
+                            elevation = elevation_ds.data[window]
 
-                            clipped_elevation, clipped_data, clipped_coords = self._get_subsets(
-                                elevation, data, coords, BBox(zone.polygon.extent)
+                            # calculate pixel area based on UTM centered on window
+                            pixel_area = round(
+                                calculate_pixel_area(transform, elevation.shape[1], elevation.shape[0]) * 0.000247105,
+                                1,
                             )
 
                             zone_mask = rasterize(
-                                ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
-                                transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8')
-                            )
+                                (json.loads(zone.polygon.geojson),),
+                                out_shape=elevation.shape,
+                                transform=transform,
+                                fill=1,  # mask is True OUTSIDE the zone
+                                default_value=0,
+                                dtype=numpy.dtype("uint8"),
+                            ).astype("bool")
 
-                            masked_dem = numpy.ma.masked_where(zone_mask == 0, clipped_elevation)
-                            min_elevation = max(math.floor(numpy.nanmin(masked_dem) / 0.3048), 0)
-                            max_elevation = math.ceil(numpy.nanmax(masked_dem) / 0.3048)
+                            # count rasterized pixels
+                            raster_pixels = (zone_mask == 0).sum()
 
-                            bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
-                            if bands is None:
+                            nodata_mask = elevation == elevation_ds.nodata_value
+                            mask = nodata_mask | zone_mask
+
+                            # extract all data not masked out as nodata or outside zone
+                            # convert to feet
+                            elevation = (elevation[~mask] / 0.3048).round().astype("int")
+
+                            # if there are no pixels in the mask, skip this zone
+                            if elevation.size == 0:
                                 continue
 
-                            for band in bands:
-                                low, high = band[:2]
+                            min_elevation = math.floor(numpy.nanmin(elevation))
+                            max_elevation = math.ceil(numpy.nanmax(elevation))
 
-                                # Elevation bands are represented in feet
-                                masked_data = numpy.ma.masked_where(
-                                    (zone_mask == 0) | (clipped_elevation < low * 0.3048) |
-                                    (clipped_elevation > high * 0.3048),
-                                    clipped_data
+                            bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
+                            bands = generate_missing_bands(bands, min_elevation, max_elevation)
+
+                            if not bands:
+                                # min / max elevation outside defined bands
+                                raise ValueError(
+                                    "Elevation range {} - {} ft outside defined bands\n".format(
+                                        min_elevation, max_elevation
+                                    )
                                 )
 
-                                self._write_row(writer, variable, zone.name, zone.zone_id, masked_data, band)
-                                self._write_sample(output_directory, variable, zone.name, zone.zone_id, masked_data, low,
-                                                   high)
+                            ### Extract data for each variable within each band
+                            for variable, ds in climate.items():
+                                # extract data with same shape as elevation above
+                                data = ds.data[window][~mask]
+
+                                # count the non-masked data pixels
+                                # variables may be masked even if elevation is valid
+                                zone_unit_pixels = data[data != ds.nodata_value].size
+
+                                for band in bands:
+                                    low, high = band[:2]
+                                    band_mask = (elevation >= low) & (elevation <= high)
+
+                                    if not numpy.any(band_mask):
+                                        continue
+
+                                    # extract actual elevation range within the mask as integer feet
+                                    band_elevation = elevation[band_mask]
+                                    band_range = [
+                                        math.floor(numpy.nanmin(band_elevation)),
+                                        math.ceil(numpy.nanmax(band_elevation)),
+                                    ]
+
+                                    # extract data within elevation range
+                                    band_data = data[band_mask]
+
+                                    # then apply variable's nodata mask
+                                    band_data = band_data[band_data != ds.nodata_value]
+
+                                    if not band_data.size:
+                                        continue
+
+                                    writer.write_row(
+                                        variable,
+                                        zone.zone_uid,
+                                        band,
+                                        band_range,
+                                        band_data,
+                                        period=period,
+                                        zone_set=zone.source,
+                                        species=zone.species.upper() if zone.species != "generic" else zone.species,
+                                        zone_unit=zone.zone_id,
+                                        zone_unit_poly_acres=poly_acres,
+                                        zone_unit_raster_pixels=raster_pixels,
+                                        zone_unit_raster_acres=raster_pixels * pixel_area,
+                                        zone_unit_pixels=zone_unit_pixels,
+                                        zone_unit_acres=zone_unit_pixels * pixel_area,
+                                        zone_unit_low=min_elevation,
+                                        zone_unit_high=max_elevation,
+                                        zone_pixels=band_data.size,
+                                        zone_acres=band_data.size * pixel_area,
+                                        zone_unit_ctr_x=zone_ctr_x,
+                                        zone_unit_ctr_y=zone_ctr_y,
+                                        zone_unit_xmin=round(zone_xmin, 5),
+                                        zone_unit_ymin=round(zone_ymin, 5),
+                                        zone_unit_xmax=round(zone_xmax, 5),
+                                        zone_unit_ymax=round(zone_ymax, 5),
+                                    )
+
+                                    self._write_sample(
+                                        period_dir, variable, zone.zone_uid, zone.zone_id, band_data, *band_range
+                                    )

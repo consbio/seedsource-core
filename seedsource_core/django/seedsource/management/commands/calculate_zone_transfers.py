@@ -5,31 +5,40 @@ from statistics import mean
 
 import numpy
 from django.conf import settings
-from django.contrib.gis.db.models.functions import Envelope
 from django.contrib.gis.geos import Polygon
-from django.core.management import BaseCommand
-from django.db import transaction
+from django.core.management import BaseCommand, CommandError
+from django.db.models import Avg
 from ncdjango.models import Service, SERVICE_DATA_ROOT, Variable
 from netCDF4 import Dataset
+from progress.bar import Bar
 from pyproj import Proj
 from rasterio.features import rasterize
+from rasterio import windows
 from seedsource_core.django.seedsource.models import TransferLimit, Region, ZoneSource
 from trefoil.geometry.bbox import BBox
 from trefoil.netcdf.crs import set_crs
-from trefoil.netcdf.variable import SpatialCoordinateVariables, SpatialCoordinateVariable
+
 from trefoil.render.renderers.stretched import StretchedRenderer
 from trefoil.utilities.color import Color
 from trefoil.utilities.window import Window
 
-from ..utils import ZoneConfig
-
-VARIABLES = (
-    'MAT', 'MWMT', 'MCMT', 'TD', 'MAP', 'MSP', 'AHM', 'SHM', 'DD_0', 'DD5', 'FFP', 'PAS', 'EMT', 'EXT', 'Eref', 'CMD'
+from ..constants import VARIABLES
+from ..utils import (
+    get_region_for_zone,
+    calculate_pixel_area,
 )
+from ..dataset import (
+    ElevationDataset,
+    ClimateDatasets,
+)
+from ..zoneconfig import ZoneConfig
+
+
+PERIODS = ("1961_1990", "1981_2010")
 
 
 class Command(BaseCommand):
-    help = 'Calculates default variable transfer limits for each available seed zone'
+    help = "Calculates default variable transfer limits for each available seed zone"
 
     def __init__(self, *args, **kwargs):
         self.transfers_by_source = {}
@@ -37,242 +46,295 @@ class Command(BaseCommand):
         super().__init__(*args, **kwargs)
 
     def add_arguments(self, parser):
-        parser.add_argument('source_name', nargs='?', type=str, default='all', help='Accepts zone name or all')
 
-    def _get_subsets(self, elevation, data, coords: SpatialCoordinateVariables, bbox):
-        """ Returns subsets of elevation, data, and coords, clipped to the given bounds """
+        parser.add_argument(
+            "--zones",
+            dest="zoneset",
+            default=None,
+            help="Comma delimited list of zones sets to analyze. (default is to analyze all available zone sets)",
+        )
 
-        x_slice = slice(*coords.x.indices_for_range(bbox.xmin, bbox.xmax))
-        y_slice = slice(*coords.y.indices_for_range(bbox.ymin, bbox.ymax))
+        parser.add_argument(
+            "--variables",
+            dest="variables",
+            default=None,
+            help="Comma delimited list of variables analyze. (default is to analyze all available variables)",
+        )
 
-        if x_slice.stop - x_slice.start < 2:
-            x_slice = slice(x_slice.start, x_slice.start + 2)
-        if y_slice.stop - y_slice.start < 2:
-            y_slice = slice(y_slice.start, y_slice.start + 2)
+        parser.add_argument(
+            "--clear",
+            dest="clear",
+            action="store_true",
+            default=False,
+            help="If True, will automatically delete all transfer limits before calculating new ones",
+        )
 
-        return elevation[y_slice, x_slice], data[y_slice, x_slice], coords.slice_by_window(Window(y_slice, x_slice))
+    def _write_limit(self, variable, time_period, zone, data, band, elevation_service):
+        """Write the transfer limit to the database for this zone and elevation band.
 
-    def _write_limit(self, variable, time_period, zone, masked_data, low=None, high=None, label=None):
-        min_value = numpy.nanmin(masked_data)
-        max_value = numpy.nanmax(masked_data)
+        NOTE: data must be extracted in advance to only contain non-masked values.
+
+        Parameters
+        ----------
+        variable : str
+            Climate variable
+        time_period : str
+            time period for the transfer limit
+        zone : str
+            zone ID
+        data : ndarray
+            Contains data used to calculate transfer limit stats; must be an
+            ndarray of valid values NOT a masked array
+        band : list-like
+            [min elevation, max elevation, <optional> ]
+        elevation_service : Service
+            elevation service
+
+        """
+        min_value = data.min()
+        max_value = data.max()
         transfer = (max_value - min_value) / 2.0
         center = max_value - transfer
 
-        if numpy.isnan(transfer) or hasattr(transfer, 'mask'):
-            self.stdout.write('WARNING: Transfer limit is NaN for {}, zone {}, band {}-{}'.format(
-                zone.zone_source.name, zone.zone_id, low, high
-            ))
-            return
+        low, high = band[:2]
+        label = ""
+        if len(band) > 2:
+            label = band[2]
 
         tl = TransferLimit.objects.create(
-            variable=variable, time_period=time_period, zone=zone, transfer=transfer, center=center, low=low,
-            high=high, label=label
+            variable=variable,
+            time_period=time_period,
+            zone=zone,
+            transfer=transfer,
+            center=center,
+            low=low,
+            high=high,
+            label=label,
+            elevation=elevation_service,
         )
 
-        transfers_by_variable = self.transfers_by_source.get(zone.zone_source.name, {})
-        transfers_by_variable[variable] = transfers_by_variable.get(variable, []) + [transfer]
-        self.transfers_by_source[zone.zone_source.name] = transfers_by_variable
+    def _create_elevation_service(self, zone, band, data, nodata_value, coords):
+        low, high = band[:2]
+        elevation_service_name = "zones/elevation/{}_{}_{}".format(zone.zone_uid, low, high)
 
-        return tl
+        bbox = coords.bbox
 
-    def handle(self, source_name, *args, **options):
-        if source_name == 'all':
-            sources = ZoneSource.objects.all()
+        # Delete and recreate service as needed
+        service = Service.objects.filter(name=elevation_service_name)
+        if service.exists():
+            return service.first()
+
+        rel_path = elevation_service_name + ".nc"
+        abs_path = os.path.join(SERVICE_DATA_ROOT, rel_path)
+
+        if not os.path.exists(os.path.dirname(abs_path)):
+            os.makedirs(os.path.dirname(abs_path))
+
+        with Dataset(abs_path, "w", format="NETCDF4") as ds:
+            coords.add_to_dataset(ds, "longitude", "latitude")
+            data_var = ds.createVariable(
+                "data", data.dtype, dimensions=("latitude", "longitude"), fill_value=nodata_value,
+            )
+            data_var[:] = data
+            set_crs(ds, "data", Proj("+init=epsg:4326"))
+
+        # extract out unmasked data
+        masked_data = data[data != nodata_value]
+        renderer = StretchedRenderer(
+            [(masked_data.min().item(), Color(46, 173, 60),), (masked_data.max().item(), Color(46, 173, 60),),]
+        )
+
+        service = Service.objects.create(
+            name=elevation_service_name,
+            description="Elevation for zone {}, {} - {}".format(zone.name, low, high),
+            data_path=rel_path,
+            projection="+init=epsg:4326",
+            full_extent=bbox,
+            initial_extent=bbox,
+        )
+
+        Variable.objects.create(
+            service=service,
+            index=0,
+            variable="data",
+            projection="+init=epsg:4326",
+            x_dimension="longitude",
+            y_dimension="latitude",
+            name="data",
+            renderer=renderer,
+            full_extent=bbox,
+        )
+
+        return service
+
+    def handle(self, zoneset, variables, clear, *args, **kwargs):
+        if zoneset is None or zoneset.strip() == "":
+            sources = ZoneSource.objects.all().order_by("name")
+            if len(sources) == 0:
+                raise CommandError("No zonesets available to analyze")
+
         else:
-            sources = ZoneSource.objects.filter(name=source_name)
+            sources = ZoneSource.objects.filter(name__in=zoneset.split(",")).order_by("name")
+            if len(sources) == 0:
+                raise CommandError("No zonesets available to analyze that match --zones values")
 
-        if not sources.exists():
-            self.stderr.write('Error: Zones for {} do not exist'.format(source_name))
-            self.stderr.write('Choices are:\n\t- {}'.format('\n\t- '.join(s.name for s in ZoneSource.objects.all())))
-            return
+        if variables is None:
+            variables = VARIABLES
 
-        message = 'WARNING: This will replace "{}" transfer limits. Do you want to continue? [y/n]'.format(source_name)
-        if input(message).lower() not in {'y', 'yes'}:
-            return
+        else:
+            variables = [v for v in variables.split(",") if v in set(VARIABLES)]
+            if len(variables) == 0:
+                raise CommandError("No variables available to analyze that match --variables values")
 
-        self.transfers_by_source = {}
+        existing_limits = TransferLimit.objects.filter(zone__zone_source__in=[s.id for s in sources])
 
-        with transaction.atomic():
+        if clear:
+            message = "WARNING: This will replace ALL transfer limits. Do you want to continue? [y/n]"
+            if input(message).lower() not in {"y", "yes"}:
+                return
+
+            TransferLimit.objects.all().delete()
+
+        elif existing_limits.exists():
+            message = 'WARNING: This will replace "{}" transfer limits. Do you want to continue? [y/n]'.format(
+                [s.name for s in sources]
+            )
+            if input(message).lower() not in {"y", "yes"}:
+                return
+
+            existing_limits.delete()
+
+        for time_period in PERIODS:
+            self.transfers_by_source = {}
+
             for source in sources:
-                TransferLimit.objects.filter(zone__source=source).delete()
+                zones = source.seedzone_set.all().order_by("zone_id")
 
-                with ZoneConfig(source.name) as config:
-                    zones = source.seedzone_set.all()
-                    for time_period in ('1961_1990', '1981_2010'):
-                        for variable in VARIABLES:
-                            self.stdout.write('Processing {} for {}...'.format(variable, time_period))
+                with ZoneConfig(source.name) as config, ElevationDataset() as elevation_ds, ClimateDatasets(
+                    period=time_period, variables=variables
+                ) as climate:
 
-                            last_region = None
+                    for zone in Bar(
+                        "Processing {} zones for {}".format(source.name, time_period), max=source.seedzone_set.count(),
+                    ).iter(zones):
 
-                            for zone in zones:
-                                zone_bbox = Polygon.from_bbox(zone.polygon.extent)
-                                region = Region.objects.filter(
-                                    polygons__bbcontains=zone_bbox,
-                                    polygons__intersects=zone_bbox
-                                ).order_by('name').first()
+                        region = get_region_for_zone(zone)
+                        elevation_ds.load_region(region.name)
+                        climate.load_region(region.name)
 
-                                if region is None:
-                                    self.stderr.write('Could not find region for seed zone ' + zone.name)
+                        window, coords = elevation_ds.get_read_window(zone.polygon.extent)
+                        transform = coords.affine
+
+                        elevation = elevation_ds.data[window]
+
+                        zone_mask = rasterize(
+                            (json.loads(zone.polygon.geojson),),
+                            out_shape=elevation.shape,
+                            transform=transform,
+                            fill=1,  # mask is True OUTSIDE the zone
+                            default_value=0,
+                            dtype=numpy.dtype("uint8"),
+                        ).astype("bool")
+
+                        # if zone_mask is empty (all True), try again with all_touched=True
+                        if zone_mask.all():
+                            zone_mask = rasterize(
+                                (json.loads(zone.polygon.geojson),),
+                                out_shape=elevation.shape,
+                                transform=transform,
+                                fill=1,  # mask is True OUTSIDE the zone
+                                default_value=0,
+                                dtype=numpy.dtype("uint8"),
+                                all_touched=True,
+                            ).astype("bool")
+
+                        # if still note, this is not really a valid zone
+                        if zone_mask.all():
+                            continue
+
+                        ### extract all data not masked out as nodata or outside zone
+                        nodata_mask = elevation == elevation_ds.nodata_value
+                        mask = nodata_mask | zone_mask
+
+                        # Create a 2D array for extracting to new dataset, in integer feet
+                        elevation2d = (
+                            numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value).round().astype("int")
+                        )
+
+                        # Create a 1D array for quantitative analysis, in integer feet
+                        elevation = (elevation[~mask] / 0.3048).round().astype("int")
+
+                        # if there are no pixels in the mask, skip this zone
+                        if elevation.size == 0:
+                            continue
+
+                        min_elevation = max(math.floor(numpy.nanmin(elevation)), 0)
+                        max_elevation = math.ceil(numpy.nanmax(elevation))
+
+                        bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
+
+                        if not bands:
+                            # min / max elevation outside defined bands
+                            continue
+
+                        for band in bands:
+                            low, high = band[:2]
+                            band_data_mask = (elevation >= low) & (elevation <= high)
+
+                            if not numpy.any(band_data_mask):
+                                continue
+
+                            # extract 2D version of elevation within the band
+                            band_elevation2d = numpy.where(
+                                (elevation2d != elevation_ds.nodata_value)
+                                & (elevation2d >= low)
+                                & (elevation2d <= high),
+                                elevation2d,
+                                elevation_ds.nodata_value,
+                            )
+
+                            # extract data window for a smaller output dataset
+                            band_window = (
+                                windows.get_data_window(band_elevation2d, elevation_ds.nodata_value)
+                                .round_offsets(op="floor")
+                                .round_lengths(op="ceil")
+                            )
+
+                            if band_window.height > 1 and band_window.width > 1:
+                                band_elevation2d = band_elevation2d[band_window.toslices()]
+                                band_coords = coords.slice_by_window(Window(*band_window.toslices()))
+                            else:
+                                # if band is too small, just use the original mask
+                                band_coords = coords
+
+                            elevation_service = self._create_elevation_service(
+                                zone, band, band_elevation2d, elevation_ds.nodata_value, band_coords,
+                            )
+
+                            for variable, ds in climate.items():
+                                # extract data with same shape as elevation above
+                                data = ds.data[window][~mask]
+
+                                # extract data within elevation range
+                                band_data = data[band_data_mask]
+
+                                # then apply variable's nodata mask
+                                band_data = band_data[band_data != ds.nodata_value]
+
+                                # no data in band, skip this band
+                                if not band_data.size:
                                     continue
 
-                                if region != last_region:
-                                    last_region = region
+                                self._write_limit(
+                                    variable, time_period, zone, band_data, band, elevation_service,
+                                )
 
-                                    self.stdout.write('Loading region {}'.format(region.name))
+                # Calculate average transfer limit across zones in source
+                for variable in variables:
+                    transfers = TransferLimit.objects.filter(
+                        zone__zone_source=source, variable=variable, time_period=time_period,
+                    ).all()
 
-                                    elevation_service = Service.objects.get(name='{}_dem'.format(region.name))
-                                    elevation_variable = elevation_service.variable_set.first()
-                                    dataset_path = os.path.join(
-                                        settings.NC_SERVICE_DATA_ROOT, elevation_service.data_path
-                                    )
+                    avg_transfer = transfers.aggregate(avg_transfer=Avg("transfer"))["avg_transfer"]
 
-                                    with Dataset(dataset_path) as ds:
-                                        coords = SpatialCoordinateVariables.from_dataset(
-                                            ds, x_name=elevation_variable.x_dimension,
-                                            y_name=elevation_variable.y_dimension,
-                                            projection=Proj(elevation_service.projection)
-                                        )
-                                        elevation = ds.variables[elevation_variable.variable][:]
-
-                                    variable_service = Service.objects.get(
-                                        name='{}_{}Y_{}'.format(region.name, time_period, variable)
-                                    )
-                                    dataset_path = os.path.join(
-                                        settings.NC_SERVICE_DATA_ROOT, variable_service.data_path
-                                    )
-                                    with Dataset(dataset_path) as ds:
-                                        data = ds.variables[variable][:]
-
-                                self.stdout.write(zone.name)
-
-                                bbox = BBox(zone.polygon.extent)
-                                try:
-                                    clipped_elevation, clipped_data, clipped_coords = self._get_subsets(
-                                        elevation, data, coords, bbox
-                                    )
-
-                                    zone_mask = rasterize(
-                                        ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
-                                        transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8')
-                                    )
-
-                                    # If all data are masked out, re-rasterize with `all-touched=True`
-                                    if (zone_mask == 0).all():
-                                        zone_mask = rasterize(
-                                            ((json.loads(zone.polygon.geojson), 1),), out_shape=clipped_elevation.shape,
-                                            transform=clipped_coords.affine, fill=0, dtype=numpy.dtype('uint8'),
-                                            all_touched=True
-                                        )
-                                except (AssertionError, IndexError):  # trefoil throws exceptions for 1-cell slices
-                                    x_start, x_end = coords.x.indices_for_range(bbox.xmin, bbox.xmax)
-                                    if x_start == x_end:
-                                        x_end += 1
-
-                                    y_start, y_end = coords.y.indices_for_range(bbox.ymin, bbox.ymax)
-                                    if y_start == y_end:
-                                        y_end += 1
-
-                                    clipped_elevation = elevation[y_start:y_end, x_start:x_end]
-                                    clipped_data = data[y_start:y_end, x_start:x_end]
-
-                                    zone_mask = numpy.ones(clipped_elevation.shape)
-
-                                masked_dem = numpy.ma.masked_where(zone_mask == 0, clipped_elevation)
-
-                                # If all data are masked out at this point, skip this zone (it's probably in the ocean)
-                                if masked_dem.mask.all():
-                                    continue
-
-                                min_elevation = max(math.floor(numpy.nanmin(masked_dem) / 0.3048), 0)
-                                max_elevation = math.ceil(numpy.nanmax(masked_dem) / 0.3048)
-                                bands = list(config.get_elevation_bands(zone, min_elevation, max_elevation))
-
-                                if not bands:
-                                    self.stderr.write('WARNING: No elevation bands found for {}, zone {}'.format(
-                                        zone.zone_source.name, zone.zone_id
-                                    ))
-                                    continue
-
-                                for band in bands:
-                                    low, high = band[:2]
-                                    label = None
-                                    if len(band) == 3:
-                                        label = band[2]
-
-                                    # Elevation bands are represented in feet
-                                    elevation_mask = (
-                                        (clipped_elevation < low * 0.3048) | (clipped_elevation > high * 0.3048)
-                                    )
-
-                                    masked_data = numpy.ma.masked_where(
-                                        (zone_mask == 0) | elevation_mask, clipped_data
-                                    )
-
-                                    limit = self._write_limit(
-                                        variable, time_period, zone, masked_data, low, high, label
-                                    )
-
-                                    if limit is None:
-                                        continue
-
-                                    elevation_service_name = 'zones/elevation/{}_{}_{}'.format(zone.zone_uid, low, high)
-                                    if Service.objects.filter(name=elevation_service_name).exists():
-                                        limit.elevation = Service.objects.get(name=elevation_service_name)
-                                    else:
-                                        masked_elevation = numpy.ma.masked_where(
-                                            (zone_mask == 0) | elevation_mask, clipped_elevation
-                                        )
-
-                                        rel_path = elevation_service_name + '.nc'
-                                        abs_path = os.path.join(SERVICE_DATA_ROOT, rel_path)
-
-                                        if not os.path.exists(os.path.dirname(abs_path)):
-                                            os.makedirs(os.path.dirname(abs_path))
-
-                                        with Dataset(abs_path, 'w', format='NETCDF4') as ds:
-                                            clipped_coords.add_to_dataset(ds, 'longitude', 'latitude')
-                                            data_var = ds.createVariable(
-                                                'data', masked_elevation.dtype, dimensions=('latitude', 'longitude'),
-                                                fill_value=masked_elevation.fill_value
-                                            )
-                                            data_var[:] = masked_elevation
-                                            set_crs(
-                                                ds, 'data', Proj('+init=epsg:4326')
-                                            )
-
-                                        renderer = StretchedRenderer([
-                                            (numpy.min(masked_elevation).item(), Color(46, 173, 60)),
-                                            (numpy.max(masked_elevation).item(), Color(46, 173, 60))
-                                        ])
-
-                                        service = Service.objects.create(
-                                            name=elevation_service_name,
-                                            description='Elevation for zone {}, {} - {}'.format(zone.name, low, high),
-                                            data_path=rel_path,
-                                            projection='+init=epsg:4326',
-                                            full_extent=clipped_coords.bbox,
-                                            initial_extent=clipped_coords.bbox
-                                        )
-                                        Variable.objects.create(
-                                            service=service,
-                                            index=0,
-                                            variable='data',
-                                            projection='+init=epsg:4326',
-                                            x_dimension='longitude',
-                                            y_dimension='latitude',
-                                            name='data',
-                                            renderer=renderer,
-                                            full_extent=clipped_coords.bbox
-                                        )
-
-                                        limit.elevation = service
-
-                                    limit.save()
-
-            for source_name, transfers_by_variable in self.transfers_by_source.items():
-                for variable, transfers in transfers_by_variable.items():
-                    TransferLimit.objects.filter(
-                        variable=variable, zone__zone_source__name=source_name
-                    ).update(
-                        avg_transfer=mean(transfers)
-                    )
+                    transfers.update(avg_transfer=avg_transfer)

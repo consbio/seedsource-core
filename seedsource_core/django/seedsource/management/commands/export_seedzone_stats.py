@@ -17,7 +17,7 @@ from rasterio.features import rasterize
 from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
 
 from ..constants import PERIODS, VARIABLES
-from ..utils import get_region_for_zone, calculate_pixel_area, generate_missing_bands
+from ..utils import get_regions_for_zone, calculate_pixel_area, generate_missing_bands
 from ..dataset import (
     ElevationDataset,
     ClimateDatasets,
@@ -145,7 +145,7 @@ class Command(BaseCommand):
                             zone_ctr_x = round(((zone_xmax - zone_xmin) / 2) + zone_xmin, 5)
                             zone_ctr_y = round(((zone_ymax - zone_ymin) / 2) + zone_ymin, 5)
 
-                            region = get_region_for_zone(zone)
+                            region = get_regions_for_zone(zone)
                             elevation_ds.load_region(region.name)
                             climate.load_region(region.name)
 

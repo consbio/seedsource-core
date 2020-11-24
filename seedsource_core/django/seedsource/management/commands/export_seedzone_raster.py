@@ -22,7 +22,7 @@ from trefoil.utilities.window import Window
 from seedsource_core.django.seedsource.models import SeedZone, Region, ZoneSource
 
 from ..constants import VARIABLES
-from ..utils import get_region_for_zone, calculate_pixel_area, generate_missing_bands
+from ..utils import get_regions_for_zone, calculate_pixel_area, generate_missing_bands
 from ..dataset import (
     ElevationDataset,
     ClimateDatasets,

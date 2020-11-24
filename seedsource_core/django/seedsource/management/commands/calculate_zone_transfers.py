@@ -24,7 +24,7 @@ from trefoil.utilities.window import Window
 
 from ..constants import VARIABLES
 from ..utils import (
-    get_region_for_zone,
+    get_regions_for_zone,
     calculate_pixel_area,
 )
 from ..dataset import (
@@ -217,27 +217,21 @@ class Command(BaseCommand):
                     for zone in Bar(
                         "Processing {} zones for {}".format(source.name, time_period), max=source.seedzone_set.count(),
                     ).iter(zones):
+                        regions = get_regions_for_zone(zone)
+                        if elevation_ds.region in regions:
+                            region = regions.pop(regions.index(elevation_ds.region))
+                        else:
+                            region = regions.pop(0)
 
-                        region = get_region_for_zone(zone)
-                        elevation_ds.load_region(region.name)
-                        climate.load_region(region.name)
+                        while True:
+                            elevation_ds.load_region(region.name)
+                            climate.load_region(region.name)
 
-                        window, coords = elevation_ds.get_read_window(zone.polygon.extent)
-                        transform = coords.affine
+                            window, coords = elevation_ds.get_read_window(zone.polygon.extent)
+                            transform = coords.affine
 
-                        elevation = elevation_ds.data[window]
+                            elevation = elevation_ds.data[window]
 
-                        zone_mask = rasterize(
-                            (json.loads(zone.polygon.geojson),),
-                            out_shape=elevation.shape,
-                            transform=transform,
-                            fill=1,  # mask is True OUTSIDE the zone
-                            default_value=0,
-                            dtype=numpy.dtype("uint8"),
-                        ).astype("bool")
-
-                        # if zone_mask is empty (all True), try again with all_touched=True
-                        if zone_mask.all():
                             zone_mask = rasterize(
                                 (json.loads(zone.polygon.geojson),),
                                 out_shape=elevation.shape,
@@ -245,26 +239,45 @@ class Command(BaseCommand):
                                 fill=1,  # mask is True OUTSIDE the zone
                                 default_value=0,
                                 dtype=numpy.dtype("uint8"),
-                                all_touched=True,
                             ).astype("bool")
+
+                            # if zone_mask is empty (all True), try again with all_touched=True
+                            if zone_mask.all():
+                                zone_mask = rasterize(
+                                    (json.loads(zone.polygon.geojson),),
+                                    out_shape=elevation.shape,
+                                    transform=transform,
+                                    fill=1,  # mask is True OUTSIDE the zone
+                                    default_value=0,
+                                    dtype=numpy.dtype("uint8"),
+                                    all_touched=True,
+                                ).astype("bool")
+
+                            if zone_mask.all():
+                                break
+
+                            # extract all data not masked out as nodata or outside zone
+                            nodata_mask = elevation == elevation_ds.nodata_value
+                            mask = nodata_mask | zone_mask
+
+                            # Create a 2D array for extracting to new dataset, in integer feet
+                            elevation2d = (
+                                numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value).round().astype("int")
+                            )
+
+                            # Create a 1D array for quantitative analysis, in integer feet
+                            elevation = (elevation[~mask] / 0.3048).round().astype("int")
+
+                            if elevation.size == 0 and regions:
+                                region = regions.pop(0)
+                                continue
+                            break
 
                         # if still note, this is not really a valid zone
                         if zone_mask.all():
                             continue
 
-                        ### extract all data not masked out as nodata or outside zone
-                        nodata_mask = elevation == elevation_ds.nodata_value
-                        mask = nodata_mask | zone_mask
-
-                        # Create a 2D array for extracting to new dataset, in integer feet
-                        elevation2d = (
-                            numpy.where(~mask, elevation / 0.3048, elevation_ds.nodata_value).round().astype("int")
-                        )
-
-                        # Create a 1D array for quantitative analysis, in integer feet
-                        elevation = (elevation[~mask] / 0.3048).round().astype("int")
-
-                        # if there are no pixels in the mask, skip this zone
+                        # If there are no pixels in the mask, skip this zone
                         if elevation.size == 0:
                             continue
 
@@ -291,13 +304,13 @@ class Command(BaseCommand):
                                 & (elevation2d <= high),
                                 elevation2d,
                                 elevation_ds.nodata_value,
-                            )
+                                )
 
                             # extract data window for a smaller output dataset
                             band_window = (
                                 windows.get_data_window(band_elevation2d, elevation_ds.nodata_value)
-                                .round_offsets(op="floor")
-                                .round_lengths(op="ceil")
+                                    .round_offsets(op="floor")
+                                    .round_lengths(op="ceil")
                             )
 
                             if band_window.height > 1 and band_window.width > 1:

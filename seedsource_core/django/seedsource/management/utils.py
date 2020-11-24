@@ -4,7 +4,7 @@ from rasterio.warp import transform as transform_coords
 from seedsource_core.django.seedsource.models import Region
 
 
-def get_region_for_zone(zone):
+def get_regions_for_zone(zone):
     """Returns the best region for the zone based on amount of overlap with the zone's bounding box.
 
     If the zone only falls within one region, that region is returned.
@@ -22,10 +22,7 @@ def get_region_for_zone(zone):
     Region instance
     """
     extent = Polygon.from_bbox(zone.polygon.extent)
-    return Region.objects.filter(
-        polygons__bbcontains=extent,
-        polygons__intersects=extent
-    ).order_by('name').first()
+    return list(Region.objects.filter(polygons__bbcontains=extent).order_by('name'))
 
 
 def calculate_pixel_area(transform, width, height):

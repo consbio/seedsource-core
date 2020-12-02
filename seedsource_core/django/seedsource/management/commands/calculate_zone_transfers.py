@@ -221,7 +221,12 @@ class Command(BaseCommand):
                         if elevation_ds.region in regions:
                             region = regions.pop(regions.index(elevation_ds.region))
                         else:
-                            region = regions.pop(0)
+                            try:
+                                region = regions.pop(0)
+                            except IndexError:
+                                raise CommandError(
+                                    "The following seedzone has no suitable region: {}".format(zone.zone_uid)
+                                )
 
                         while True:
                             elevation_ds.load_region(region.name)

@@ -28,7 +28,7 @@ class SeedZone(gis_models.Model):
     species = models.CharField(max_length=10)
     zone_id = models.CharField(max_length=100, null=True)
     zone_uid = models.CharField(max_length=50, unique=True, null=True)
-    polygon = gis_models.GeometryField(geography=True)
+    polygon = gis_models.GeometryField(srid=4326)
 
 
 class TransferLimit(models.Model):

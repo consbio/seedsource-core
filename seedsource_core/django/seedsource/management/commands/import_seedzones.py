@@ -1,7 +1,9 @@
 from pathlib import Path
 from django.conf import settings
+from django.contrib.gis.db.models.functions import MakeValid
 from django.core.management import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Q
 from seedsource_core.django.seedsource.models import SeedZone, ZoneSource
 
 from ..zoneconfig import ZoneConfig
@@ -92,5 +94,5 @@ class Command(BaseCommand):
                             species=info["species"],
                             zone_id=info["zone_id"],
                             zone_uid=zone_uid,
-                            polygon=polygon,
+                            polygon=polygon.buffer(0),
                         )

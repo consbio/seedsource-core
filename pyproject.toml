@@ -9,19 +9,19 @@ license = "BSD-3-Clause"
 python = "^3.9"
 aiohttp = "^3.7.3"
 trefoil = { git = "https://github.com/consbio/trefoil.git", branch = "main" }
-Django = "^1.11"
+Django = "^2.2"
 djangorestframework = "~3.7"
 GDAL = "^3.2.0"
 geopy = "^1.23.0"
 mercantile = "^1.1.6"
-ncdjango = "^0.5.2"
+ncdjango = { git = "https://github.com/consbio/ncdjango.git", branch = "main" }
 netCDF4 = "^1.5.5"
 progress = "^1.5"
 python-pptx = "^0.6.18"
 WeasyPrint = "^52.2"
 django-waffle = "^1"
 celery = "^4.0.0"
-pyproj = "^3.0.0"
+pyproj = "~3.0.0"
 
 [tool.poetry.dev-dependencies]
 

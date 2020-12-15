@@ -3,10 +3,10 @@ import uuid
 from django.conf import settings
 from django.contrib.auth import login, authenticate, update_session_auth_hash, logout, get_user_model
 from django.core.mail import send_mail
-from django.core.urlresolvers import reverse, reverse_lazy
 from django.db import transaction
 from django.template.context import Context
 from django.template.loader import get_template
+from django.urls import reverse, reverse_lazy
 from django.views.generic.edit import FormView
 from rest_framework.generics import CreateAPIView, UpdateAPIView, GenericAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated

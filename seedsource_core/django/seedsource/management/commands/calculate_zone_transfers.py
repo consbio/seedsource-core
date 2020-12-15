@@ -136,7 +136,7 @@ class Command(BaseCommand):
                 "data", data.dtype, dimensions=("latitude", "longitude"), fill_value=nodata_value,
             )
             data_var[:] = data
-            set_crs(ds, "data", Proj("+init=epsg:4326"))
+            set_crs(ds, "data", Proj("epsg:4326"))
 
         # extract out unmasked data
         masked_data = data[data != nodata_value]
@@ -148,7 +148,7 @@ class Command(BaseCommand):
             name=elevation_service_name,
             description="Elevation for zone {}, {} - {}".format(zone.name, low, high),
             data_path=rel_path,
-            projection="+init=epsg:4326",
+            projection="epsg:4326",
             full_extent=bbox,
             initial_extent=bbox,
         )
@@ -157,7 +157,7 @@ class Command(BaseCommand):
             service=service,
             index=0,
             variable="data",
-            projection="+init=epsg:4326",
+            projection="epsg:4326",
             x_dimension="longitude",
             y_dimension="latitude",
             name="data",

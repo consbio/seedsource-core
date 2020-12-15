@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 ('token', models.CharField(unique=True, db_index=True, max_length=36)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('used', models.BooleanField(default=False)),
-                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
         ),
     ]

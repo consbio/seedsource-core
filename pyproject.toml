@@ -11,7 +11,7 @@ aiohttp = "^3.7.3"
 trefoil = { git = "https://github.com/consbio/trefoil.git", branch = "main" }
 Django = "^2.2"
 djangorestframework = "~3.7"
-GDAL = "^3.2.0"
+GDAL = "*"
 geopy = "^1.23.0"
 mercantile = "^1.1.6"
 ncdjango = { git = "https://github.com/consbio/ncdjango.git", branch = "main" }

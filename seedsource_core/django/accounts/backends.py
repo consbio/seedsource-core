@@ -16,7 +16,7 @@ class IdentityBackend(object):
 
 
 class EmailAuthenticationBackend:
-    def authenticate(self, email, password):
+    def authenticate(self, request, email, password):
         try:
             user = get_user_model().objects.get(email=email)
 

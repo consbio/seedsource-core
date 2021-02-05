@@ -1,4 +1,5 @@
 from collections import namedtuple
+from django.utils.translation import ugettext as _, pgettext
 
 Variable = namedtuple(
     'Variable',
@@ -57,45 +58,63 @@ def format_no_units(value, is_imperial):
 
 VARIABLE_CONFIG = {
     'MAT': Variable(
-        'Mean annual temperature', 10, format_temperature_value, format_temperature_transfer, '&deg;C', '&deg;F'
+        _('Mean annual temperature'), 10, format_temperature_value, format_temperature_transfer, '&deg;C', '&deg;F'
     ),
     'MWMT': Variable(
-        'Mean warmest month temperature', 10, format_temperature_value, format_temperature_transfer, '&deg;C', '°F'
+        _('Mean warmest month temperature'), 10, format_temperature_value, format_temperature_transfer, '&deg;C', '°F'
     ),
     'MCMT': Variable(
-        'Mean coldest month temperature', 10, format_temperature_value, format_temperature_transfer, '&deg;C', '°F'
+        _('Mean coldest month temperature'), 10, format_temperature_value, format_temperature_transfer, '&deg;C', '°F'
     ),
     'TD': Variable(
-        'Temperature difference between MWMT and MCMT, or continentality', 10, format_relative_temperature_value,
+        _('Temperature difference between MWMT and MCMT, or continentality'), 10, format_relative_temperature_value,
         format_temperature_transfer, '°C', '°F'
     ),
-    'MAP': Variable('Mean annual precipitation', 1, format_precip_value, format_precip_value, 'mm', 'in'),
-    'MSP': Variable(
-        'Mean summer precipitation, May to September', 1, format_precip_value, format_precip_value, 'mm', 'in'
+    'MAP': Variable(
+        _('Mean annual precipitation'), 1, format_precip_value, format_precip_value,
+        pgettext('mm', "Abbreviation of 'millimeters'"),
+        pgettext('in', "Abbreviation of 'inches'")
     ),
-    'AHM': Variable('Annual heat-moisture index', 10, format_whole_value, format_whole_value, '', ''),
-    'SHM': Variable('Summer heat-moisture index', 10, format_whole_value, format_whole_value, '', ''),
-    'DD_0': Variable('Degree-days below 0°C', 1, format_whole_value, format_whole_value, 'dd', 'dd'),
-    'DD5': Variable('Degree-days above 5°C', 1, format_whole_value, format_whole_value, 'dd', 'dd'),
-    'FFP': Variable('Frost-free period', 1, format_whole_value, format_whole_value, 'days', 'days'),
-    'PAS': Variable('Precipitation as snow, August to July', 1, format_precip_value, format_precip_value, 'mm', 'in'),
+    'MSP': Variable(
+        _('Mean summer precipitation, May to September'), 1, format_precip_value, format_precip_value,
+        pgettext('mm', "Abbreviation of 'millimeters'"),
+        pgettext('in', "Abbreviation of 'inches'")
+    ),
+    'AHM': Variable(_('Annual heat-moisture index'), 10, format_whole_value, format_whole_value, '', ''),
+    'SHM': Variable(_('Summer heat-moisture index'), 10, format_whole_value, format_whole_value, '', ''),
+    'DD_0': Variable(_('Degree-days below 0°C'), 1, format_whole_value, format_whole_value, 'dd', 'dd'),
+    'DD5': Variable(_('Degree-days above 5°C'), 1, format_whole_value, format_whole_value, 'dd', 'dd'),
+    'FFP': Variable(_('Frost-free period'), 1, format_whole_value, format_whole_value, _('days'), _('days')),
+    'PAS': Variable(
+        _('Precipitation as snow, August to July'), 1, format_precip_value, format_precip_value,
+        pgettext('mm', "Abbreviation of 'millimeters'"),
+        pgettext('in', "Abbreviation of 'inches'")
+    ),
     'EMT': Variable(
-        'Extreme minimum temperature over 30 years', 10, format_temperature_value, format_temperature_transfer,
+        _('Extreme minimum temperature over 30 years'), 10, format_temperature_value, format_temperature_transfer,
         '&deg;C', '&deg;F'
     ),
     'EXT': Variable(
-        'Extreme maximum temperature over 30 years', 10, format_temperature_value, format_temperature_transfer,
+        _('Extreme maximum temperature over 30 years'), 10, format_temperature_value, format_temperature_transfer,
         '&deg;C', '&deg;F'
     ),
-    'Eref': Variable('Hargreaves reference evaporation', 1, format_precip_value, format_precip_value, 'mm', 'in'),
-    'CMD': Variable('Hargreaves climatic moisture deficit', 1, format_precip_value, format_precip_value, 'mm', 'in')
+    'Eref': Variable(
+        _('Hargreaves reference evaporation'), 1, format_precip_value, format_precip_value,
+        pgettext('mm', "Abbreviation of 'millimeters'"),
+        pgettext('in', "Abbreviation of 'inches'")
+    ),
+    'CMD': Variable(
+        _('Hargreaves climatic moisture deficit'), 1, format_precip_value, format_precip_value,
+        pgettext('mm', "Abbreviation of 'millimeters'"),
+        pgettext('in', "Abbreviation of 'inches'")
+    )
 }
 
 
 TRAIT_CONFIG = {
-    'FD': Variable('Flower Date', 1, format_temperature_value, format_temperature_value, 'days', 'days'),
-    'S': Variable('Survival', 1, format_no_units, format_no_units, '', ''),
-    'S-atva': Variable('Survival', 1, format_no_units, format_no_units, '', ''),
+    'FD': Variable(_('Flower Date'), 1, format_temperature_value, format_temperature_value, _('days'), _('days')),
+    'S': Variable(_('Survival'), 1, format_no_units, format_no_units, '', ''),
+    'S-atva': Variable(_('Survival'), 1, format_no_units, format_no_units, '', ''),
     'PC1': Variable('PC1', 1, format_no_units, format_no_units, '', ''),
     'PC2': Variable('PC2', 1, format_no_units, format_no_units, '', ''),
     'PC3': Variable('PC3', 1, format_no_units, format_no_units, '', '')
@@ -104,11 +123,17 @@ TRAIT_CONFIG = {
 
 def format_elevation_value(config, is_imperial):
     elevation = config['point']['elevation']
-    return '{:.1f} ft'.format(convert_to_feet(elevation)) if is_imperial else '{:.1f} m'.format(elevation)
+    return (
+        '{:.1f} {}'.format(convert_to_feet(elevation), pgettext('ft', "Abbreviation of 'feet'"))
+        if is_imperial else '{:.1f} {}'.format(elevation, pgettext('m', "Abbreviation of 'meters'"))
+    )
 
 
 def format_elevation_range(values, is_imperial):
-    return '{:.1f} ft'.format(convert_to_feet(values['range'])) if is_imperial else '{:.1f} m'.format(values['range'])
+    return (
+        '{:.1f} {}'.format(convert_to_feet(values['range']), pgettext('ft', "Abbreviation of 'feet'"))
+        if is_imperial else '{:.1f} {}'.format(values['range'], pgettext('m', "Abbreviation of 'meters'"))
+    )
 
 
 def format_photoperiod_value(config, is_imperial):
@@ -116,7 +141,7 @@ def format_photoperiod_value(config, is_imperial):
 
 
 def format_photoperiod_range(values, is_imperial):
-    return '{hours:.1f} hours, {day} {month}'.format(**values)
+    return '{hours:.1f} {hours_label}, {day} {month}'.format(hours_label=_('hours'), **values)
 
 
 def format_latitude_value(config, is_imperial):
@@ -136,15 +161,18 @@ def format_longitude_range(values, is_imperial):
 
 
 def format_distance_range(values, is_imperial):
-    return '{} mi'.format(convert_to_miles(values['range'])) if is_imperial else '{} km'.format(values['range'])
+    return (
+        '{} {}'.format(convert_to_miles(values['range']), pgettext('mi', "Abbreviation of 'miles'"))
+        if is_imperial else '{} {}'.format(values['range'], pgettext('km', "Abbreviation of 'kilometers'"))
+    )
 
 
 CONSTRAINT_CONFIG = {
-    'elevation': Constraint('Elevation', format_elevation_value, format_elevation_range),
-    'photoperiod': Constraint('Photoperiod', format_photoperiod_value, format_photoperiod_range),
-    'latitude': Constraint('Latitutde', format_latitude_value, format_latitude_range),
-    'longitude': Constraint('Longitude', format_longitude_value, format_longitude_range),
-    'distance': Constraint('Distance', format_photoperiod_value, format_distance_range),
+    'elevation': Constraint(_('Elevation'), format_elevation_value, format_elevation_range),
+    'photoperiod': Constraint(_('Photoperiod'), format_photoperiod_value, format_photoperiod_range),
+    'latitude': Constraint(_('Latitutde'), format_latitude_value, format_latitude_range),
+    'longitude': Constraint(_('Longitude'), format_longitude_value, format_longitude_range),
+    'distance': Constraint(_('Distance'), format_photoperiod_value, format_distance_range),
     'shapefile': Constraint('Shapefile', None, None),
-    'raster': Constraint('Raster', None, None),
+    'raster': Constraint(_('Raster'), None, None),
 }

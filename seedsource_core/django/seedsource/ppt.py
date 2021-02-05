@@ -1,16 +1,17 @@
 import datetime
-
 import os
+from io import BytesIO
+
 from PIL import Image
 from PIL.Image import isImageType
 from django.conf import settings
-from io import BytesIO
+from django.utils.translation import ugettext as _
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
 from pptx.util import Inches, Pt
 
-SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
+SEEDSOURCE_TITLE = getattr(settings, _('SEEDSOURCE_TITLE', 'Seedlot Selection Tool'))
 
 
 class PPTCreator(object):
@@ -36,11 +37,11 @@ class PPTCreator(object):
 
     def get_transfer_method_text(self, method, center):
         if method != 'seedzone':
-            method_text = 'Custom transfer limits, climatic center based on the selected location'
+            method_text = _('Custom transfer limits, climatic center based on the selected location')
         elif center == 'zone':
-            method_text = 'Transfer limits and climatic center based on seed zone'
+            method_text = _('Transfer limits and climatic center based on seed zone')
         else:
-            method_text = 'Transfer limits based on seed zone, climatic center based on the selected location'
+            method_text = _('Transfer limits based on seed zone, climatic center based on the selected location')
 
         return method_text
 
@@ -119,18 +120,18 @@ class PPTCreator(object):
         shape = slide.shapes.add_textbox(Inches(.65), Inches(.73), Inches(8.69), Inches(6.19))
         shape.text_frame.word_wrap = True
         self.add_text(shape.text_frame, (
-            (('Objective: ', 18, True), (objective, 18, False)),
+            ((_('Objective:') + ' ', 18, True), (objective, 18, False)),
             (('', 18, False),),
             (('{}: '.format(location_label), 18, True), ('{}, {}'.format(*location), 18, False)),
-            (('Elevation: ', 18, True), ('{} ft'.format(elevation), 18, False)),
+            ((_('Elevation:') + ' ', 18, True), (_('{elevation} ft').format(elevation=elevation), 18, False)),
             (('', 18, False),),
-            (('Climate scenarios', 24, True),),
-            (('Seedlot climate: ', 18, True), (seedlot_year, 18, False)),
-            (('Planting site climate: ', 18, True), (' '.join((site_year, site_model or '')), 18, False)),
+            ((_('Climate scenarios'), 24, True),),
+            ((_('Seedlot climate:') + ' ', 18, True), (seedlot_year, 18, False)),
+            ((_('Planting site climate: ') + ' ', 18, True), (' '.join((site_year, site_model or '')), 18, False)),
             (('', 18, False),),
-            (('Transfer limit method: ', 18, True), (method_text, 18, False)),
+            ((_('Transfer limit method:') + ' ', 18, True), (method_text, 18, False)),
             (('\n', 18, False),),
-            (('Data URL: ', 12, True), (data_url, 12, False))
+            ((_('Data URL:') + ' ', 12, True), (data_url, 12, False))
         ))
 
         # Hyperlink URL
@@ -138,7 +139,7 @@ class PPTCreator(object):
 
     def create_variables_slide(self, variables):
         slide = self.add_slide()
-        self.add_title_text(slide, 'Climate Variables')
+        self.add_title_text(slide, _('Climate Variables'))
 
         num_rows = len(variables) + 1
         table = slide.shapes.add_table(
@@ -151,14 +152,18 @@ class PPTCreator(object):
         cols[2].width = Inches(2.4)
 
         # Headers
-        table.cell(0, 0).text = 'Variable'
-        table.cell(0, 1).text = 'Center'
-        table.cell(0, 2).text = 'Transfer limit (+/-)'
+        table.cell(0, 0).text = _('Variable')
+        table.cell(0, 1).text = _('Center')
+        table.cell(0, 2).text = _('Transfer limit') + ' (+/-)'
 
         for i, variable in enumerate(variables, start=1):
             units = self.degree_sign(variable['units'])
             center_label = ' '.join((variable['value'], units))
-            limit_label = '{} {}{}'.format(variable['limit'], units, ' (modified)' if variable['modified'] else '')
+            limit_label = '{} {}{}'.format(
+                variable['limit'],
+                units,
+                ' ({})'.format(_('modified')) if variable['modified'] else ''
+            )
 
             table.cell(i, 0).text = variable['label']
             table.cell(i, 1).text = center_label
@@ -166,7 +171,7 @@ class PPTCreator(object):
 
     def create_constraints_slide(self, constraints):
         slide = self.add_slide()
-        self.add_title_text(slide, 'Constraints')
+        self.add_title_text(slide, _('Constraints'))
 
         num_rows = len(constraints) + 1
         table = slide.shapes.add_table(
@@ -179,9 +184,9 @@ class PPTCreator(object):
         cols[2].width = Inches(2.4)
 
         # Headers
-        table.cell(0, 0).text = 'Constraint'
-        table.cell(0, 1).text = 'Value'
-        table.cell(0, 2).text = 'Range (+/-)'
+        table.cell(0, 0).text = _('Constraint')
+        table.cell(0, 1).text = _('Value')
+        table.cell(0, 2).text = '{} (+/-)'.format(_('Range'))
 
         for i, constraint in enumerate(constraints, start=1):
             if constraint['type'] == 'shapefile':
@@ -210,44 +215,48 @@ class PPTCreator(object):
         method_text = self.get_transfer_method_text(method, center)
 
         lines = [
-            (('Objective: ', 12, True), (objective, 12, False)),
+            ((_('Objective:') + ' ', 12, True), (objective, 12, False)),
             (('{}: '.format(location_label), 12, True), ('{}, {}'.format(*location), 12, False)),
-            (('Elevation: ', 12, True), ('{} ft'.format(elevation), 12, False)),
-            (('Climate Scenarios', 12, True),),
-            (('  Seedlot climate: ', 12, True), (seedlot_year, 12, False)),
-            (('  Planting site climate: ', 12, True), ('{} {}'.format(site_year, site_model or ''), 12, False)),
-            (('Transfer limit method: ', 12, True), (method_text, 12, False))
+            ((_('Elevation:') + ' ', 12, True), ('{} ft'.format(elevation), 12, False)),
+            ((_('Climate Scenarios'), 12, True),),
+            (('  {} '.format(_('Seedlot climate:')), 12, True), (seedlot_year, 12, False)),
+            (('  {} '.format(_('Planting site climate:')), 12, True), ('{} {}'.format(site_year, site_model or ''), 12, False)),
+            ((_('Transfer limit method:') + ' ', 12, True), (method_text, 12, False))
         ]
 
         if method == 'seedzone':
             band = context['band']
             band_str = ", {}' - {}'".format(band[0], band[1]) if band else ''
             lines += [
-                (('Species: ', 12, True), (context['species'], 12, False)),
-                (('Seed zone: ', 12, True), (context['zone'] + band_str, 12, False))
+                ((_('Species:') + ' ', 12, True), (context['species'], 12, False)),
+                ((_('Seed zone:') + ' ', 12, True), (context['zone'] + band_str, 12, False))
             ]
 
         # Variables table
         variables = context['variables']
-        name_width = max([len('Variable')] + [len(x['label']) for x in variables]) + 3
+        name_width = max([len(_('Variable'))] + [len(x['label']) for x in variables]) + 3
         center_width = max(
-            [len('Center')] + [len(' '.join([str(x['value']), self.degree_sign(x['units'])])) for x in variables]
+            [len(_('Center'))] + [len(' '.join([str(x['value']), self.degree_sign(x['units'])])) for x in variables]
         ) + 3
         transfer_width = max(
-            [len('Transfer limit (+/-)')] +
+            [len(_('Transfer limit') + ' (+/-)')] +
             [
-                len('{} {}{}'.format(x['limit'], self.degree_sign(x['units']), ' (modified)' if x['modified'] else ''))
+                len('{} {}{}'.format(
+                    x['limit'],
+                    self.degree_sign(x['units']),
+                    ' ({})'.format(_('modified')) if x['modified'] else '')
+                )
                 for x in variables
             ]
         )
 
         lines += [
             (('', 12, False),),
-            (('Variables', 12, True),),
+            ((_('Variables'), 12, True),),
             ((''.join([
-                'Variable'.ljust(name_width),
-                'Center'.ljust(center_width),
-                'Transfer limit (+/-)'.ljust(transfer_width)
+                _('Variable').ljust(name_width),
+                _('Center').ljust(center_width),
+                _('Transfer limit') + ' (+/-)'.ljust(transfer_width)
             ]), 12, False),),
             (('-' * (name_width + center_width + transfer_width), 12, False),)
         ]
@@ -258,7 +267,11 @@ class PPTCreator(object):
                 ((''.join([
                     variable['label'].ljust(name_width),
                     '{} {}'.format(variable['value'], units).ljust(center_width),
-                    '{} {}{}'.format(variable['limit'], units, ' (modified)' if variable['modified'] else '')
+                    '{} {}{}'.format(
+                        variable['limit'],
+                        units,
+                        ' ({})'.format(_('modified')) if variable['modified'] else ''
+                    )
                 ]), 12, False),)
             ]
 
@@ -267,11 +280,11 @@ class PPTCreator(object):
             constraints = context['constraints']
             name_width = max([len('Constraint')] + [len(x['label']) for x in constraints]) + 3
             value_width = max(
-                [len('Value')] +
+                [len(_('Value'))] +
                 [len(x['value']) for x in [c for c in constraints if c['type'] != 'shapefile']]
             ) + 3
             range_width = max(
-                [len('Range (+/-)')] +
+                [len(_('Range') + ' (+/-)')] +
                 [len(x['range']) for x in [c for c in constraints if c['type'] != 'shapefile']]
             ) + 3
 
@@ -284,11 +297,11 @@ class PPTCreator(object):
 
             lines += [
                 (('', 12, False),),
-                (('Constraints', 12, True),),
+                ((_('Constraints'), 12, True),),
                 ((''.join([
-                    'Constraint'.ljust(name_width),
-                    'Value'.ljust(value_width),
-                    'Range (+/-)'.ljust(range_width)
+                    _('Constraint').ljust(name_width),
+                    _('Value').ljust(value_width),
+                    _('Range') + ' (+/-)'.ljust(range_width)
                 ]), 12, False),),
                 (('-' * (name_width + value_width + range_width), 12, False),)
             ]
@@ -329,8 +342,8 @@ class PPTCreator(object):
             coord_top=self.degree_sign(context['north']),
             scale_label=context['scale'],
             map_image=Image.open(context['image_data']),
-            attribution='Generated {} by the Seedlot Selection Tool'.format(
-                datetime.datetime.today().strftime('%m/%d/%Y')
+            attribution=_('Generated {date} by the Seedlot Selection Tool').format(
+                date=datetime.datetime.today().strftime('%m/%d/%Y')
             )
         ))
         self.create_overview_slide(context)

@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
+from django.utils.translation import ugettext as _
 from rest_framework import serializers
 
 
 class UniqueEmailMixin(object):
     def validate_email(self, value):
         if get_user_model().objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError('An account with this email address already exists.')
+            raise serializers.ValidationError(_('An account with this email address already exists.'))
         return value.lower()
 
 
@@ -65,6 +66,6 @@ class LostPasswordSerializer(serializers.Serializer):
     def validate_email(self, value):
         if not get_user_model().objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError(
-                'No account with this email address exists. Please create a new account.'
+                _('No account with this email address exists. Please create a new account.')
             )
         return value.lower()

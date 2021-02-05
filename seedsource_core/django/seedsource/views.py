@@ -108,7 +108,9 @@ class ReportViewBase(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        return self._response(Report(data['configuration'], data['zoom'], data['center'], data['tile_layers'], data['opacity']))
+        return self._response(Report(
+            data['configuration'], data['zoom'], data['center'], data['tile_layers'], data['opacity']
+        ))
 
 
 class GeneratePDFView(ReportViewBase):

@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import ugettext as _
 
 from .models import PasswordResetToken
 
@@ -14,10 +15,10 @@ class PasswordResetForm(forms.Form):
         try:
             token = PasswordResetToken.objects.get(token=data)
         except PasswordResetToken.DoesNotExist:
-            raise forms.ValidationError('Sorry, the link you are using is not valid.', 'invalid_token')
+            raise forms.ValidationError(_('Sorry, the link you are using is not valid.'), 'invalid_token')
 
         if token.used:
-            raise forms.ValidationError('This link has already been used.', 'token_used')
+            raise forms.ValidationError(_('This link has already been used.'), 'token_used')
 
         return data
 
@@ -27,4 +28,4 @@ class PasswordResetForm(forms.Form):
         confirm_password = cleaned_data.get('confirm')
 
         if password != confirm_password:
-            raise forms.ValidationError('Passwords do not match.', 'password_mismatch')
+            raise forms.ValidationError(_('Passwords do not match.'), 'password_mismatch')

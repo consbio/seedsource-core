@@ -7,6 +7,7 @@ from django.db import transaction
 from django.template.context import Context
 from django.template.loader import get_template
 from django.urls import reverse, reverse_lazy
+from django.utils.translation import ugettext as _
 from django.views.generic.edit import FormView
 from rest_framework.generics import CreateAPIView, UpdateAPIView, GenericAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -106,7 +107,7 @@ class LostPasswordView(GenericAPIView):
             'url': request.build_absolute_uri(reverse('reset_password', args=(token.token,)))
         })
 
-        send_mail('Seedlot Selection Tool: Reset Password', body, 'donotreply@seedlotselectiontool.org', [user.email])
+        send_mail(_('Seedlot Selection Tool: Reset Password'), body, 'donotreply@seedlotselectiontool.org', [user.email])
 
         return Response()
 

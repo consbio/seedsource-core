@@ -30,7 +30,7 @@ from .utils import get_elevation_at_point
 ALLOWED_HOSTS = getattr(settings, 'ALLOWED_HOSTS')
 BASE_DIR = settings.BASE_DIR
 PORT = getattr(settings, 'PORT', 80)
-SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', _('Seedlot Selection Tool'))
 PDF_TEMPLATE = getattr(settings, 'REPORT_PDF_TEMPLATE', 'pdf/report.html')
 
 TILE_SIZE = (256, 256)
@@ -223,8 +223,8 @@ class Report(object):
             'scale_image_data': scale_image_data,
             'scale': scale,
             'legend_image_data': legend,
-            'objective': 'Find seedlots' if objective == 'seedlots' else 'Find planting sites',
-            'location_label': 'Planting site location' if objective == 'seedlots' else 'Seedlot location',
+            'objective': _('Find seedlots') if objective == 'seedlots' else _('Find planting sites'),
+            'location_label': _('Planting site location') if objective == 'seedlots' else _('Seedlot location'),
             'point': {'x': round(point['x'], 4), 'y': round(point['y'], 4)},
             'elevation': round(elevation),
             'seedlot_year': self.get_year(climates['seedlot']),

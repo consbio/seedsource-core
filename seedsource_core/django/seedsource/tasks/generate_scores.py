@@ -4,7 +4,7 @@ import numpy
 from django.conf import settings
 from ncdjango.geoprocessing.data import Raster
 from ncdjango.geoprocessing.evaluation import Parser, Lexer
-from ncdjango.geoprocessing.params import RasterParameter, DictParameter, StringParameter
+from ncdjango.geoprocessing.params import RasterParameter, DictParameter, StringParameter, ParameterCollection
 from ncdjango.geoprocessing.workflow import Task
 from ncdjango.models import Service
 from ncdjango.views import NetCdfDatasetMixin
@@ -27,9 +27,10 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         StringParameter('model', required=False),
         DictParameter('variables', required=False),
         DictParameter('traits', required=False),
-        DictParameter('constraints', required=False)
+        DictParameter('constraints', required=False),
+        DictParameter('points', required=False)
     ]
-    outputs = [RasterParameter('raster_out')]
+    outputs = [RasterParameter('raster_out'), DictParameter('points')]
 
     def __init__(self):
         self.service = None
@@ -62,7 +63,19 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
         return data
 
-    def execute(self, region, year, model=None, variables=[], traits=[], constraints=None):
+    def process_points(self, points, raster):
+        results = []
+        x_col = points['headers']['x']
+        y_col = points['headers']['y']
+
+        for point in points['points']:
+            idx = raster.index(point[x_col], point[y_col])
+            value = raster[idx]
+            results.append({**point, 'score': value.item() if not is_masked(value) else 0})
+
+        return results
+
+    def execute(self, region, year, model=None, variables=[], traits=[], constraints=None, points=None):
         data = {}
         variable_names = {v['name'] for v in variables}
 
@@ -122,4 +135,10 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         sum_rasters = 100 - sum_rasters.astype('int8')
         sum_rasters.fill_value = -128
 
-        return Raster(sum_rasters, extent, 1, 0, Y_INCREASING)
+        ret = ParameterCollection(self.outputs)
+        ret['raster_out'] = Raster(sum_rasters, extent, 1, 0, Y_INCREASING)
+
+        if points:
+            ret['points'] = self.process_points(points, ret['raster_out'])
+
+        return ret

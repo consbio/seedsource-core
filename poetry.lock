@@ -524,7 +524,7 @@ yaml = ["PyYAML (>=5.1.0)"]
 
 [[package]]
 name = "ncdjango"
-version = "1.1.1"
+version = "1.2.0"
 description = "A map server for NetCDF data"
 category = "main"
 optional = false
@@ -1330,8 +1330,8 @@ munch = [
     {file = "munch-2.5.0.tar.gz", hash = "sha256:2d735f6f24d4dba3417fa448cae40c6e896ec1fdab6cdb5e6510999758a4dbd2"},
 ]
 ncdjango = [
-    {file = "ncdjango-1.1.1-py3-none-any.whl", hash = "sha256:5ab64b52854e5069184638ac0004523cbc081ab50a37f108cc2b5f14cd364c5d"},
-    {file = "ncdjango-1.1.1.tar.gz", hash = "sha256:0f17f415d5e686b3f289185e50f19d0d6b975ccb124e3cc16891b7d7dbfbee0b"},
+    {file = "ncdjango-1.2.0-py3-none-any.whl", hash = "sha256:0c30e6412515f5323e51c8fdfc70f74adf2e8652aa4021b57fb301199b887297"},
+    {file = "ncdjango-1.2.0.tar.gz", hash = "sha256:23b257defdeb57c80d9a30e0983eaaf3b59ae0525dc522943bea6ccae7f3de2b"},
 ]
 netcdf4 = [
     {file = "netCDF4-1.5.6-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:573369b148aadc47e1da0e82b001412ecd7577f72ae742e2508e03d2cff2a2ce"},

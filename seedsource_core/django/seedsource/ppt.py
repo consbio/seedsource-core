@@ -11,7 +11,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
 from pptx.util import Inches, Pt
 
-SEEDSOURCE_TITLE = getattr(settings, _('SEEDSOURCE_TITLE', 'Seedlot Selection Tool'))
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', _('Seedlot Selection Tool'))
 
 
 class PPTCreator(object):

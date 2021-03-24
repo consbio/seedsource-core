@@ -30,7 +30,7 @@ from .utils import get_elevation_at_point
 ALLOWED_HOSTS = getattr(settings, 'ALLOWED_HOSTS')
 BASE_DIR = settings.BASE_DIR
 PORT = getattr(settings, 'PORT', 80)
-SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', _('Seedlot Selection Tool'))
+SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'Seedlot Selection Tool')
 PDF_TEMPLATE = getattr(settings, 'REPORT_PDF_TEMPLATE', 'pdf/report.html')
 
 TILE_SIZE = (256, 256)

@@ -10,7 +10,7 @@ python = "^3.7"
 aiohttp = "^3.7.3"
 trefoil = { git = "https://github.com/consbio/trefoil.git", branch = "main" }
 Django = "^2.2"
-djangorestframework = "~3.7"
+djangorestframework = "~3.11"
 GDAL = { version = "*", optional = true }
 geopy = "^1.23.0"
 mercantile = "^1.1.6"

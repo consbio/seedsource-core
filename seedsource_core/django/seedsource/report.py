@@ -16,6 +16,7 @@ from trefoil.utilities.color import Color
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.template.loader import render_to_string
+from django.utils.translation import ugettext as _
 from geopy.distance import vincenty
 from io import BytesIO
 from ncdjango.geoimage import world_to_image, image_to_world
@@ -193,10 +194,10 @@ class Report(object):
             image_data.seek(0)  # seek to file start so we can read into ppt
 
         with open(os.path.join(get_images_dir(), 'north.png'), 'rb') as f:
-            north_image_data = b64encode(f.read())
+            north_image_data = b64encode(f.read()).decode()
 
         with open(os.path.join(get_images_dir(), 'scale.png'), 'rb') as f:
-            scale_image_data = b64encode(f.read())
+            scale_image_data = b64encode(f.read()).decode()
 
         scale_bar_x = 38
         scale_bar_y = map_image.size[1] - 15
@@ -214,7 +215,7 @@ class Report(object):
 
         return {
             'today': datetime.today(),
-            'image_data': b64encode(image_data.getvalue()) if not img_as_bytes else image_data,
+            'image_data': b64encode(image_data.getvalue()).decode() if not img_as_bytes else image_data,
             'north': format_y_coord(map_bbox.ymax),
             'east': format_x_coord(map_bbox.xmax),
             'south': format_y_coord(map_bbox.ymin),

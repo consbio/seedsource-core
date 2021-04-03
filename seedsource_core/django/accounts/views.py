@@ -26,7 +26,7 @@ class CreateAccountView(CreateAPIView):
     def perform_create(self, serializer):
         user = serializer.save()
         user = authenticate(user=user)
-        login(self.request, user)
+        login(self.request, user, backend='seedsource_core.django.accounts.backends.IdentityBackend')
 
 
 class UpdateEmailView(UpdateAPIView):

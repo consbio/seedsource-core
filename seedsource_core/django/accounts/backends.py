@@ -2,10 +2,10 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 
 
-class IdentityBackend(object):
+class IdentityBackend:
     """Authenticate a user based on a `User` object (used to manually authenticate a user)"""
 
-    def authenticate(self, user=None):
+    def authenticate(self, request, user=None):
         return user if isinstance(user, get_user_model()) else None
 
     def get_user(self, user_id):

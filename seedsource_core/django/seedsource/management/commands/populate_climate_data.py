@@ -35,12 +35,15 @@ VARS = (
     "Tave_wt",
     "Tave_sm",
     "PPT_wt",
+    "Tmin_sp",
 )
 WGS84 = "+proj=latlong +datum=WGS84 +no_defs"
 
 
 class Command(BaseCommand):
-    help = "Populates a region's services with a DEM and ClimateNA clipped to the region."
+    help = (
+        "Populates a region's services with a DEM and ClimateNA clipped to the region."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("region_name", nargs=1, type=str)
@@ -84,7 +87,9 @@ class Command(BaseCommand):
                 with Dataset(dem_path, "r") as ds:
                     v_min = numpy.nanmin(ds.variables["elevation"][:]).item()
                     v_max = numpy.nanmax(ds.variables["elevation"][:]).item()
-                    renderer = StretchedRenderer([(v_min, Color(0, 0, 0)), (v_max, Color(255, 255, 255))])
+                    renderer = StretchedRenderer(
+                        [(v_min, Color(0, 0, 0)), (v_max, Color(255, 255, 255))]
+                    )
                     Variable.objects.create(
                         service=dem_service,
                         index=0,
@@ -109,8 +114,10 @@ class Command(BaseCommand):
 
                     service_name = "{}_{}Y_{}".format(name, year, var)
                     if not Service.objects.filter(name__iexact=service_name).exists():
-                        data_path = "regions/{name}/{year}Y/{name}_{year}Y_{var}.nc".format(
-                            name=name, year=year, var=var
+                        data_path = (
+                            "regions/{name}/{year}Y/{name}_{year}Y_{var}.nc".format(
+                                name=name, year=year, var=var
+                            )
                         )
 
                         if not os.path.exists(os.path.join(BASE_DIR, data_path)):
@@ -125,13 +132,17 @@ class Command(BaseCommand):
                             initial_extent=extent,
                         )
 
-                        with Dataset(os.path.join(BASE_DIR, service.data_path), "r") as ds:
+                        with Dataset(
+                            os.path.join(BASE_DIR, service.data_path), "r"
+                        ) as ds:
                             dims = ds.dimensions.keys()
                             lat = "lat" if "lat" in dims else "latitude"
                             lon = "lon" if "lon" in dims else "longitude"
                             v_min = numpy.nanmin(ds.variables[var][:]).item()
                             v_max = numpy.nanmax(ds.variables[var][:]).item()
-                            renderer = StretchedRenderer([(v_min, Color(0, 0, 0)), (v_max, Color(255, 255, 255))])
+                            renderer = StretchedRenderer(
+                                [(v_min, Color(0, 0, 0)), (v_max, Color(255, 255, 255))]
+                            )
                             variable = Variable.objects.create(
                                 service=service,
                                 index=0,

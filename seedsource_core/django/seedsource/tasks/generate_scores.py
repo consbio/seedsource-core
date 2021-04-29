@@ -3,7 +3,6 @@ import os
 
 import numpy
 from django.conf import settings
-from docutils.nodes import copyright
 from ncdjango.geoprocessing.data import Raster
 from ncdjango.geoprocessing.evaluation import Parser, Lexer
 from ncdjango.geoprocessing.params import RasterParameter, DictParameter, StringParameter, ParameterCollection

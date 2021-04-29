@@ -1,7 +1,9 @@
+import copy
 import os
 
 import numpy
 from django.conf import settings
+from docutils.nodes import copyright
 from ncdjango.geoprocessing.data import Raster
 from ncdjango.geoprocessing.evaluation import Parser, Lexer
 from ncdjango.geoprocessing.params import RasterParameter, DictParameter, StringParameter, ParameterCollection
@@ -77,7 +79,16 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
     def execute(self, region, year, model=None, variables=[], traits=[], constraints=None, points=None):
         data = {}
+
+        points_out = None
+        if points:
+            points_out = [{**p, 'deltas': {}} for p in points['points']]
+
         variable_names = {v['name'] for v in variables}
+
+        if points:
+            x_col = points['headers']['x']
+            y_col = points['headers']['y']
 
         for trait in traits:
             fn = trait['fn']
@@ -103,6 +114,12 @@ class GenerateScores(NetCdfDatasetMixin, Task):
                 del data[item['name']]
             else:
                 raster = self.load_variable_data(item['name'], region, year, model)
+
+            if points:
+                for i, point in enumerate(points['points']):
+                    idx = raster.index(point[x_col], point[y_col])
+                    value = raster[idx]
+                    points_out[i]['deltas'][item['name']] = abs((value.item() if not is_masked(value) else 0) - midpoint)
 
             raster = self.apply_constraints(raster, constraints, region)
             extent = raster.extent
@@ -139,6 +156,11 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         ret['raster_out'] = Raster(sum_rasters, extent, 1, 0, Y_INCREASING)
 
         if points:
-            ret['points'] = self.process_points(points, ret['raster_out'])
+            for i, point in enumerate(points['points']):
+                idx = ret['raster_out'].index(point[x_col], point[y_col])
+                value = ret['raster_out'][idx]
+                points_out[i]['score'] = value.item() if not is_masked(value) else 0
+
+            ret['points'] = points_out
 
         return ret

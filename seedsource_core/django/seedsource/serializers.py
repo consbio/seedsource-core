@@ -26,20 +26,28 @@ class SeedZoneSerializer(serializers.ModelSerializer):
             'id', 'name', 'species', 'zone_id', 'zone_uid', 'elevation_at_point', 'elevation_band', 'elevation_service'
         )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._elevation_at_point_mem = None
+
     @property
     def _elevation_at_point(self):
-        request = self.context['request']
+        if self._elevation_at_point_mem is None:
+            request = self.context['request']
 
-        if not request.query_params.get('point'):
-            return None
-        else:
-            try:
-                x, y = [float(x) for x in request.query_params['point'].split(',')]
-            except ValueError:
-                raise ParseError()
+            if not request.query_params.get('point'):
+                return None
+            else:
+                try:
+                    x, y = [float(x) for x in request.query_params['point'].split(',')]
+                except ValueError:
+                    raise ParseError()
 
-            point = Point(x, y)
-            return get_elevation_at_point(point)
+                point = Point(x, y)
+                self._elevation_at_point_mem = get_elevation_at_point(point)
+
+        return self._elevation_at_point_mem
 
     def _transfer_limit(self, obj):
         if self._elevation_at_point is None:

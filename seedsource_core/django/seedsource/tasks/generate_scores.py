@@ -93,7 +93,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
             fn = trait['fn']
             names = Lexer().get_names(fn)
             context = {
-                x: lambda: self.load_variable_data(x, region, year, model) for x in names
+                x: (lambda: self.load_variable_data(x, region, year, model)) for x in names
             }
             data[trait['name']] = Parser().evaluate(fn, context)
             data.update({k: v for k, v in context.items() if k in variable_names})

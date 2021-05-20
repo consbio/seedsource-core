@@ -90,10 +90,15 @@ class GenerateScores(NetCdfDatasetMixin, Task):
             y_col = points['headers']['y']
 
         for trait in traits:
+            def loader_fn(variable):
+                def load():
+                    return self.load_variable_data(variable, region, year, model)
+                return load
+
             fn = trait['fn']
             names = Lexer().get_names(fn)
             context = {
-                x: (lambda: self.load_variable_data(x, region, year, model)) for x in names
+                x: loader_fn(x) for x in names
             }
             data[trait['name']] = Parser().evaluate(fn, context)
             data.update({k: v for k, v in context.items() if k in variable_names})

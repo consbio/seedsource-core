@@ -64,18 +64,6 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
         return data
 
-    def process_points(self, points, raster):
-        results = []
-        x_col = points['headers']['x']
-        y_col = points['headers']['y']
-
-        for point in points['points']:
-            idx = raster.index(point[x_col], point[y_col])
-            value = raster[idx]
-            results.append({**point, 'score': value.item() if not is_masked(value) else 0})
-
-        return results
-
     def execute(self, region, year, model=None, variables=[], traits=[], constraints=None, points=None):
         data = {}
 
@@ -125,7 +113,14 @@ class GenerateScores(NetCdfDatasetMixin, Task):
                 for i, point in enumerate(points['points']):
                     idx = raster.index(point[x_col], point[y_col])
                     value = raster[idx]
-                    points_out[i]['deltas'][item['name']] = abs((value.item() if not is_masked(value) else 0) - midpoint)
+                    value = value.item() if not is_masked(value) else 0
+
+                    if year in ('1961_1990', '1981_2010'):
+                        delta = midpoint - value
+                    else:
+                        delta = value - midpoint
+
+                    points_out[i]['deltas'][item['name']] = delta
 
             raster = self.apply_constraints(raster, constraints, region)
             extent = raster.extent

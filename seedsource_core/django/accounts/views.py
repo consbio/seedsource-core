@@ -4,8 +4,8 @@ from django.conf import settings
 from django.contrib.auth import login, authenticate, update_session_auth_hash, logout, get_user_model
 from django.core.mail import send_mail
 from django.db import transaction
-from django.template.context import Context
-from django.template.loader import get_template
+from django.shortcuts import render
+from django.template import loader
 from django.urls import reverse, reverse_lazy
 from django.utils.translation import ugettext as _
 from django.views.generic.edit import FormView
@@ -102,12 +102,21 @@ class LostPasswordView(GenericAPIView):
             token=str(uuid.uuid4())
         )
 
-        body = get_template('emails/password_reset.txt').render({
-            'email': user.email,
-            'url': request.build_absolute_uri(reverse('reset_password', args=(token.token,)))
-        })
+        body = loader.render_to_string(
+            'emails/password_reset.txt',
+            {
+                'email': user.email,
+                'url': request.build_absolute_uri(reverse('reset_password', args=(token.token,)))
+            },
+            request
+        )
 
-        send_mail(_('Seedlot Selection Tool: Reset Password'), body, 'donotreply@seedlotselectiontool.org', [user.email])
+        send_mail(
+            _('Seedlot Selection Tool: Reset Password'),
+            body,
+            'donotreply@seedlotselectiontool.org',
+            [user.email]
+        )
 
         return Response()
 

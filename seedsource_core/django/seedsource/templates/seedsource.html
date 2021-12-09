@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load staticfiles %}
 {% load render_bundle from webpack_loader %}
 {% load waffle_tags %}
@@ -15,11 +16,14 @@
     <link rel="icon" href="./images/favicon-32x32.png" sizes="32x32" />
     <link rel="icon" href="./images/favicon-16x16.png" sizes="16x16" />
 
+    {% get_current_language as LANGUAGE_CODE %}
+
     <script type="text/javascript">
         window.SS_CONFIG = {
             title: '{{ title|escapejs }}',
             staticRoot: '{% static "/" %}',
-            mbtileserverRoot: '{{ mbtileserverRoot|default:"" }}'
+            mbtileserverRoot: '{{ mbtileserverRoot|default:"" }}',
+            languageCode: '{{ LANGUAGE_CODE }}'
         }
     </script>
 
@@ -32,6 +36,10 @@
 <body>
     <div id="SeedsourceApp"></div>
 
-    {% render_bundle 'main' 'js' %}
+    {% if LANGUAGE_CODE == 'es_MX' %}
+      {% render_bundle 'main-es_MX' 'js' %}
+    {% else %}
+      {% render_bundle 'main' 'js' %}
+    {% endif %}
 </body>
 </html>

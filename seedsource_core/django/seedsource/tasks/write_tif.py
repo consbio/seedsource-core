@@ -10,6 +10,7 @@ from django.conf import settings
 from io import BytesIO
 
 from django.template.loader import render_to_string
+from django.utils.translation import activate
 from ncdjango.geoprocessing.params import StringParameter
 from ncdjango.geoprocessing.workflow import Task
 from ncdjango.models import Service, Variable, SERVICE_DATA_ROOT
@@ -19,11 +20,16 @@ from rasterio.transform import Affine
 class WriteTIF(Task):
     name = 'write_tif'
     inputs = [
-        StringParameter('service_id')
+        StringParameter('service_id'),
+        StringParameter('language_code', required=False)
     ]
     outputs = [StringParameter('filename')]
 
-    def execute(self, service_id):
+    def execute(self, service_id, language_code=None):
+        if language_code is None:
+            language_code = settings.LANGUAGE_CODE
+        activate(language_code)
+
         svc = Service.objects.get(name=service_id)
         var = Variable.objects.get(service_id=svc.id)
         data_path = svc.data_path
@@ -59,7 +65,8 @@ class WriteTIF(Task):
 
                 zf.writestr('SST Results/results.tif', tif_data.getvalue(), compress_type=zipfile.ZIP_DEFLATED)
                 zf.writestr(
-                    'SST Results/README.txt', render_to_string('txt/download_readme.txt', {}),
+                    'SST Results/README.txt',
+                    render_to_string('txt/download_readme.txt', {'language_code': language_code}),
                     compress_type=zipfile.ZIP_DEFLATED
                 )
 

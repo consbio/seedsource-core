@@ -53,12 +53,13 @@ RESULTS_RENDERER = StretchedRenderer([
 
 
 class Report(object):
-    def __init__(self, configuration, zoom, center, tile_layers, opacity):
+    def __init__(self, configuration, zoom, center, tile_layers, opacity, request=None):
         self.configuration = configuration
         self.zoom = zoom
         self.center = center
         self.tile_layers = tile_layers
         self.opacity = opacity
+        self.request = request
 
     def get_year(self, climate):
         return YEAR_LABELS[climate['time']]
@@ -90,7 +91,7 @@ class Report(object):
             transfer /= config.multiplier
 
             variables.append({
-                'label': '{}: {}'.format(variable['name'], config.label),
+                'label': '{}: {}'.format(variable['name'], _(config.label)),
                 'value': config.format_value(value, is_imperial),
                 'limit': config.format_transfer(transfer, is_imperial),
                 'units': config.imperial_label if is_imperial else config.metric_label,
@@ -246,7 +247,7 @@ class Report(object):
         pdf_data = BytesIO()
 
         HTML(
-            BytesIO(render_to_string(PDF_TEMPLATE, self.get_context()).encode())
+            BytesIO(render_to_string(PDF_TEMPLATE, self.get_context(), self.request).encode())
         ).write_pdf(pdf_data)
 
         return pdf_data

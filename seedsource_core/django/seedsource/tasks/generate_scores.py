@@ -1,4 +1,4 @@
-import copy
+import math
 import os
 
 import numpy
@@ -11,9 +11,9 @@ from ncdjango.models import Service
 from ncdjango.views import NetCdfDatasetMixin
 from netCDF4 import Dataset
 from numpy.ma import is_masked
-from seedsource_core.django.seedsource.tasks.utils import create_latitude_data
 from trefoil.netcdf.variable import SpatialCoordinateVariables
 
+from seedsource_core.django.seedsource.tasks.utils import create_latitude_data
 from .constraints import Constraint
 
 NC_SERVICE_DIR = settings.NC_SERVICE_DATA_ROOT
@@ -86,7 +86,8 @@ class GenerateScores(NetCdfDatasetMixin, Task):
             fn = trait['fn']
             names = Lexer().get_names(fn)
             context = {
-                x: loader_fn(x) for x in names
+                **{x: loader_fn(x) for x in names},
+                'math_e': math.e
             }
             data[trait['name']] = Parser().evaluate(fn, context)
             data.update({k: v for k, v in context.items() if k in variable_names})

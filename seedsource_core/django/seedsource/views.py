@@ -1,6 +1,7 @@
 import json
 
 from django.conf import settings
+from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.contrib.gis.geos import Point
 from django.db.models import Q
 from django.http import HttpResponse
@@ -56,8 +57,12 @@ class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'zone_uid'
 
     def get_queryset(self):
+        queryset = self.queryset
+        if self.request.path.endswith('/geometry/'):
+            queryset = queryset.annotate(geojson=AsGeoJSON('polygon'))
+
         if not self.request.query_params.get('point'):
-            return self.queryset
+            return queryset
         else:
             try:
                 x, y = [float(x) for x in self.request.query_params['point'].split(',')]
@@ -65,11 +70,11 @@ class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
                 raise ParseError()
             point = Point(x, y)
 
-            return self.queryset.filter(polygon__contains=point).order_by('zone_source__order')
+            return queryset.filter(polygon__contains=point).order_by('zone_source__order')
 
     @detail_route(methods=['get'])
     def geometry(self, *args, **kwargs):
-        return Response(json.loads(self.get_object().polygon.geojson))
+        return Response(json.loads(self.get_object().geojson))
 
 
 class TransferLimitViewset(viewsets.ReadOnlyModelViewSet):

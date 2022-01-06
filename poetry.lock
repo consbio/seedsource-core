@@ -30,14 +30,14 @@ speedups = ["aiodns", "brotlipy", "cchardet"]
 
 [[package]]
 name = "amqp"
-version = "2.6.1"
+version = "5.0.9"
 description = "Low-level AMQP client for Python (fork of amqplib)."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.6"
 
 [package.dependencies]
-vine = ">=1.1.3,<5.0.0a1"
+vine = "5.0.0"
 
 [[package]]
 name = "async-timeout"
@@ -63,8 +63,16 @@ tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>
 
 [[package]]
 name = "billiard"
-version = "3.6.3.0"
+version = "3.6.4.0"
 description = "Python multiprocessing fork with improvements and bugfixes"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "cached-property"
+version = "1.5.2"
+description = "A decorator for caching properties in classes."
 category = "main"
 optional = false
 python-versions = "*"
@@ -106,47 +114,50 @@ test = ["pytest-runner", "pytest-cov", "pytest-flake8", "pytest-isort"]
 
 [[package]]
 name = "celery"
-version = "4.4.7"
+version = "5.2.2"
 description = "Distributed Task Queue."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.7,"
 
 [package.dependencies]
-billiard = ">=3.6.3.0,<4.0"
-kombu = ">=4.6.10,<4.7"
-pytz = ">0.0-dev"
-vine = "1.3.0"
+billiard = ">=3.6.4.0,<4.0"
+click = ">=8.0,<9.0"
+click-didyoumean = ">=0.0.3"
+click-plugins = ">=1.1.1"
+click-repl = ">=0.2.0"
+kombu = ">=5.2.2,<6.0"
+pytz = ">0.dev.0"
+vine = ">=5.0.0,<6.0"
 
 [package.extras]
 arangodb = ["pyArango (>=1.3.2)"]
 auth = ["cryptography"]
-azureblockblob = ["azure-storage (==0.36.0)", "azure-common (==1.1.5)", "azure-storage-common (==1.1.0)"]
+azureblockblob = ["azure-storage-blob (==12.9.0)"]
 brotli = ["brotli (>=1.0.0)", "brotlipy (>=0.7.0)"]
 cassandra = ["cassandra-driver (<3.21.0)"]
-consul = ["python-consul"]
+consul = ["python-consul2"]
 cosmosdbsql = ["pydocumentdb (==2.3.2)"]
-couchbase = ["couchbase-cffi (<3.0.0)", "couchbase (<3.0.0)"]
+couchbase = ["couchbase (>=3.0.0)"]
 couchdb = ["pycouchdb"]
 django = ["Django (>=1.11)"]
 dynamodb = ["boto3 (>=1.9.178)"]
 elasticsearch = ["elasticsearch"]
-eventlet = ["eventlet (>=0.24.1)"]
-gevent = ["gevent"]
+eventlet = ["eventlet (>=0.32.0)"]
+gevent = ["gevent (>=1.5.0)"]
 librabbitmq = ["librabbitmq (>=1.5.0)"]
-lzma = ["backports.lzma"]
 memcache = ["pylibmc"]
-mongodb = ["pymongo[srv] (>=3.3.0)"]
+mongodb = ["pymongo[srv] (>=3.3.0,<3.12.1)"]
 msgpack = ["msgpack"]
 pymemcache = ["python-memcached"]
 pyro = ["pyro4"]
-redis = ["redis (>=3.2.0)"]
-riak = ["riak (>=2.0)"]
+pytest = ["pytest-celery"]
+redis = ["redis (>=3.4.1,<4.0.0)"]
 s3 = ["boto3 (>=1.9.125)"]
 slmq = ["softlayer-messaging (>=1.0.3)"]
 solar = ["ephem"]
 sqlalchemy = ["sqlalchemy"]
-sqs = ["boto3 (>=1.9.125)", "pycurl (==7.43.0.5)"]
+sqs = ["kombu"]
 tblib = ["tblib (>=1.3.0)", "tblib (>=1.5.0)"]
 yaml = ["PyYAML (>=3.10)"]
 zookeeper = ["kazoo (>=1.3.1)"]
@@ -192,11 +203,26 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "click"
-version = "7.1.2"
+version = "8.0.3"
 description = "Composable command line interface toolkit"
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.6"
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
+
+[[package]]
+name = "click-didyoumean"
+version = "0.3.0"
+description = "Enables git-like *did-you-mean* feature in click"
+category = "main"
+optional = false
+python-versions = ">=3.6.2,<4.0.0"
+
+[package.dependencies]
+click = ">=7"
 
 [[package]]
 name = "click-plugins"
@@ -213,18 +239,39 @@ click = ">=4.0"
 dev = ["pytest (>=3.6)", "pytest-cov", "wheel", "coveralls"]
 
 [[package]]
+name = "click-repl"
+version = "0.2.0"
+description = "REPL plugin for Click"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+click = "*"
+prompt-toolkit = "*"
+six = "*"
+
+[[package]]
 name = "cligj"
-version = "0.7.1"
+version = "0.7.2"
 description = "Click params for commmand line interfaces to GeoJSON"
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4"
 
 [package.dependencies]
-click = ">=4.0,<8"
+click = ">=4.0"
 
 [package.extras]
 test = ["pytest-cov"]
+
+[[package]]
+name = "colorama"
+version = "0.4.4"
+description = "Cross-platform colored terminal text."
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "cssselect2"
@@ -296,7 +343,7 @@ python-versions = "*"
 
 [[package]]
 name = "fiona"
-version = "1.8.18"
+version = "1.8.20"
 description = "Fiona reads and writes spatial data files"
 category = "main"
 optional = false
@@ -305,7 +352,7 @@ python-versions = "*"
 [package.dependencies]
 attrs = ">=17"
 certifi = "*"
-click = ">=4.0,<8"
+click = ">=4.0"
 click-plugins = ">=1.0"
 cligj = ">=0.5"
 munch = "*"
@@ -412,29 +459,31 @@ i18n = ["Babel (>=0.8)"]
 
 [[package]]
 name = "kombu"
-version = "4.6.11"
+version = "5.2.3"
 description = "Messaging library for Python."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.7"
 
 [package.dependencies]
-amqp = ">=2.6.0,<2.7"
+amqp = ">=5.0.9,<6.0.0"
+cached-property = {version = "*", markers = "python_version < \"3.8\""}
 importlib-metadata = {version = ">=0.18", markers = "python_version < \"3.8\""}
+vine = "*"
 
 [package.extras]
-azureservicebus = ["azure-servicebus (>=0.21.1)"]
+azureservicebus = ["azure-servicebus (>=7.0.0)"]
 azurestoragequeues = ["azure-storage-queue"]
 consul = ["python-consul (>=0.6.0)"]
-librabbitmq = ["librabbitmq (>=1.5.2)"]
-mongodb = ["pymongo (>=3.3.0)"]
+librabbitmq = ["librabbitmq (>=2.0.0)"]
+mongodb = ["pymongo (>=3.3.0,<3.12.1)"]
 msgpack = ["msgpack"]
 pyro = ["pyro4"]
 qpid = ["qpid-python (>=0.26)", "qpid-tools (>=0.26)"]
-redis = ["redis (>=3.3.11)"]
+redis = ["redis (>=3.4.1,!=4.0.0,!=4.0.1)"]
 slmq = ["softlayer-messaging (>=1.0.3)"]
 sqlalchemy = ["sqlalchemy"]
-sqs = ["boto3 (>=1.4.4)", "pycurl (==7.43.0.2)"]
+sqs = ["boto3 (>=1.9.12)", "pycurl (>=7.44.1,<7.45.0)", "urllib3 (>=1.26.7)"]
 yaml = ["PyYAML (>=3.10)"]
 zookeeper = ["kazoo (>=1.3.1)"]
 
@@ -574,6 +623,17 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "prompt-toolkit"
+version = "3.0.24"
+description = "Library for building powerful interactive command lines in Python"
+category = "main"
+optional = false
+python-versions = ">=3.6.2"
+
+[package.dependencies]
+wcwidth = "*"
+
+[[package]]
 name = "pycparser"
 version = "2.20"
 description = "C parser in Python"
@@ -650,7 +710,7 @@ python-versions = "*"
 
 [[package]]
 name = "rasterio"
-version = "1.2.1"
+version = "1.3a2"
 description = "Fast and direct raster I/O for use with Numpy and SciPy"
 category = "main"
 optional = false
@@ -660,14 +720,14 @@ python-versions = ">=3.6"
 affine = "*"
 attrs = "*"
 certifi = "*"
-click = ">=4.0,<8"
+click = ">=4.0"
 click-plugins = "*"
 cligj = ">=0.5"
 numpy = "*"
 snuggs = ">=1.4.1"
 
 [package.extras]
-all = ["packaging", "pytest (>=2.8.2)", "sphinx", "pytest-cov (>=2.2.0)", "hypothesis", "numpydoc", "ipython (>=2.0)", "matplotlib", "ghp-import", "boto3 (>=1.2.4)", "shapely", "sphinx-rtd-theme"]
+all = ["sphinx-rtd-theme", "pytest-cov (>=2.2.0)", "numpydoc", "hypothesis", "sphinx", "ghp-import", "packaging", "ipython (>=2.0)", "matplotlib", "pytest (>=2.8.2)", "shapely", "boto3 (>=1.2.4)"]
 docs = ["ghp-import", "numpydoc", "sphinx", "sphinx-rtd-theme"]
 ipython = ["ipython (>=2.0)"]
 plot = ["matplotlib"]
@@ -784,11 +844,19 @@ python-versions = "*"
 
 [[package]]
 name = "vine"
-version = "1.3.0"
+version = "5.0.0"
 description = "Promises, promises, promises."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+python-versions = ">=3.6"
+
+[[package]]
+name = "wcwidth"
+version = "0.2.5"
+description = "Measures the displayed width of unicode strings in a terminal"
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "weasyprint"
@@ -856,7 +924,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "6b16d808883604ad8af426a03a61e62faf9cbb34113b4483bc2659aa635ef391"
+content-hash = "8cea9bd5b34d435e71f28f31907b88bb481e634807b60d1a9a0d277520d07e1b"
 
 [metadata.files]
 affine = [
@@ -903,8 +971,8 @@ aiohttp = [
     {file = "aiohttp-3.7.4.post0.tar.gz", hash = "sha256:493d3299ebe5f5a7c66b9819eacdcfbbaaf1a8e84911ddffcdc48888497afecf"},
 ]
 amqp = [
-    {file = "amqp-2.6.1-py2.py3-none-any.whl", hash = "sha256:aa7f313fb887c91f15474c1229907a04dac0b8135822d6603437803424c0aa59"},
-    {file = "amqp-2.6.1.tar.gz", hash = "sha256:70cdb10628468ff14e57ec2f751c7aa9e48e7e3651cfd62d431213c0c4e58f21"},
+    {file = "amqp-5.0.9-py3-none-any.whl", hash = "sha256:9cd81f7b023fc04bbb108718fbac674f06901b77bfcdce85b10e2a5d0ee91be5"},
+    {file = "amqp-5.0.9.tar.gz", hash = "sha256:1e5f707424e544078ca196e72ae6a14887ce74e02bd126be54b7c03c971bef18"},
 ]
 async-timeout = [
     {file = "async-timeout-3.0.1.tar.gz", hash = "sha256:0c3c816a028d47f659d6ff5c745cb2acf1f966da1fe5c19c77a70282b25f4c5f"},
@@ -915,8 +983,12 @@ attrs = [
     {file = "attrs-20.3.0.tar.gz", hash = "sha256:832aa3cde19744e49938b91fea06d69ecb9e649c93ba974535d08ad92164f700"},
 ]
 billiard = [
-    {file = "billiard-3.6.3.0-py3-none-any.whl", hash = "sha256:bff575450859a6e0fbc2f9877d9b715b0bbc07c3565bb7ed2280526a0cdf5ede"},
-    {file = "billiard-3.6.3.0.tar.gz", hash = "sha256:d91725ce6425f33a97dfa72fb6bfef0e47d4652acd98a032bd1a7fbf06d5fa6a"},
+    {file = "billiard-3.6.4.0-py3-none-any.whl", hash = "sha256:87103ea78fa6ab4d5c751c4909bcff74617d985de7fa8b672cf8618afd5a875b"},
+    {file = "billiard-3.6.4.0.tar.gz", hash = "sha256:299de5a8da28a783d51b197d496bef4f1595dd023a93a4f59dde1886ae905547"},
+]
+cached-property = [
+    {file = "cached-property-1.5.2.tar.gz", hash = "sha256:9fa5755838eecbb2d234c3aa390bd80fbd3ac6b6869109bfc1b499f7bd89a130"},
+    {file = "cached_property-1.5.2-py2.py3-none-any.whl", hash = "sha256:df4f613cf7ad9a588cc381aaf4a512d26265ecebd5eb9e1ba12f1319eb85a6a0"},
 ]
 cairocffi = [
     {file = "cairocffi-1.2.0.tar.gz", hash = "sha256:9a979b500c64c8179fec286f337e8fe644eca2f2cd05860ce0b62d25f22ea140"},
@@ -926,8 +998,8 @@ cairosvg = [
     {file = "CairoSVG-2.5.2.tar.gz", hash = "sha256:b0b9929cf5dba005178d746a8036fcf0025550f498ca54db61873322384783bc"},
 ]
 celery = [
-    {file = "celery-4.4.7-py2.py3-none-any.whl", hash = "sha256:a92e1d56e650781fb747032a3997d16236d037c8199eacd5217d1a72893bca45"},
-    {file = "celery-4.4.7.tar.gz", hash = "sha256:d220b13a8ed57c78149acf82c006785356071844afe0b27012a4991d44026f9f"},
+    {file = "celery-5.2.2-py3-none-any.whl", hash = "sha256:5a68a351076cfac4f678fa5ffd898105c28825a2224902da006970005196d061"},
+    {file = "celery-5.2.2.tar.gz", hash = "sha256:2844eb040e915398623a43253a8e1016723442ece6b0751a3c416d8a2b34216f"},
 ]
 certifi = [
     {file = "certifi-2020.12.5-py2.py3-none-any.whl", hash = "sha256:719a74fb9e33b9bd44cc7f3a8d94bc35e4049deebe19ba7d8e108280cfd59830"},
@@ -1027,16 +1099,28 @@ chardet = [
     {file = "chardet-4.0.0.tar.gz", hash = "sha256:0d6f53a15db4120f2b08c94f11e7d93d2c911ee118b6b30a04ec3ee8310179fa"},
 ]
 click = [
-    {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
-    {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
+    {file = "click-8.0.3-py3-none-any.whl", hash = "sha256:353f466495adaeb40b6b5f592f9f91cb22372351c84caeb068132442a4518ef3"},
+    {file = "click-8.0.3.tar.gz", hash = "sha256:410e932b050f5eed773c4cda94de75971c89cdb3155a72a0831139a79e5ecb5b"},
+]
+click-didyoumean = [
+    {file = "click-didyoumean-0.3.0.tar.gz", hash = "sha256:f184f0d851d96b6d29297354ed981b7dd71df7ff500d82fa6d11f0856bee8035"},
+    {file = "click_didyoumean-0.3.0-py3-none-any.whl", hash = "sha256:a0713dc7a1de3f06bc0df5a9567ad19ead2d3d5689b434768a6145bff77c0667"},
 ]
 click-plugins = [
     {file = "click-plugins-1.1.1.tar.gz", hash = "sha256:46ab999744a9d831159c3411bb0c79346d94a444df9a3a3742e9ed63645f264b"},
     {file = "click_plugins-1.1.1-py2.py3-none-any.whl", hash = "sha256:5d262006d3222f5057fd81e1623d4443e41dcda5dc815c06b442aa3c02889fc8"},
 ]
+click-repl = [
+    {file = "click-repl-0.2.0.tar.gz", hash = "sha256:cd12f68d745bf6151210790540b4cb064c7b13e571bc64b6957d98d120dacfd8"},
+    {file = "click_repl-0.2.0-py3-none-any.whl", hash = "sha256:94b3fbbc9406a236f176e0506524b2937e4b23b6f4c0c0b2a0a83f8a64e9194b"},
+]
 cligj = [
-    {file = "cligj-0.7.1-py3-none-any.whl", hash = "sha256:07171c1e287f45511f97df4ea071abc5d19924153413d5683a8e4866369bc676"},
-    {file = "cligj-0.7.1.tar.gz", hash = "sha256:b2f1f7247d59a5387bd3013a08b9ed6829e96fafa4a6e6292341efdb46fe6220"},
+    {file = "cligj-0.7.2-py3-none-any.whl", hash = "sha256:c1ca117dbce1fe20a5809dc96f01e1c2840f6dcc939b3ddbb1111bf330ba82df"},
+    {file = "cligj-0.7.2.tar.gz", hash = "sha256:a4bc13d623356b373c2c27c53dbd9c68cae5d526270bfa71f6c6fa69669c6b27"},
+]
+colorama = [
+    {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
+    {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 cssselect2 = [
     {file = "cssselect2-0.4.1-py3-none-any.whl", hash = "sha256:2f4a9f20965367bae459e3bb42561f7927e0cfe5b7ea1692757cf67ef5d7dace"},
@@ -1062,17 +1146,15 @@ djangorestframework = [
     {file = "djangorestframework-3.7.7.tar.gz", hash = "sha256:9f9e94e8d22b100ed3a43cee8c47a7ff7b185e778a1f2da9ec5c73fc4e081b87"},
 ]
 fiona = [
-    {file = "Fiona-1.8.18-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:c64cc0bab040c3a2aec12edd2e1407e3b52609117d9a9a471e3d25172abb1e5e"},
-    {file = "Fiona-1.8.18-cp35-cp35m-macosx_10_9_intel.whl", hash = "sha256:8891d25bcb795eec2294390b56426fded566bcc8ed3730dac7e7a61cde71f1b5"},
-    {file = "Fiona-1.8.18-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:9fdaaebd5b1b2dd59a0bce9f8ca3e3fba3ef86346be603985590773e4822a543"},
-    {file = "Fiona-1.8.18-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:8a818fa6cd1ae7ef3b3061ca8f52b694557d2fcf303d7c5431dd961ea09a5ccf"},
-    {file = "Fiona-1.8.18-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:e34612996121a66559fac9013fd30d8200ed17df54c71edf63461a8b6f519cf5"},
-    {file = "Fiona-1.8.18-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:c0ec331f9cf43bb3399d41a04f8b7ee5ebddea93de3e780fba98f3bf75b39eb3"},
-    {file = "Fiona-1.8.18-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:67df21101e185bbb611846138a3094ee3196b746aa336be3db3a64d7971b8fed"},
-    {file = "Fiona-1.8.18-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:b5a77bcd113dfa2424ff97190b3dc907640777615490e55777e8042a5b84ed78"},
-    {file = "Fiona-1.8.18-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:a3de7c1da06bc036dcd8954fa30e089587af335d4e549539169b1de9fe8badba"},
-    {file = "Fiona-1.8.18-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:1c26f38bfbcd51e710c361f26db605ccf2b5f2a7967e0f4a88683cac3845c947"},
-    {file = "Fiona-1.8.18.tar.gz", hash = "sha256:b732ece0ff8886a29c439723a3e1fc382718804bb057519d537a81308854967a"},
+    {file = "Fiona-1.8.20-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:02880556540e36ad6aac97687799d9b3093c354787a47bc0e73026c7fc15f1b3"},
+    {file = "Fiona-1.8.20-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:3f668c471fa2f8c9c0a9ca83639cb2c8dcc93edc3d93d43dba2f9e8da38ad53e"},
+    {file = "Fiona-1.8.20-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:54f81039e913d0f88728ef23edf5a69038dec94dea54f4c799f972ba8e2a7d40"},
+    {file = "Fiona-1.8.20-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:328340a448bed5c43d119f61f760368a04d13a302c59d2fccb051a3ff021f4b8"},
+    {file = "Fiona-1.8.20-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:03f910380dbe684730b59b817aa030e6e9a3ee79211b66c6db2d1c8fe6ea12de"},
+    {file = "Fiona-1.8.20-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:bef100ebd82afb9a4d67096216e82611b82ca9341330e4805832d7ff8c9bc1f7"},
+    {file = "Fiona-1.8.20-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:5e1cef608c6de9039eaa65b395024096e3189ab0559a5a328c68c4690c3302ce"},
+    {file = "Fiona-1.8.20-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:e72e4a5b84ec410be531d4fe4c1a5c87c6c0e92d01116c145c0f1b33f81c8080"},
+    {file = "Fiona-1.8.20.tar.gz", hash = "sha256:a70502d2857b82f749c09cb0dea3726787747933a2a1599b5ab787d74e3c143b"},
 ]
 gdal = [
     {file = "GDAL-3.2.2.tar.gz", hash = "sha256:b8e9079f3a0b4dc0c69eafda29a655b70f5c1e2a94a039a3b6dfae0a083e07b6"},
@@ -1102,8 +1184,8 @@ jinja2 = [
     {file = "Jinja2-2.11.3.tar.gz", hash = "sha256:a6d58433de0ae800347cab1fa3043cebbabe8baa9d29e668f1c768cb87a333c6"},
 ]
 kombu = [
-    {file = "kombu-4.6.11-py2.py3-none-any.whl", hash = "sha256:be48cdffb54a2194d93ad6533d73f69408486483d189fe9f5990ee24255b0e0a"},
-    {file = "kombu-4.6.11.tar.gz", hash = "sha256:ca1b45faac8c0b18493d02a8571792f3c40291cf2bcf1f55afed3d8f3aa7ba74"},
+    {file = "kombu-5.2.3-py3-none-any.whl", hash = "sha256:eeaeb8024f3a5cfc71c9250e45cddb8493f269d74ada2f74909a93c59c4b4179"},
+    {file = "kombu-5.2.3.tar.gz", hash = "sha256:81a90c1de97e08d3db37dbf163eaaf667445e1068c98bfd89f051a40e9f6dbbd"},
 ]
 lxml = [
     {file = "lxml-4.6.3-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:df7c53783a46febb0e70f6b05df2ba104610f2fb0d27023409734a3ecbb78fb2"},
@@ -1392,6 +1474,10 @@ ply = [
 progress = [
     {file = "progress-1.5.tar.gz", hash = "sha256:69ecedd1d1bbe71bf6313d88d1e6c4d2957b7f1d4f71312c211257f7dae64372"},
 ]
+prompt-toolkit = [
+    {file = "prompt_toolkit-3.0.24-py3-none-any.whl", hash = "sha256:e56f2ff799bacecd3e88165b1e2f5ebf9bcd59e80e06d395fa0cc4b8bd7bb506"},
+    {file = "prompt_toolkit-3.0.24.tar.gz", hash = "sha256:1bb05628c7d87b645974a1bad3f17612be0c29fa39af9f7688030163f680bad6"},
+]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
@@ -1447,15 +1533,15 @@ pytz = [
     {file = "pytz-2021.1.tar.gz", hash = "sha256:83a4a90894bf38e243cf052c8b58f381bfe9a7a483f6a9cab140bc7f702ac4da"},
 ]
 rasterio = [
-    {file = "rasterio-1.2.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:d9c9e7a968ef8b89700d3a14497ac61c6178e8342a2cbf717d725d85404d8e97"},
-    {file = "rasterio-1.2.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:441b0e95ee89d100ab8db950c2de7ba57632f8d8940cc9a5592f0f87d6e36f0c"},
-    {file = "rasterio-1.2.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:907686a165877c7133b283c2dee57fa52b4bbcdc622bb455b005cacd16dba411"},
-    {file = "rasterio-1.2.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:c6103e58494f97e309a1dc6034c4df26006a12414a82f96d35c5420b79e2c4c9"},
-    {file = "rasterio-1.2.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:35dd649effb1acd7ae1fb263dfa95f21d83bb5e20b195012249a32f4f5661d38"},
-    {file = "rasterio-1.2.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:c72741e681863fc505812252a696b4983f22733aefc00cc6ae5f22ab241c7064"},
-    {file = "rasterio-1.2.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:538ebcf0d0978cef446efa9610f9651348b166b5cbc0d83d93b628e4e4daff32"},
-    {file = "rasterio-1.2.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:f255a98673b1bf52eb439c25bf6340c833e606fb48cea36bb82e341f67d84db4"},
-    {file = "rasterio-1.2.1.tar.gz", hash = "sha256:81d4181514c67dc660d7b8cf943ad55c4fb3e0a17ac893d92628ac928cfab3d8"},
+    {file = "rasterio-1.3a2-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:f68acab07a71f4f56589d5a9f0e3e7b81b11346da0edfb4065ae1e08b3086745"},
+    {file = "rasterio-1.3a2-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eaed88ff35d155ef7a1a77c4bf393d5b5ece272bfc7463fc258fd7ae8f2d8689"},
+    {file = "rasterio-1.3a2-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:cd42bf3218f7f8f15b375b58732ff708be506d34a7769aad2da3be881ce47049"},
+    {file = "rasterio-1.3a2-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:159230ce12259ada1d1cc9e89866faf1df1e51486408ca1530c97148187a4e25"},
+    {file = "rasterio-1.3a2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:4e1b11322900ef3de7e51d559b70d3ef082973158225d3db0e54ac040ee826cd"},
+    {file = "rasterio-1.3a2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d09d6fb63dcbd938ad1a7c752ffd91d9491e093b1f274948d1b8ce332b525e1f"},
+    {file = "rasterio-1.3a2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:fb6b101e93876da61ce60316776dddcee82f60fd5444bbc1171b4f3aa059b99f"},
+    {file = "rasterio-1.3a2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:86183755caa5e06e6f0f979daeb8c354c9911f7daf27cbb7017ef1e8159557c5"},
+    {file = "rasterio-1.3a2.tar.gz", hash = "sha256:8e395028189f775dd009700b4fb3d378b97f5fb8530a654037cf81008d0fb46e"},
 ]
 requests = [
     {file = "requests-2.15.1-py2.py3-none-any.whl", hash = "sha256:ff753b2196cd18b1bbeddc9dcd5c864056599f7a7d9a4fb5677e723efa2b7fb9"},
@@ -1509,8 +1595,12 @@ typing-extensions = [
     {file = "typing_extensions-3.7.4.3.tar.gz", hash = "sha256:99d4073b617d30288f569d3f13d2bd7548c3a7e4c8de87db09a9d29bb3a4a60c"},
 ]
 vine = [
-    {file = "vine-1.3.0-py2.py3-none-any.whl", hash = "sha256:ea4947cc56d1fd6f2095c8d543ee25dad966f78692528e68b4fada11ba3f98af"},
-    {file = "vine-1.3.0.tar.gz", hash = "sha256:133ee6d7a9016f177ddeaf191c1f58421a1dcc6ee9a42c58b34bed40e1d2cd87"},
+    {file = "vine-5.0.0-py2.py3-none-any.whl", hash = "sha256:4c9dceab6f76ed92105027c49c823800dd33cacce13bdedc5b914e3514b7fb30"},
+    {file = "vine-5.0.0.tar.gz", hash = "sha256:7d3b1624a953da82ef63462013bbd271d3eb75751489f9807598e8f340bd637e"},
+]
+wcwidth = [
+    {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
+    {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
 ]
 weasyprint = [
     {file = "WeasyPrint-52.4-py3-none-any.whl", hash = "sha256:cec6747baac7bd4638cc10e6fab6052b58c4d33b54100022a94e0559218c6cb3"},

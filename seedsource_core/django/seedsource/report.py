@@ -86,7 +86,12 @@ class Report(object):
         is_custom = self.configuration['customMode']
 
         for variable in self.configuration['variables']:
-            name, value, transfer, custom_center = variable['name'], variable['value'], variable['transfer'], variable['customCenter']
+            name, value, transfer, custom_center = (
+                variable['name'],
+                variable['value'],
+                variable['transfer'],
+                variable['customCenter'],
+            )
             config = VARIABLE_CONFIG[name]
             value /= config.multiplier
             transfer /= config.multiplier

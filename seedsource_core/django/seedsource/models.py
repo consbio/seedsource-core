@@ -10,6 +10,7 @@ class RunConfiguration(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     title = models.CharField(max_length=256)
+    version = models.IntegerField(default=1)
     configuration = models.TextField()
 
     class Meta:

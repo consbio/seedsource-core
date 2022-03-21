@@ -14,5 +14,6 @@ urlpatterns = [
     url(r'^', include(router.urls)),
     url(r'^create-pdf/$', views.GeneratePDFView.as_view(), name='create_pdf'),
     url(r'^create-ppt/$', views.GeneratePowerPointView.as_view(), name='create_ppt'),
+    url(r'^share-url/$', views.ShareURLView.as_view(), name='share_url'),
     url(r'^regions/$', views.RegionsView.as_view(), name='regions')
 ]

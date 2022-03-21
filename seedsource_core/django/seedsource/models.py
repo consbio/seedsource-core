@@ -1,7 +1,9 @@
 import uuid as uuid
+
 from django.conf import settings
-from django.db import models
 from django.contrib.gis.db import models as gis_models
+from django.contrib.postgres.fields import JSONField
+from django.db import models
 
 
 class RunConfiguration(models.Model):
@@ -49,3 +51,10 @@ class Region(gis_models.Model):
     name = models.CharField(max_length=20)
     polygons = gis_models.MultiPolygonField(srid=4326)
 
+
+class ShareURL(models.Model):
+    hash = models.CharField(max_length=8, unique=True)
+    configuration = JSONField()
+    version = models.IntegerField()
+    created = models.DateTimeField(auto_now_add=True)
+    accessed = models.DateTimeField(null=True)

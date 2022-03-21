@@ -1,22 +1,27 @@
+import hashlib
 import json
+import string
 
 from django.conf import settings
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.contrib.gis.geos import Point
+from django.db import IntegrityError
 from django.db.models import Q
 from django.http import HttpResponse
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from django.views.generic.base import TemplateView
+from django.views.generic.base import TemplateView, View
+from django_filters.rest_framework import DjangoFilterBackend
 from numpy.ma.core import is_masked
 from rest_framework import viewsets
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import ParseError
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import TransferLimit, SeedZone, RunConfiguration, Region
+from .models import TransferLimit, SeedZone, RunConfiguration, Region, ShareURL
 from .report import Report
 from .serializers import RunConfigurationSerializer, SeedZoneSerializer, GenerateReportSerializer
 from .serializers import TransferLimitSerializer, RegionSerializer
@@ -24,6 +29,7 @@ from .utils import get_elevation_at_point, get_regions_for_point
 
 SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'seedsource-core')
 MBTILESERVER_ROOT = getattr(settings, 'MBTILESERVER_ROOT', None)
+B62_CHARS = string.digits + string.ascii_letters
 
 
 class ToolView(TemplateView):
@@ -153,3 +159,50 @@ class RegionsView(ListAPIView):
 
             point = Point(x, y)
             return get_regions_for_point(point)
+
+
+class ShareURLView(View):
+    def get(self, *args, **kwargs):
+        hash = kwargs['hash']
+        share_url = get_object_or_404(ShareURL, hash=hash)
+
+        share_url.accessed = now()
+        share_url.save()
+
+        return JsonResponse({'configuration': share_url.configuration, 'version': share_url.version})
+
+    def post(self, *args, **kwargs):
+        if not self.request.body:
+            raise HttpResponseBadRequest()
+
+        try:
+            body = json.loads(self.request.body)
+        except json.JSONDecodeError:
+            raise HttpResponseBadRequest()
+
+        try:
+            configuration = body["configuration"]
+            version = body["version"]
+        except KeyError:
+            raise HttpResponseBadRequest()
+
+        hex_hash = hashlib.md5(self.request.body).hexdigest() # 16 chars
+        b62_hash = ""
+
+        for i in range(0, 15, 2):
+            chunk = hex_hash[i : i + 2]
+            integer = int(chunk, 16)
+            b62_hash += B62_CHARS[integer % 62]
+
+        attributes = {
+            'hash': b62_hash,
+            'configuration': configuration,
+            'version': version
+        }
+
+        try:
+            ShareURL.objects.create(**attributes)
+        except IntegrityError:
+            pass
+
+        return JsonResponse({'hash': b62_hash}, status=202)

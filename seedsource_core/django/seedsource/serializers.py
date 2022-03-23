@@ -2,7 +2,7 @@ from django.contrib.gis.geos import Point
 from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
-from .models import SeedZone, TransferLimit, Region, RunConfiguration
+from .models import SeedZone, TransferLimit, Region, RunConfiguration, ShareURL
 from .utils import get_elevation_at_point
 
 
@@ -107,3 +107,9 @@ class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
         fields = ('name',)
+
+
+class ShareURLSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShareURL
+        fields = ('hash', 'configuration', 'version', 'created', 'accessed')

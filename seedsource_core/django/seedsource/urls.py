@@ -8,12 +8,12 @@ router = DefaultRouter()
 router.register('run-configurations', views.RunConfigurationViewset)
 router.register('seedzones', views.SeedZoneViewset)
 router.register('transfer-limits', views.TransferLimitViewset)
+router.register('share-urls', views.ShareURLViewset)
 
 urlpatterns = [
     url(r'^$', views.ToolView.as_view(), name='tool_page'),
     url(r'^', include(router.urls)),
     url(r'^create-pdf/$', views.GeneratePDFView.as_view(), name='create_pdf'),
     url(r'^create-ppt/$', views.GeneratePowerPointView.as_view(), name='create_ppt'),
-    url(r'^share-url/$', views.ShareURLView.as_view(), name='share_url'),
     url(r'^regions/$', views.RegionsView.as_view(), name='regions')
 ]

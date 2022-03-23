@@ -23,7 +23,7 @@ from rest_framework.response import Response
 
 from .models import TransferLimit, SeedZone, RunConfiguration, Region, ShareURL
 from .report import Report
-from .serializers import RunConfigurationSerializer, SeedZoneSerializer, GenerateReportSerializer
+from .serializers import RunConfigurationSerializer, SeedZoneSerializer, GenerateReportSerializer, ShareURLSerializer
 from .serializers import TransferLimitSerializer, RegionSerializer
 from .utils import get_elevation_at_point, get_regions_for_point
 
@@ -161,41 +161,31 @@ class RegionsView(ListAPIView):
             return get_regions_for_point(point)
 
 
-class ShareURLView(View):
-    def get(self, *args, **kwargs):
-        hash = kwargs['hash']
-        share_url = get_object_or_404(ShareURL, hash=hash)
+class ShareURLViewset(viewsets.ModelViewSet):
+    queryset = ShareURL.objects.all()
+    serializer_class = ShareURLSerializer
+    lookup_field = 'hash'
 
+    def retrieve(self, request, *args, **kwargs):
+        share_url = ShareURL.objects.get(hash=kwargs['hash'])
         share_url.accessed = now()
         share_url.save()
-
         return JsonResponse({'configuration': share_url.configuration, 'version': share_url.version})
 
-    def post(self, *args, **kwargs):
-        if not self.request.body:
-            raise HttpResponseBadRequest()
+    def create(self, request):
+        configuration = request.data['configuration']
+        version = request.data['version']
+        hash_data = configuration + str(version)
+        hash_bytes = hashlib.sha512(hash_data.encode()).digest()
+        hash_integer = int.from_bytes(hash_bytes, 'big')
+        hash_b62_truncated = ""
 
-        try:
-            body = json.loads(self.request.body)
-        except json.JSONDecodeError:
-            raise HttpResponseBadRequest()
-
-        try:
-            configuration = body["configuration"]
-            version = body["version"]
-        except KeyError:
-            raise HttpResponseBadRequest()
-
-        hex_hash = hashlib.md5(self.request.body).hexdigest() # 16 chars
-        b62_hash = ""
-
-        for i in range(0, 15, 2):
-            chunk = hex_hash[i : i + 2]
-            integer = int(chunk, 16)
-            b62_hash += B62_CHARS[integer % 62]
+        for i in range(0, 7):
+            hash_b62_truncated += B62_CHARS[hash_integer % 62]
+            hash_integer //= 62
 
         attributes = {
-            'hash': b62_hash,
+            'hash': hash_b62_truncated,
             'configuration': configuration,
             'version': version
         }
@@ -205,4 +195,4 @@ class ShareURLView(View):
         except IntegrityError:
             pass
 
-        return JsonResponse({'hash': b62_hash}, status=202)
+        return JsonResponse({'hash': hash_b62_truncated})

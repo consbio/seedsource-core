@@ -195,4 +195,4 @@ class ShareURLViewset(viewsets.ModelViewSet):
         except IntegrityError:
             pass
 
-        return JsonResponse({'hash': hash_b62_truncated})
+        return Response(hash_b62_truncated)

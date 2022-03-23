@@ -175,24 +175,22 @@ class ShareURLViewset(viewsets.ModelViewSet):
     def create(self, request):
         configuration = request.data['configuration']
         version = request.data['version']
-        hash_data = configuration + str(version)
-        hash_bytes = hashlib.sha512(hash_data.encode()).digest()
-        hash_integer = int.from_bytes(hash_bytes, 'big')
-        hash_b62_truncated = ""
-
+        string_to_hash = configuration + str(version)
+        hash_as_bytes = hashlib.sha512(string_to_hash.encode()).digest()
+        hash_as_integer = int.from_bytes(hash_as_bytes, 'big')
+        hash_as_b62_truncated = ""
         for i in range(0, 7):
-            hash_b62_truncated += B62_CHARS[hash_integer % 62]
-            hash_integer //= 62
+            hash_as_b62_truncated += B62_CHARS[hash_as_integer % 62]
+            hash_as_integer //= 62
 
         attributes = {
-            'hash': hash_b62_truncated,
+            'hash': hash_as_b62_truncated,
             'configuration': configuration,
             'version': version
         }
-
         try:
             ShareURL.objects.create(**attributes)
         except IntegrityError:
             pass
 
-        return Response(hash_b62_truncated)
+        return Response(hash_as_b62_truncated)

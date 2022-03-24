@@ -7,11 +7,9 @@ from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.contrib.gis.geos import Point
 from django.db import IntegrityError
 from django.db.models import Q
-from django.http import HttpResponse
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.shortcuts import get_object_or_404
+from django.http import HttpResponse, JsonResponse
 from django.utils.timezone import now
-from django.views.generic.base import TemplateView, View
+from django.views.generic.base import TemplateView
 from django_filters.rest_framework import DjangoFilterBackend
 from numpy.ma.core import is_masked
 from rest_framework import viewsets

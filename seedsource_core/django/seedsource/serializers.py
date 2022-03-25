@@ -1,9 +1,14 @@
+import hashlib
+import string
+
 from django.contrib.gis.geos import Point
 from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
 from .models import SeedZone, TransferLimit, Region, RunConfiguration, ShareURL
 from .utils import get_elevation_at_point
+
+B62_CHARS = string.digits + string.ascii_letters
 
 
 class RunConfigurationSerializer(serializers.ModelSerializer):
@@ -112,4 +117,30 @@ class RegionSerializer(serializers.ModelSerializer):
 class ShareURLSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShareURL
-        fields = ('hash', 'configuration', 'version', 'created', 'accessed')
+        fields = ('configuration', 'version', 'hash', 'created', 'accessed')
+        read_only_fields = ('hash', 'created', 'accessed')
+
+    def create(self, validated_data):
+        configuration = validated_data['configuration']
+        version = validated_data['version']
+        string_to_hash = configuration + str(version)
+        hash_as_bytes = hashlib.sha256(string_to_hash.encode()).digest()
+        hash_as_integer = int.from_bytes(hash_as_bytes, 'big')
+        hash_as_b62_truncated = ""
+        for i in range(8):
+            hash_as_b62_truncated += B62_CHARS[hash_as_integer % 62]
+            hash_as_integer //= 62
+
+        attributes = {
+            'hash': hash_as_b62_truncated,
+            'configuration': configuration,
+            'version': version
+        }
+
+        try:
+            obj = ShareURL.objects.get(hash=hash_as_b62_truncated)
+        except ShareURL.DoesNotExist:
+            obj = ShareURL(**attributes)
+            obj.save()
+
+        return obj

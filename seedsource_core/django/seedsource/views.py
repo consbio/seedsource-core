@@ -1,13 +1,11 @@
-import hashlib
+
 import json
-import string
 
 from django.conf import settings
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.contrib.gis.geos import Point
-from django.db import IntegrityError
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.utils.timezone import now
 from django.views.generic.base import TemplateView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -27,7 +25,6 @@ from .utils import get_elevation_at_point, get_regions_for_point
 
 SEEDSOURCE_TITLE = getattr(settings, 'SEEDSOURCE_TITLE', 'seedsource-core')
 MBTILESERVER_ROOT = getattr(settings, 'MBTILESERVER_ROOT', None)
-B62_CHARS = string.digits + string.ascii_letters
 
 
 class ToolView(TemplateView):
@@ -164,31 +161,15 @@ class ShareURLViewset(viewsets.ModelViewSet):
     serializer_class = ShareURLSerializer
     lookup_field = 'hash'
 
-    def retrieve(self, request, *args, **kwargs):
-        share_url = ShareURL.objects.get(hash=kwargs['hash'])
+    def retrieve(self, request, hash):
+        share_url = ShareURL.objects.get(hash=hash)
         share_url.accessed = now()
         share_url.save()
-        return JsonResponse({'configuration': share_url.configuration, 'version': share_url.version})
+        return super().retrieve(request, hash)
 
     def create(self, request):
-        configuration = request.data['configuration']
-        version = request.data['version']
-        string_to_hash = configuration + str(version)
-        hash_as_bytes = hashlib.sha512(string_to_hash.encode()).digest()
-        hash_as_integer = int.from_bytes(hash_as_bytes, 'big')
-        hash_as_b62_truncated = ""
-        for i in range(0, 7):
-            hash_as_b62_truncated += B62_CHARS[hash_as_integer % 62]
-            hash_as_integer //= 62
-
-        attributes = {
-            'hash': hash_as_b62_truncated,
-            'configuration': configuration,
-            'version': version
-        }
-        try:
-            ShareURL.objects.create(**attributes)
-        except IntegrityError:
-            pass
-
-        return Response(hash_as_b62_truncated)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data['hash'], headers=headers)

@@ -1,5 +1,6 @@
 import hashlib
 import string
+import sys
 
 from django.contrib.gis.geos import Point
 from rest_framework import serializers
@@ -125,8 +126,8 @@ class ShareURLSerializer(serializers.ModelSerializer):
         version = validated_data['version']
         string_to_hash = configuration + str(version)
         hash_as_bytes = hashlib.sha256(string_to_hash.encode()).digest()
-        hash_as_integer = int.from_bytes(hash_as_bytes, 'big')
-        hash_as_b62_truncated = ""
+        hash_as_integer = int.from_bytes(hash_as_bytes, sys.byteorder)
+        hash_as_b62_truncated = ''
         for i in range(8):
             hash_as_b62_truncated += B62_CHARS[hash_as_integer % 62]
             hash_as_integer //= 62
@@ -137,10 +138,7 @@ class ShareURLSerializer(serializers.ModelSerializer):
             'version': version
         }
 
-        try:
-            obj = ShareURL.objects.get(hash=hash_as_b62_truncated)
-        except ShareURL.DoesNotExist:
-            obj = ShareURL(**attributes)
-            obj.save()
-
-        return obj
+        return ShareURL.objects.get_or_create(
+            hash=hash_as_b62_truncated,
+            defaults={'configuration': configuration, 'version': version}
+        )[0]

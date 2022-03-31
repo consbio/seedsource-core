@@ -1,4 +1,5 @@
 import hashlib
+import json
 import string
 import sys
 
@@ -132,13 +133,7 @@ class ShareURLSerializer(serializers.ModelSerializer):
             hash_as_b62_truncated += B62_CHARS[hash_as_integer % 62]
             hash_as_integer //= 62
 
-        attributes = {
-            'hash': hash_as_b62_truncated,
-            'configuration': configuration,
-            'version': version
-        }
-
         return ShareURL.objects.get_or_create(
             hash=hash_as_b62_truncated,
-            defaults={'configuration': configuration, 'version': version}
+            defaults={'configuration': json.loads(configuration), 'version': version}
         )[0]

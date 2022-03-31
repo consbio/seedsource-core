@@ -10,7 +10,7 @@ from django.utils.timezone import now
 from django.views.generic.base import TemplateView
 from django_filters.rest_framework import DjangoFilterBackend
 from numpy.ma.core import is_masked
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import ParseError
 from rest_framework.generics import GenericAPIView, ListAPIView
@@ -156,7 +156,7 @@ class RegionsView(ListAPIView):
             return get_regions_for_point(point)
 
 
-class ShareURLViewset(viewsets.ModelViewSet):
+class ShareURLViewset(mixins.CreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = ShareURL.objects.all()
     serializer_class = ShareURLSerializer
     lookup_field = 'hash'

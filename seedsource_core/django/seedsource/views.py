@@ -1,3 +1,4 @@
+
 import json
 
 from django.conf import settings
@@ -7,18 +8,18 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.timezone import now
 from django.views.generic.base import TemplateView
+from django_filters.rest_framework import DjangoFilterBackend
 from numpy.ma.core import is_masked
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import ParseError
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import TransferLimit, SeedZone, RunConfiguration, Region
+from .models import TransferLimit, SeedZone, RunConfiguration, Region, ShareURL
 from .report import Report
-from .serializers import RunConfigurationSerializer, SeedZoneSerializer, GenerateReportSerializer
+from .serializers import RunConfigurationSerializer, SeedZoneSerializer, GenerateReportSerializer, ShareURLSerializer
 from .serializers import TransferLimitSerializer, RegionSerializer
 from .utils import get_elevation_at_point, get_regions_for_point
 
@@ -153,3 +154,15 @@ class RegionsView(ListAPIView):
 
             point = Point(x, y)
             return get_regions_for_point(point)
+
+
+class ShareURLViewset(mixins.CreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    queryset = ShareURL.objects.all()
+    serializer_class = ShareURLSerializer
+    lookup_field = 'hash'
+
+    def retrieve(self, request, hash):
+        share_url = ShareURL.objects.get(hash=hash)
+        share_url.accessed = now()
+        share_url.save()
+        return super().retrieve(request, hash)

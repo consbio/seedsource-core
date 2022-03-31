@@ -8,6 +8,7 @@ router = DefaultRouter()
 router.register('run-configurations', views.RunConfigurationViewset)
 router.register('seedzones', views.SeedZoneViewset)
 router.register('transfer-limits', views.TransferLimitViewset)
+router.register('share-urls', views.ShareURLViewset)
 
 urlpatterns = [
     url(r'^$', views.ToolView.as_view(), name='tool_page'),

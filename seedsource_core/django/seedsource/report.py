@@ -86,7 +86,14 @@ class Report(object):
 
         for variable in self.configuration['variables']:
             name, transfer = variable['name'], variable['transfer']
-            value = variable['zoneCenter'] if self.configuration['center'] == 'zone' else variable['value']
+            value = (
+                variable["zoneCenter"]
+                if (
+                        self.configuration["method"] == "seedzone"
+                        and self.configuration["center"] == "zone"
+                )
+                else variable["value"]
+            )
             config = VARIABLE_CONFIG[name]
             value /= config.multiplier
             transfer /= config.multiplier

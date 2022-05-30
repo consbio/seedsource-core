@@ -85,7 +85,8 @@ class Report(object):
         is_imperial = self.configuration['unit'] == 'imperial'
 
         for variable in self.configuration['variables']:
-            name, value, transfer = variable['name'], variable['value'], variable['transfer']
+            name, transfer = variable['name'], variable['transfer']
+            value = variable['zoneCenter'] if self.configuration['center'] == 'zone' else variable['value']
             config = VARIABLE_CONFIG[name]
             value /= config.multiplier
             transfer /= config.multiplier

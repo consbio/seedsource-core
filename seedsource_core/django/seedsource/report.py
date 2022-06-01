@@ -83,9 +83,10 @@ class Report(object):
     def get_context_variables(self):
         variables = []
         is_imperial = self.configuration['unit'] == 'imperial'
+        is_custom = self.configuration['customMode']
 
         for variable in self.configuration['variables']:
-            name, transfer = variable['name'], variable['transfer']
+            name, transfer, custom_center = variable['name'], variable['transfer'], variable['customCenter']
             if self.configuration["method"] == "seedzone" and self.configuration["center"] == "zone":
                 value = variable["zoneCenter"]
             else:
@@ -93,11 +94,14 @@ class Report(object):
             config = VARIABLE_CONFIG[name]
             value /= config.multiplier
             transfer /= config.multiplier
+            if is_custom:
+                custom_center /= config.multiplier
 
             variables.append({
                 'label': '{}: {}'.format(variable['name'], _(config.label)),
                 'value': config.format_value(value, is_imperial),
                 'limit': config.format_transfer(transfer, is_imperial),
+                'custom_center': config.format_value(custom_center, is_imperial),
                 'units': config.imperial_label if is_imperial else config.metric_label,
                 'modified': variable['transfer'] != variable['defaultTransfer']
             })
@@ -242,6 +246,7 @@ class Report(object):
             'zone': getattr(zone, 'name', None),
             'band': band,
             'variables': self.get_context_variables(),
+            'custom_mode': self.configuration['customMode'],
             'traits': self.get_context_traits(),
             'constraints': self.get_context_constraints(),
             'title': SEEDSOURCE_TITLE

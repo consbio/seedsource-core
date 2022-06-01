@@ -86,12 +86,11 @@ class Report(object):
         is_custom = self.configuration['customMode']
 
         for variable in self.configuration['variables']:
-            name, value, transfer, custom_center = (
-                variable['name'],
-                variable['value'],
-                variable['transfer'],
-                variable['customCenter'],
-            )
+            name, transfer, custom_center = variable['name'], variable['transfer'], variable['customCenter']
+            if self.configuration["method"] == "seedzone" and self.configuration["center"] == "zone":
+                value = variable["zoneCenter"]
+            else:
+                value = variable["value"]
             config = VARIABLE_CONFIG[name]
             value /= config.multiplier
             transfer /= config.multiplier

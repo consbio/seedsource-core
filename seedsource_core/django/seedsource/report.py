@@ -101,7 +101,7 @@ class Report(object):
                 'label': '{}: {}'.format(variable['name'], _(config.label)),
                 'value': config.format_value(value, is_imperial),
                 'limit': config.format_transfer(transfer, is_imperial),
-                'custom_center': config.format_value(custom_center, is_imperial),
+                'custom_center': config.format_value(custom_center, is_imperial) if custom_center else None,
                 'units': config.imperial_label if is_imperial else config.metric_label,
                 'modified': variable['transfer'] != variable['defaultTransfer']
             })

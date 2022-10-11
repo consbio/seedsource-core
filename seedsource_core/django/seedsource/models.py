@@ -2,7 +2,7 @@ import uuid as uuid
 
 from django.conf import settings
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.fields import JSONField
+from django.db.models import JSONField
 from django.db import models
 
 

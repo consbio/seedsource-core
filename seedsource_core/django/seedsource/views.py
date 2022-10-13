@@ -11,7 +11,7 @@ from django.views.generic.base import TemplateView
 from django_filters.rest_framework import DjangoFilterBackend
 from numpy.ma.core import is_masked
 from rest_framework import viewsets, mixins
-from rest_framework.decorators import detail_route
+from rest_framework.decorators import action
 from rest_framework.exceptions import ParseError
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -73,7 +73,7 @@ class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
 
             return queryset.filter(polygon__contains=point).order_by('zone_source__order')
 
-    @detail_route(methods=['get'])
+    @action(detail=True)
     def geometry(self, *args, **kwargs):
         return Response(json.loads(self.get_object().geojson))
 

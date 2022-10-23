@@ -28,6 +28,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         StringParameter('model', required=False),
         DictParameter('variables', required=False),
         DictParameter('traits', required=False),
+        DictParameter('customFunctions', required=False),
         DictParameter('constraints', required=False),
         DictParameter('points', required=False)
     ]
@@ -64,7 +65,17 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
         return data
 
-    def execute(self, region, year, model=None, variables=[], traits=[], constraints=None, points=None):
+    def execute(
+        self,
+        region,
+        year,
+        model=None,
+        variables=[],
+        traits=[],
+        customFunctions=[],
+        constraints=None,
+        points=None,
+    ):
         data = {}
 
         points_out = None
@@ -77,25 +88,27 @@ class GenerateScores(NetCdfDatasetMixin, Task):
             x_col = points['headers']['x']
             y_col = points['headers']['y']
 
-        for trait in traits:
-            def loader_fn(variable):
-                def load():
-                    return self.load_variable_data(variable, region, year, model)
-                return load
+        def loader_fn(variable):
+            def load():
+                return self.load_variable_data(variable, region, year, model)
 
-            fn = trait['fn']
-            names = Lexer().get_names(fn)
-            context = {
-                **{x: loader_fn(x) for x in names},
-                'math_e': math.e
-            }
-            data[trait['name']] = Parser().evaluate(fn, context)
-            data.update({k: v for k, v in context.items() if k in variable_names})
+            return load
+
+        def update_functions(funcs):
+            for func in funcs:
+                fn = func["fn"]
+                names = Lexer().get_names(fn)
+                context = {**{x: loader_fn(x) for x in names}, "math_e": math.e}
+                data[func["name"]] = Parser().evaluate(fn, context)
+                data.update({k: v for k, v in context.items() if k in variable_names})
+
+        update_functions(traits)
+        update_functions(customFunctions)
 
         sum_rasters = None
         sum_masks = None
 
-        for item in variables + traits:
+        for item in variables + traits + customFunctions:
             limit = item['limit']
             limit_min = limit['min']
             limit_max = limit['max']
@@ -103,7 +116,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
             midpoint = limit_min + half
             factor = 100 / half
             mid_factor = factor * midpoint
-            
+
             if item['name'] in data:
                 raster = data[item['name']]
                 del data[item['name']]
@@ -129,7 +142,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
 
             mask |= raster < limit_min
             mask |= raster > limit_max
-            
+
             if sum_masks is not None:
                 sum_masks |= mask
             else:

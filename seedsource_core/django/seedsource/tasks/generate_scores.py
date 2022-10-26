@@ -96,7 +96,7 @@ class GenerateScores(NetCdfDatasetMixin, Task):
         sum_rasters = None
         sum_masks = None
 
-        for item in variables + func:
+        for item in variables + functions:
             limit = item['limit']
             limit_min = limit['min']
             limit_max = limit['max']

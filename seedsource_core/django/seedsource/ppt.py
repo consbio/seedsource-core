@@ -45,10 +45,14 @@ class PPTCreator(object):
 
         return method_text
 
-    def replace_shape_image(self, shape, image):
+    def replace_shape_image(self, shape, image, slide):
         im_bytes = BytesIO()
         image.save(im_bytes, 'PNG')
-        shape.part.related_parts[shape._element.blip_rId].blob = im_bytes.getvalue()
+        new_shape = slide.shapes.add_picture(im_bytes, Inches(0.5), Inches(0.5), Inches(9), Inches(6))
+        old_pic = shape._element
+        new_pic = new_shape._element
+        old_pic.addnext(new_pic)
+        old_pic.getparent().remove(old_pic)
 
     def replace_shape_text(self, shape, text):
         paragraph = shape.text_frame.paragraphs[0]
@@ -82,7 +86,7 @@ class PPTCreator(object):
                 if not isImageType(value):
                     raise TypeError('Template value {} must be an Image type'.format(shape.name))
 
-                self.replace_shape_image(shape, value)
+                self.replace_shape_image(shape, value, slide)
 
             elif shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX:
                 if not isinstance(value, str):

@@ -248,6 +248,7 @@ class Report(object):
             'variables': self.get_context_variables(),
             'custom_mode': self.configuration['customMode'],
             'traits': self.get_context_traits(),
+            'custom_functions': self.configuration['customFunctions'],
             'constraints': self.get_context_constraints(),
             'title': SEEDSOURCE_TITLE
         }

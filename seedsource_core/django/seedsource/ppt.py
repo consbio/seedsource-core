@@ -193,7 +193,7 @@ class PPTCreator(object):
         for i, custom_function in enumerate(custom_functions, start=1):
             table.cell(i, 0).text = custom_function['name']
             table.cell(i, 1).text = custom_function['func']
-            table.cell(i, 2).text = str(round(custom_function['value'],2))
+            table.cell(i, 2).text = str(custom_function['value'])
             table.cell(i, 3).text = str(custom_function['transfer'])
 
     def create_constraints_slide(self, constraints):

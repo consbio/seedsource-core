@@ -173,6 +173,33 @@ class PPTCreator(object):
             table.cell(i, 1).text = center_label
             table.cell(i, 2).text = limit_label
 
+    def create_custom_functions_slide(self, custom_functions):
+        slide = self.add_slide()
+        self.add_title_text(slide, _('Custom Functions'))
+
+        num_rows = len(custom_functions) + 1
+        table = slide.shapes.add_table(
+            num_rows, 4, Inches(.47), Inches(.73), Inches(9.05), Inches(.4) * num_rows
+        ).table
+
+        cols = table.columns
+        cols[0].width = Inches(2.1)
+        cols[1].width = Inches(3.75)
+        cols[2].width = Inches(0.6)
+        cols[2].width = Inches(0.9)
+
+        # Headers
+        table.cell(0, 0).text = _('Name')
+        table.cell(0, 1).text = _('Function')
+        table.cell(0, 2).text = _('Center')
+        table.cell(0, 3).text = _('Transfer limit') + ' (+/-)'
+
+        for i, custom_function in enumerate(custom_functions, start=1):
+            table.cell(i, 0).text = custom_function['name']
+            table.cell(i, 1).text = custom_function['func']
+            table.cell(i, 2).text = str(custom_function['value'])
+            table.cell(i, 3).text = str(custom_function['transfer'])
+
     def create_constraints_slide(self, constraints):
         slide = self.add_slide()
         self.add_title_text(slide, _('Constraints'))
@@ -352,6 +379,9 @@ class PPTCreator(object):
         ))
         self.create_overview_slide(context)
         self.create_variables_slide(context['variables'])
+
+        if context['custom_functions']:
+            self.create_custom_functions_slide(context['custom_functions'])
 
         if context['constraints']:
             self.create_constraints_slide(context['constraints'])

@@ -214,7 +214,7 @@
         </div>
     {% endblock %}
 
-    {% if method == "seedzone" or method == "function" %}
+    {% if method == "seedzone" or method == "trait" %}
         <div>&nbsp;</div>
 
         {% block species %}<div><strong>{% trans "Species:" %}</strong> {{ species }}</div>{% endblock %}
@@ -230,7 +230,7 @@
         {% endif %}
     {% endif %}
 
-    {% if method == "function" %}
+    {% if method == "trait" %}
         {% block traits %}
             <h3>{% trans "Traits" %}</h3>
             <div>
@@ -251,6 +251,32 @@
                                     {{ trait.limit }} {{ trait.units|safe }}
                                     {% if trait.modified %}(modified{% endif %}
                                 </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endblock %}
+    {% elif method == "function" %}
+        {% block function %}
+            <h3>{% trans "Custom Functions" %}</h3>
+            <div>
+                <table class="variables">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Name" %}</th>
+                            <th>{% trans "Function" %}</th>
+                            <th>{% trans "Center" %}</th>
+                            <th>{% trans "Transfer limit" %} (+/-)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for custom_function in custom_functions %}
+                            <tr>
+                                <td>{{ custom_function.name }}</td>
+                                <td>{{ custom_function.func }}</td>
+                                <td>{{ custom_function.value }}</td>
+                                <td>{{ custom_function.transfer }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.timezone import now
 from django.views.generic.base import TemplateView
-from django_filters.rest_framework import DjangoFilterBackend
+from url_filter.integrations.drf import DjangoFilterBackend
 from numpy.ma.core import is_masked
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
@@ -73,7 +73,7 @@ class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
 
             return queryset.filter(polygon__contains=point).order_by('zone_source__order')
 
-    @action(detail=True)
+    @action(detail=True, methods=['get'])
     def geometry(self, *args, **kwargs):
         return Response(json.loads(self.get_object().geojson))
 
@@ -82,7 +82,7 @@ class TransferLimitViewset(viewsets.ReadOnlyModelViewSet):
     queryset = TransferLimit.objects.all().select_related('zone').defer('zone__polygon')
     serializer_class = TransferLimitSerializer
     filter_backends = (DjangoFilterBackend,)
-    filter_fields = ('variable', 'time_period', 'zone_id', 'zone__zone_uid')
+    filter_fields = ('variable', 'time_period', 'zone_id', 'zone')
 
     def get_queryset(self):
         if not self.request.query_params.get('point'):

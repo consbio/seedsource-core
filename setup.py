@@ -13,7 +13,7 @@ setup(
     install_requires=[
         "aiohttp",
         "trefoil",
-        "django<3",
+        "django<4",
         "djangorestframework<3.8",
         "gdal==2.2.*",
         "geopy",

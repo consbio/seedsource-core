@@ -6,10 +6,10 @@ authors = ["Conservation Biology Institute"]
 license = "BSD-3-Clause"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.11"
+python = ">=3.10,<3.11"
 aiohttp = "^3.7.3"
 trefoil = { git = "https://github.com/consbio/trefoil.git", branch = "main" }
-Django = "^3.2"
+Django = "^5.2"
 djangorestframework = "~3.14"
 GDAL = { version = "*", optional = true }
 geopy = "^1.23.0"

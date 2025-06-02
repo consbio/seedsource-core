@@ -4,10 +4,9 @@ from django.conf import settings
 from django.contrib.auth import login, authenticate, update_session_auth_hash, logout, get_user_model
 from django.core.mail import send_mail
 from django.db import transaction
-from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse, reverse_lazy
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from django.views.generic.edit import FormView
 from rest_framework.generics import CreateAPIView, UpdateAPIView, GenericAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated

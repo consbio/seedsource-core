@@ -16,7 +16,7 @@ class RunConfiguration(models.Model):
     configuration = models.TextField()
 
     class Meta:
-        index_together = [['owner', 'created'], ['owner', 'title']]
+        indexes = [models.Index(fields=['owner', 'created']), models.Index(fields=['owner', 'title'])]
 
 
 class ZoneSource(models.Model):

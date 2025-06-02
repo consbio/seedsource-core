@@ -1,5 +1,5 @@
 from collections import namedtuple
-from django.utils.translation import ugettext as _, pgettext
+from django.utils.translation import gettext as _, pgettext
 
 Variable = namedtuple(
     'Variable',

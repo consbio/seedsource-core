@@ -1,4 +1,4 @@
-from django.conf.urls import url, include
+from django.urls import re_path, include
 from rest_framework.routers import DefaultRouter
 
 from . import views
@@ -11,9 +11,9 @@ router.register('transfer-limits', views.TransferLimitViewset)
 router.register('share-urls', views.ShareURLViewset)
 
 urlpatterns = [
-    url(r'^$', views.ToolView.as_view(), name='tool_page'),
-    url(r'^', include(router.urls)),
-    url(r'^create-pdf/$', views.GeneratePDFView.as_view(), name='create_pdf'),
-    url(r'^create-ppt/$', views.GeneratePowerPointView.as_view(), name='create_ppt'),
-    url(r'^regions/$', views.RegionsView.as_view(), name='regions')
+    re_path(r'^$', views.ToolView.as_view(), name='tool_page'),
+    re_path(r'^', include(router.urls)),
+    re_path(r'^create-pdf/$', views.GeneratePDFView.as_view(), name='create_pdf'),
+    re_path(r'^create-ppt/$', views.GeneratePowerPointView.as_view(), name='create_ppt'),
+    re_path(r'^regions/$', views.RegionsView.as_view(), name='regions')
 ]

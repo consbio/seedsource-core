@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.timezone import now
 from django.views.generic.base import TemplateView
-from url_filter.integrations.drf import DjangoFilterBackend
+from django_filters import rest_framework as filters
 from numpy.ma.core import is_masked
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
@@ -53,8 +53,8 @@ class RunConfigurationViewset(viewsets.ModelViewSet):
 class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
     queryset = SeedZone.objects.all()
     serializer_class = SeedZoneSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filter_fields = ('species',)
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('species',)
     lookup_field = 'zone_uid'
 
     def get_queryset(self):
@@ -81,8 +81,8 @@ class SeedZoneViewset(viewsets.ReadOnlyModelViewSet):
 class TransferLimitViewset(viewsets.ReadOnlyModelViewSet):
     queryset = TransferLimit.objects.all().select_related('zone').defer('zone__polygon')
     serializer_class = TransferLimitSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filter_fields = ('variable', 'time_period', 'zone_id', 'zone')
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('variable', 'time_period', 'zone_id', 'zone')
 
     def get_queryset(self):
         if not self.request.query_params.get('point'):

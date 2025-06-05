@@ -157,7 +157,7 @@ class Command(BaseCommand):
             service=service,
             index=0,
             variable="data",
-            projection="epsg:4326",
+            projection="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
             x_dimension="longitude",
             y_dimension="latitude",
             name="data",
